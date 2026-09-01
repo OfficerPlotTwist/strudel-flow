@@ -10,10 +10,14 @@ import { defaultTriggerMap, keyEventToTrigger, midiDataToTrigger, resolveAction 
 
 const status = createStatus(document.getElementById('status-strip'));
 
-// Called before the gesture, on purpose. See engine.js.
-initEngine({ onError: (msg) => status.error(msg) });
-
 const pane = createEditorPane(document.getElementById('editor-pane'));
+
+// Called before the gesture, on purpose. See engine.js. onDraw feeds one
+// shared per-frame loop; it only ever reads state, never evaluates.
+initEngine({
+  onError: (msg) => status.error(msg),
+  onDraw: (haps, time) => pane.highlight(haps, time),
+});
 const first = pane.addTab('song-1', '$: s("bd sd")\n\n$: note("<c a f e>(3,8)")');
 
 const panel = createLibraryPanel(document.getElementById('library-pane'), {
@@ -31,7 +35,9 @@ const panel = createLibraryPanel(document.getElementById('library-pane'), {
   getSongName: () => pane.getTabs().find((t) => t.id === pane.getViewedId()).name,
 });
 
-pane.onActiveEdit((id) => evaluateCode(pane.getCode(id)));
+pane.onActiveEdit(async (id) => {
+  pane.setMiniLocations(id, await evaluateCode(pane.getCode(id)));
+});
 
 const triggerMap = defaultTriggerMap();
 const actions = createActions({ pane, panel, status });
@@ -67,7 +73,7 @@ showBootScreen(
       },
     });
     pane.setActiveTab(first);
-    await evaluateCode(pane.getCode(first));
+    pane.setMiniLocations(first, await evaluateCode(pane.getCode(first)));
   },
   { onError: (err) => status.error(String(err?.message ?? err)) },
 );

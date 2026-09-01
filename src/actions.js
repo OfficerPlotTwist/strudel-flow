@@ -17,7 +17,7 @@ export function createActions({ pane, panel, status }) {
     async setActiveScript() {
       const id = pane.getViewedId();
       pane.setActiveTab(id);
-      await evaluateCode(pane.getCode(id));
+      pane.setMiniLocations(id, await evaluateCode(pane.getCode(id)));
       status.info(`active: ${pane.getTabs().find((t) => t.id === id).name}`);
     },
     hush() {

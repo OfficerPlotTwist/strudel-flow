@@ -2,6 +2,7 @@ import { javascript } from '@codemirror/lang-javascript';
 import { EditorState, Prec } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import { highlightExtension, highlightMiniLocations, updateMiniLocations } from '@strudel/codemirror';
 import { findBlock, toggleBlockComment } from './blocks.js';
 import { crtTheme } from './crt-theme.js';
 
@@ -74,6 +75,7 @@ export function createEditorPane(container) {
           javascript(),
           crtTheme,
           EditorView.lineWrapping,
+          highlightExtension,
         ],
       }),
     });
@@ -137,6 +139,19 @@ export function createEditorPane(container) {
     },
     onActiveEdit(cb) {
       editListener = cb;
+    },
+    /** Push the transpiler's mini-notation locations for `id`'s code into its view, after eval. */
+    setMiniLocations(id, locations) {
+      const tab = tabs.get(id);
+      if (!tab) return;
+      updateMiniLocations(tab.view, locations ?? []);
+    },
+    /** Show currently-sounding haps as outlines, on the ACTIVE tab's view only. */
+    highlight(haps, atTime) {
+      if (!activeId) return;
+      const tab = tabs.get(activeId);
+      if (!tab) return;
+      highlightMiniLocations(tab.view, atTime, haps);
     },
   };
 }
