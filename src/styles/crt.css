@@ -4,6 +4,10 @@
   --bg: #060a07;
   --bg-raised: #0c130e;
   --alert: #f7a87d;
+  /* @strudel/codemirror's active-hap outline falls back to var(--foreground)
+     when a hap has no explicit value.color; point that at our phosphor green
+     so the outline reads as part of the CRT theme. */
+  --foreground: var(--phosphor);
 }
 
 * { box-sizing: border-box; }

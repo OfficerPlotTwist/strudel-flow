@@ -17,7 +17,17 @@ export function createActions({ pane, panel, status }) {
     async setActiveScript() {
       const id = pane.getViewedId();
       pane.setActiveTab(id);
-      await evaluateCode(pane.getCode(id));
+      const { success, miniLocations } = await evaluateCode(pane.getCode(id));
+      if (success) {
+        pane.setMiniLocations(id, miniLocations);
+      } else {
+        // Evaluation failed on the tab we just activated: it must show no
+        // outline (not stale offsets from its own last-good eval), but
+        // onError (wired in main.js) has already reported it to the status
+        // strip - don't overwrite that here.
+        pane.clearHighlight(id);
+        return;
+      }
       status.info(`active: ${pane.getTabs().find((t) => t.id === id).name}`);
     },
     hush() {
