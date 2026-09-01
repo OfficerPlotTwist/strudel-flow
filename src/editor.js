@@ -98,13 +98,21 @@ export function createEditorPane(container) {
     return viewedId ? tabs.get(viewedId).view : null;
   }
 
+  /** Remove any live outline from `id`'s view - same effect as a frame with no matching haps. */
+  function clearHighlight(id) {
+    const tab = tabs.get(id);
+    if (tab) highlightMiniLocations(tab.view, 0, []);
+  }
+
   return {
     addTab,
     viewTab,
+    clearHighlight,
     getTabs: () =>
       [...tabs.values()].map((t) => ({ id: t.id, name: t.name, isActive: t.id === activeId })),
     setActiveTab(id) {
       if (!tabs.has(id)) return;
+      if (activeId && activeId !== id) clearHighlight(activeId);
       activeId = id;
       renderBar();
     },

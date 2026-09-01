@@ -36,7 +36,8 @@ const panel = createLibraryPanel(document.getElementById('library-pane'), {
 });
 
 pane.onActiveEdit(async (id) => {
-  pane.setMiniLocations(id, await evaluateCode(pane.getCode(id)));
+  const { success, miniLocations } = await evaluateCode(pane.getCode(id));
+  if (success) pane.setMiniLocations(id, miniLocations);
 });
 
 const triggerMap = defaultTriggerMap();
@@ -73,7 +74,8 @@ showBootScreen(
       },
     });
     pane.setActiveTab(first);
-    pane.setMiniLocations(first, await evaluateCode(pane.getCode(first)));
+    const { success, miniLocations } = await evaluateCode(pane.getCode(first));
+    if (success) pane.setMiniLocations(first, miniLocations);
   },
   { onError: (err) => status.error(String(err?.message ?? err)) },
 );

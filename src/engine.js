@@ -9,6 +9,7 @@ let ready = null;
 let repl = null;
 let drawer = null;
 let drawerStarted = false;
+let onDrawCallback = null;
 
 /**
  * Must be called at page load, BEFORE any user gesture. initStrudel registers
@@ -21,6 +22,7 @@ let drawerStarted = false;
  * sounding. This never triggers evaluation.
  */
 export function initEngine({ onError, onDraw } = {}) {
+  onDrawCallback = onDraw ?? null;
   if (onDraw) {
     drawer = new Drawer(onDraw, [-0.1, 0.1]);
   }
@@ -57,9 +59,12 @@ export async function unlockAudio() {
 
 /**
  * Replace whatever is playing with `code`. Replace semantics are the default.
- * Returns the mini-notation locations the transpiler produced for this
- * evaluation (repl.state.miniLocations), for the caller to push into the
- * editor's highlight state.
+ * `@strudel/web`'s evaluate() swallows transpile/eval errors (it calls
+ * onEvalError and resolves anyway), so `repl.state.miniLocations` on failure
+ * still holds whatever the PREVIOUS successful evaluation left there. Report
+ * success explicitly (repl.mjs's `evaluate()` sets `state.evalError` on the
+ * catch path and clears it - `evalError: undefined` - on the success path)
+ * so callers never paint stale/foreign mini-locations onto the wrong tab.
  */
 export async function evaluateCode(code) {
   await ready;
@@ -70,9 +75,19 @@ export async function evaluateCode(code) {
     drawer.start(repl.scheduler);
     drawerStarted = true;
   }
-  return repl.state.miniLocations;
+  const success = !repl.state.evalError;
+  return { success, miniLocations: success ? repl.state.miniLocations : null };
 }
 
+/** Stop playback AND stop showing whatever was last outlined - nothing should
+ *  claim to be sounding once everything is silent. */
 export function hushEngine() {
   hush();
+  if (drawer) {
+    drawer.stop();
+  }
+  drawerStarted = false;
+  // Clear via the same path a real frame would use, so there's no second
+  // highlight-clearing mechanism to keep in sync.
+  onDrawCallback?.([], 0);
 }
