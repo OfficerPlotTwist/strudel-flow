@@ -1,7 +1,7 @@
 // Static import: @strudel/webaudio registers a worklet as a module-level
 // side effect. A lazy import after the first mousedown misses the worklet load.
 import { getAudioContext, initAudioOnFirstClick } from '@strudel/webaudio';
-import { initStrudel, evaluate, hush, samples } from '@strudel/web';
+import { initStrudel, evaluate, hush, samples, aliasBank, registerZZFXSounds, soundMap } from '@strudel/web';
 import { Drawer } from '@strudel/draw';
 import '@strudel/midi';
 
@@ -30,14 +30,47 @@ export function initEngine({ onError, onDraw } = {}) {
     onEvalError: (err) => onError?.(String(err?.message ?? err)),
     prebake: async () => {
       // initStrudel loads NO samples by default: note(...) works, but
-      // s("bd sd") is silent with only a log line. Load dirt-samples so
-      // patterns pasted from strudel.cc make sound here. This is a network
-      // fetch (GitHub) - offline or rate-limited it must NOT block startup,
-      // since note(...) patterns work fine without any sample bank.
+      // s("bd sd") is silent with only a log line. Load the same bank set
+      // strudel.cc's own prebake loads (see @strudel/repl/prebake.mjs) so
+      // patterns pasted from strudel.cc make sound here. Every load below is
+      // independently resilient - a failure of any one bank (network down,
+      // GitHub rate-limited, offline boot) must log and continue, never
+      // block startup or the other banks. registerSynthSounds() already ran
+      // in @strudel/web's defaultPrebake, so oscillator sounds (sine/
+      // sawtooth/square/triangle) work even if every bank below fails.
+      const doughSamples = 'https://raw.githubusercontent.com/felixroos/dough-samples/main';
+      const uzuDrumkit = 'https://raw.githubusercontent.com/tidalcycles/uzu-drumkit/main';
+      const drumAliases = 'https://raw.githubusercontent.com/todepond/samples/main/tidal-drum-machines-alias.json';
+
+      const banks = [
+        ['zzfx synths', () => registerZZFXSounds()],
+        // @strudel/soundfonts must be imported dynamically - a static
+        // import throws under SSR ("window is not defined").
+        ['soundfonts', () => import('@strudel/soundfonts').then(({ registerSoundfonts }) => registerSoundfonts())],
+        ['tidal-drum-machines', () => samples(`${doughSamples}/tidal-drum-machines.json`)],
+        ['piano', () => samples(`${doughSamples}/piano.json`)],
+        ['dirt-samples', () => samples(`${doughSamples}/Dirt-Samples.json`)],
+        ['vcsl', () => samples(`${doughSamples}/vcsl.json`)],
+        ['mridangam', () => samples(`${doughSamples}/mridangam.json`)],
+        ['strudel', () => samples(`${uzuDrumkit}/strudel.json`)],
+      ];
+
+      await Promise.all(
+        banks.map(async ([name, load]) => {
+          try {
+            await load();
+          } catch (err) {
+            console.warn(`[engine] "${name}" bank failed to load; continuing`, err);
+          }
+        }),
+      );
+
+      // Aliases only make sense once the drum machine bank above is loaded;
+      // run it after, and keep it just as resilient.
       try {
-        await samples('github:tidalcycles/dirt-samples');
+        await aliasBank(drumAliases);
       } catch (err) {
-        console.warn('[engine] sample bank failed to load; synths still work, s(...) will be silent', err);
+        console.warn('[engine] drum-machine alias bank failed to load; continuing', err);
       }
     },
   });
@@ -90,4 +123,22 @@ export function hushEngine() {
   // Clear via the same path a real frame would use, so there's no second
   // highlight-clearing mechanism to keep in sync.
   onDrawCallback?.([], 0);
+}
+
+/**
+ * A live, read-only snapshot of superdough's sound registry (soundMap, a
+ * nanostores map re-exported all the way from superdough -> @strudel/webaudio
+ * -> @strudel/web). This is NOT app data: it reflects whatever prebake has
+ * managed to load at call time, so it can grow as banks finish loading async
+ * and shrink to just synths on an offline boot. Never cache this list -
+ * always read soundMap.get() fresh.
+ *
+ * Returns entries sorted by name: { name, type }[], where type is whatever
+ * superdough's registerSound() recorded ('synth', 'sample', 'wavetable', ...).
+ */
+export function getSoundEntries() {
+  const dict = soundMap.get();
+  return Object.keys(dict)
+    .sort()
+    .map((name) => ({ name, type: dict[name]?.data?.type ?? 'unknown' }));
 }

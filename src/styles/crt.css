@@ -148,6 +148,27 @@ main {
   cursor: pointer;
 }
 
+.lib-sounds { display: flex; flex-direction: column; height: 100%; }
+.lib-sound-filter {
+  margin: 0.4rem;
+  background: var(--bg-raised);
+  color: var(--phosphor);
+  border: 1px solid var(--phosphor-dim);
+  font: inherit;
+  font-size: 0.75rem;
+  padding: 0.3rem 0.4rem;
+}
+.lib-sound-type {
+  color: var(--phosphor-dim);
+  font-size: 0.65rem;
+  padding: 0 0.4rem;
+}
+.lib-sound-empty {
+  color: var(--phosphor-dim);
+  font-size: 0.75rem;
+  padding: 0.5rem;
+}
+
 #status-strip { display: flex; gap: 1rem; align-items: center; }
 #status-strip .midi-state { margin-left: auto; color: var(--phosphor-dim); }
 

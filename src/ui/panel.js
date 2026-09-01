@@ -1,10 +1,14 @@
 import { addEntry, removeEntry } from '../library.js';
 import { exportJson, importJson, loadLibrary, saveLibrary } from '../storage.js';
+import { getSoundEntries } from '../engine.js';
+
+const TABS = ['snippets', 'songs', 'sounds'];
 
 export function createLibraryPanel(container, { onInsert, getSongCode, getSongName }) {
   let lib = loadLibrary(localStorage);
   let kind = 'snippets';
   let selectedId = null;
+  let soundFilter = '';
 
   function persist() {
     try {
@@ -20,7 +24,7 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
 
     const tabs = document.createElement('nav');
     tabs.className = 'lib-tabs';
-    for (const k of ['snippets', 'songs']) {
+    for (const k of TABS) {
       const button = document.createElement('button');
       button.textContent = k.toUpperCase();
       button.className = k === kind ? 'lib-tab viewed' : 'lib-tab';
@@ -30,6 +34,11 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
         refresh();
       });
       tabs.append(button);
+    }
+
+    if (kind === 'sounds') {
+      container.append(tabs, renderSoundsTab());
+      return;
     }
 
     const list = document.createElement('ul');
@@ -111,6 +120,74 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
 
     actions.append(save, exportBtn, importBtn);
     container.append(tabs, list, actions);
+  }
+
+  /**
+   * The SOUNDS tab is a live, read-only view of the engine's sound registry -
+   * it is NOT part of `lib`, is never persisted, and has no save/export/
+   * import/delete controls (there is nothing user-owned here to act on).
+   */
+  function renderSoundsTab() {
+    const wrap = document.createElement('div');
+    wrap.className = 'lib-sounds';
+
+    const filterInput = document.createElement('input');
+    filterInput.type = 'text';
+    filterInput.className = 'lib-sound-filter';
+    filterInput.placeholder = 'filter sounds…';
+    filterInput.value = soundFilter;
+    filterInput.addEventListener('input', () => {
+      soundFilter = filterInput.value;
+      renderSoundList();
+    });
+
+    const list = document.createElement('ul');
+    list.className = 'lib-list';
+
+    function renderSoundList() {
+      list.innerHTML = '';
+      const entries = getSoundEntries();
+      const needle = soundFilter.trim().toLowerCase();
+      const filtered = needle ? entries.filter((e) => e.name.includes(needle)) : entries;
+
+      if (entries.length === 0) {
+        const empty = document.createElement('li');
+        empty.className = 'lib-sound-empty';
+        empty.textContent = 'no sounds loaded yet (banks may still be loading, or the network is offline)';
+        list.append(empty);
+        return;
+      }
+      if (filtered.length === 0) {
+        const empty = document.createElement('li');
+        empty.className = 'lib-sound-empty';
+        empty.textContent = 'no sounds match filter';
+        list.append(empty);
+        return;
+      }
+
+      for (const entry of filtered) {
+        const item = document.createElement('li');
+        item.className = 'lib-item';
+
+        const name = document.createElement('button');
+        name.className = 'lib-name';
+        name.textContent = entry.name;
+        name.addEventListener('click', () => {
+          onInsert(`s("${entry.name}")`, 'sounds', entry.name);
+        });
+
+        const type = document.createElement('span');
+        type.className = 'lib-sound-type';
+        type.textContent = entry.type;
+
+        item.append(name, type);
+        list.append(item);
+      }
+    }
+
+    renderSoundList();
+    wrap.append(filterInput, list);
+    return wrap;
   }
 
   refresh();
