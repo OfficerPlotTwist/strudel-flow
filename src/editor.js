@@ -50,9 +50,6 @@ export function createEditorPane(container) {
           javascript(),
           crtTheme,
           EditorView.lineWrapping,
-          EditorView.updateListener.of((update) => {
-            if (update.docChanged && id === activeId) editListener(id);
-          }),
         ],
       }),
     });
@@ -106,7 +103,11 @@ export function createEditorPane(container) {
       const block = findBlock(lines, cursorLine);
       if (!block) return false;
       const next = toggleBlockComment(lines, block.start, block.end).join('\n');
-      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: next } });
+      const cursorPos = Math.min(view.state.selection.main.head, next.length);
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: next },
+        selection: { anchor: cursorPos },
+      });
       if (viewedId === activeId) editListener(viewedId);
       return true;
     },
