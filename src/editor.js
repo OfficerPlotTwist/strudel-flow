@@ -1,5 +1,5 @@
 import { javascript } from '@codemirror/lang-javascript';
-import { EditorState } from '@codemirror/state';
+import { EditorState, Prec } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { findBlock, toggleBlockComment } from './blocks.js';
@@ -47,6 +47,19 @@ export function createEditorPane(container) {
           lineNumbers(),
           history(),
           keymap.of([...defaultKeymap, ...historyKeymap]),
+          // Ctrl+Enter and Ctrl+i are claimed by our global trigger map
+          // (setActiveScript / insertSelectedSnippet). Swallow them here at
+          // highest precedence so CodeMirror's own insertBlankLine /
+          // selectParentSyntax commands never run; preventDefault() alone
+          // (not stopPropagation) is what a handled binding triggers, so the
+          // window-level keydown listener still receives the event and
+          // dispatches our action.
+          Prec.highest(
+            keymap.of([
+              { key: 'Ctrl-Enter', run: () => true },
+              { key: 'Ctrl-i', run: () => true },
+            ]),
+          ),
           javascript(),
           crtTheme,
           EditorView.lineWrapping,
