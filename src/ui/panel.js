@@ -43,7 +43,7 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
       name.textContent = entry.name;
       name.addEventListener('click', () => {
         selectedId = entry.id;
-        onInsert(entry.code);
+        onInsert(entry.code, kind, entry.name);
         refresh();
       });
 

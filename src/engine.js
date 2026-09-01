@@ -17,8 +17,14 @@ export function initEngine({ onError } = {}) {
     prebake: async () => {
       // initStrudel loads NO samples by default: note(...) works, but
       // s("bd sd") is silent with only a log line. Load dirt-samples so
-      // patterns pasted from strudel.cc make sound here.
-      await samples('github:tidalcycles/dirt-samples');
+      // patterns pasted from strudel.cc make sound here. This is a network
+      // fetch (GitHub) - offline or rate-limited it must NOT block startup,
+      // since note(...) patterns work fine without any sample bank.
+      try {
+        await samples('github:tidalcycles/dirt-samples');
+      } catch (err) {
+        console.warn('[engine] sample bank failed to load; synths still work, s(...) will be silent', err);
+      }
     },
   });
   return ready;

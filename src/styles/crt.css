@@ -90,6 +90,7 @@ main {
   border-bottom-color: var(--phosphor);
   text-shadow: 0 0 8px var(--phosphor);
 }
+.tab-add { flex: 0 0 auto; }
 
 .tab-host { flex: 1; position: relative; overflow: hidden; }
 .tab-view { position: absolute; inset: 0; }
@@ -155,6 +156,17 @@ main {
   font: inherit;
   font-size: 0.75rem;
 }
+.settings-insert {
+  background: var(--bg-raised);
+  color: var(--phosphor);
+  border: 1px solid var(--phosphor-dim);
+  font: inherit;
+  font-size: 0.7rem;
+  padding: 0.2rem 0.4rem;
+  margin-left: 0.4rem;
+  cursor: pointer;
+}
+.settings-insert:disabled { color: var(--phosphor-dim); cursor: default; }
 .settings-note { color: var(--phosphor-dim); }
 .trigger-map { width: 100%; border-collapse: collapse; color: var(--phosphor-dim); }
 .trigger-map td { padding: 0.15rem 0; }

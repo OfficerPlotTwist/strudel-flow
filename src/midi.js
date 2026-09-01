@@ -51,7 +51,7 @@ export function listInputs() {
 
 /** Subscribe to raw MIDI messages from a named input port. */
 export function onMidiMessage(portName, handler) {
-  const input = WebMidi.inputs.find((i) => i.name.includes(portName));
+  const input = WebMidi.inputs.find((i) => i.name === portName);
   if (!input) {
     console.warn(`[midi] input "${portName}" not found`);
     return;

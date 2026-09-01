@@ -29,6 +29,17 @@ export function createEditorPane(container) {
       button.addEventListener('click', () => viewTab(tab.id));
       bar.append(button);
     }
+
+    const addButton = document.createElement('button');
+    addButton.textContent = '+';
+    addButton.className = 'tab tab-add';
+    addButton.title = 'New tab';
+    addButton.addEventListener('click', () => {
+      const name = window.prompt('Name:', `song-${tabs.size + 1}`)?.trim();
+      if (!name) return;
+      viewTab(addTab(name));
+    });
+    bar.append(addButton);
   }
 
   function addTab(name, code = '') {

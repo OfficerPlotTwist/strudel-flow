@@ -34,6 +34,12 @@ export function createSettings(container, { triggerMap, onPortPick }) {
   outSelect.addEventListener('change', () => onPortPick(outSelect.value));
   outLabel.append(outSelect);
 
+  const insertBtn = document.createElement('button');
+  insertBtn.className = 'settings-insert';
+  insertBtn.textContent = 'INSERT .midi()';
+  insertBtn.disabled = outputs.length === 0;
+  insertBtn.addEventListener('click', () => onPortPick(outSelect.value));
+
   const inList = document.createElement('p');
   inList.className = 'settings-note';
   const inputs = listInputs();
@@ -53,6 +59,6 @@ export function createSettings(container, { triggerMap, onPortPick }) {
     mapTable.append(row);
   }
 
-  panel.append(outLabel, inList, mapTable);
+  panel.append(outLabel, insertBtn, inList, mapTable);
   container.append(panel);
 }
