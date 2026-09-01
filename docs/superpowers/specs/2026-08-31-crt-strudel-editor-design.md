@@ -27,22 +27,74 @@ based, cross-platform, so the project ports to Linux unchanged). Runs in a
 Chromium browser, which is required for the Web MIDI API.
 
 The app reuses Strudel's own published packages rather than reimplementing
-pattern parsing, audio scheduling, or MIDI emission:
+pattern parsing, audio scheduling, or MIDI emission. Versions verified on npm
+2026-08-31; pin exactly, because the packages carry version skew:
 
-- `@strudel/web` — pattern engine, audio scheduler, code evaluation
-- `@strudel/codemirror` — Strudel syntax highlighting for CodeMirror 6
-- `@strudel/midi` — pattern MIDI output via Web MIDI
+- `@strudel/web` **1.3.0** — pattern engine, audio scheduler, code evaluation
+- `@strudel/codemirror` **1.3.0** — Strudel highlighting extensions for CodeMirror 6
+- `@strudel/midi` **1.3.0** — pattern MIDI output via Web MIDI
+- `@strudel/core` is pinned by `@strudel/web` at **1.2.6** — do not force-align it
+
+`@strudel/web` does **not** bundle `@strudel/midi`. It must be installed
+separately, imported for its `Pattern.prototype.midi` side effect, and added to
+the `evalScope` so user code can call `.midi()`.
+
+**Canonical repo is `codeberg.org/uzu/strudel`.** The `tidalcycles/strudel`
+GitHub repo is a stale mirror (last pushed 2025-06-19). All packages are
+**AGPL-3.0-or-later** — publishing this app publicly would oblige offering
+source. Fine for a personal instrument; noted so it is not a surprise later.
 
 We build only the CRT shell, the library and song data model, and the trigger
 layer around them.
 
 ## Components
 
+### 0. Boot screen (audio unlock) — required, not decorative
+
+`initStrudel()` unlocks audio through `initAudioOnFirstClick()`, which binds
+**`mousedown` on `document` and nothing else** — not `keydown`, not
+`pointerdown`. A keyboard- and MIDI-driven cockpit where the user never clicks
+would never unlock the AudioContext, and the resulting failure is *silence with
+no error*, because `loadWorklets()` swallows failure into a `console.warn`.
+
+The app therefore opens on a CRT power-on screen that requires one click to
+enter the session. This makes the gesture an explicit, always-satisfied
+precondition rather than an invisible trap, and it suits the aesthetic.
+
+Ordering is load-bearing:
+
+1. Call `initStrudel()` **at page load, before the gesture** — it registers the
+   `mousedown` listener, so calling it *inside* a click handler means the first
+   click is already spent and audio unlocks only on a second click.
+2. Import `@strudel/webaudio` **statically**, not lazily — it calls
+   `registerWorklet()` as a module-level side effect, and a lazy import after
+   the first mousedown misses the worklet load.
+3. The boot click resumes the context; worklets load *after* it, not at init.
+
+On boot, also guard explicitly: if `getAudioContext().state === 'suspended'`,
+`await ctx.resume()`.
+
 ### 1. Song Editor Pane (left)
 
 Multiple tabs, each holding one full Strudel song script. Each tab is a
-CodeMirror 6 instance with Strudel syntax highlighting, wrapped in a CRT visual
-theme: phosphor palette, monospace face, scanline and vignette overlay in CSS.
+**self-managed CodeMirror 6 instance** — deliberately *not* `StrudelMirror`.
+
+`StrudelMirror` owns its own repl per editor, which conflicts with our
+single-shared-engine model, and it carries two host-page side effects we do not
+want: it persists to a `codemirror-settings` localStorage key (colliding with
+our own persistence) and `activateTheme` mutates `document.documentElement`'s
+class list.
+
+Instead we compose the standalone pieces `@strudel/codemirror` exports, which
+have no editor coupling:
+
+- `highlightExtension` in our extension list
+- `updateMiniLocations(view, meta.miniLocations)` after each evaluation
+- `highlightMiniLocations(view, time, haps)` per animation frame
+
+This gives us Strudel's active-pattern highlighting while our CRT theme —
+phosphor palette, monospace face, scanline and vignette overlay in CSS — stays
+fully ours as an ordinary CM6 theme extension.
 
 Exactly one tab at a time is the **active** tab — the one bound to the audio
 engine. It is visually distinct (glow or border treatment). Switching the
@@ -64,18 +116,54 @@ Snippets.
 
 ### 3. Strudel Engine
 
-One shared engine instance from `@strudel/web`. Setting a tab active evaluates
-that tab's code and replaces whatever was previously playing. Evaluation is
-explicit — driven by the set-active action or by a live re-evaluation after a
-block toggle on the active tab — never on every keystroke.
+One shared engine instance from `@strudel/web`. Setting a tab active calls
+`evaluate(code)`, which has **replace semantics** (`shouldHush` defaults true,
+clearing named `$:` patterns first) — exactly the behavior we want. Evaluation
+is explicit: driven by set-active or by live re-evaluation after a block toggle
+on the active tab, never on every keystroke.
+
+Two engine behaviors the plan must account for:
+
+- **`evaluate()` swallows errors.** On failure it logs, calls `onEvalError`, and
+  returns `undefined` — it does not throw. Our error strip must be wired through
+  the `onEvalError` / `onUpdateState` callbacks, not a try/catch.
+- **`evalScope` writes ~1000 names onto `globalThis`**, including generic ones
+  (`all`, `each`, `run`, `rev`, `id`, `pick`, `slider`, `speed`). All app code
+  stays in ES modules with no reliance on bare globals, and we never name a
+  global of our own that could collide.
+
+**Sample banks.** `initStrudel()` loads *no* samples by default: `note(...)`
+works offline, but `s("bd sd")` is silent with only a log line. Since scripts
+will routinely be pasted from strudel.cc, we supply a `prebake` modelled on
+`@strudel/repl`'s so those patterns sound the same here. `registerSoundfonts()`
+is commented out upstream, so `gm_*` sounds require registering it ourselves
+(via dynamic import — a static one throws under SSR).
 
 ### 4. MIDI output
 
-Strudel's own `.midi()` pattern output, routed to a Web MIDI output port chosen
-in a settings panel; in practice the user selects the loopMIDI virtual port.
-This deliberately uses Strudel's existing scheduler-driven MIDI path rather than
-a second event layer, which keeps latency to Strudel's own scheduling lookahead
-and avoids any sync drift between two emitters.
+Strudel's own `.midi()` pattern output, routed to the loopMIDI port. Port
+selection is `.midi('portName')` or the patternable `midiport` control; the
+per-hap control **overrides** the `.midi()` argument. Name matching is
+**substring and case-sensitive**.
+
+Failure behavior is quiet and must be surfaced by our UI: an unmatched port
+logs `[midi] midiport "..." not found!` and drops the event — the pattern keeps
+running silently. Our settings panel therefore drives selection from live
+`WebMidi.outputs` enumeration rather than a typed string.
+
+`.midi()` triggers `WebMidi.enable(..., { sysex: true })` — always sysex, not
+overridable through Strudel's API, and it needs a secure context (`localhost`
+qualifies). We call the exported `enableWebMidi()` ourselves at boot so the
+permission prompt happens on the boot screen, not mid-performance.
+
+**Latency.** Audio and MIDI are aligned *by construction*: MIDI is scheduled at
+the same absolute `targetTime` as audio, through an AudioContext-clocked timer.
+The scheduler's fixed `latency = 0.1` (100 ms) is a uniform lookahead on both
+streams, not a skew between them, so the audioreactive requirement is met. It
+is **not configurable** — `repl()` silently drops a `latency` option — and the
+`latencyMs` MIDI option in the README **does not exist in the 1.3.0 code**. We
+accept the stock value; if action→sound feel proves sluggish in performance,
+lowering it means patching the scheduler, traded against dropout risk.
 
 ### 5. MIDI input
 
@@ -156,15 +244,36 @@ server and confirming, in a Chromium browser:
 Item 4's downstream half — the visual software reacting — is confirmed by the
 user, as that software is out of scope.
 
-## Open technical questions
+## Resolved technical questions (research 2026-08-31)
 
-Resolved during implementation planning, not blocking this design:
+All four original unknowns are closed; findings are folded into the sections
+above. Summary of what changed the design:
 
-- The exact `@strudel/midi` API for selecting an output port, and any
-  latency/lookahead options it exposes.
-- Whether `@strudel/codemirror` highlighting can be applied to a self-managed
-  CodeMirror 6 instance, or whether it wants to own the editor.
-- Vite bundling specifics for Strudel's audio worklets and sample loading.
+| Question | Finding | Design impact |
+|---|---|---|
+| Audio unlock | `mousedown` on `document` only | Boot screen added (component 0) |
+| Worklet bundling | Worklets ship inlined as `data:` URIs | **No Vite config needed**; CSP must allow `data:` and `unsafe-eval` |
+| Default samples | None loaded; `s("bd sd")` silently fails | `prebake` modelled on `@strudel/repl` |
+| MIDI port API | `.midi('name')` substring, or `midiport` control | Panel drives selection from live enumeration |
+| CodeMirror | `highlightExtension` is standalone-usable | Self-managed CM6, not `StrudelMirror` |
+| MIDI latency option | `latencyMs` absent from shipped code | Accept stock 100 ms; audio/MIDI already aligned |
+
+**Still unverified, to confirm during implementation:**
+
+- Whether `sync: true`'s `clockworker` asset resolves under a consuming Vite
+  build (the source carries `@vite-ignore`). Mitigation: leave `sync` off — we
+  have no multi-instance sync requirement.
+- Exact Chrome permission-prompt behavior for `{ sysex: true }`.
+- Live ESM-CDN loading of `@strudel/web@1.3.0` (we use npm + Vite, so this only
+  matters if we ever want a buildless fallback).
+
+## Milestone gate
+
+Because the characteristic failure here is **silence with no error**, the plan
+must treat *"a pattern makes audible sound, and emits MIDI, in our own page"* as
+a standalone verified milestone completed **before** any UI, library, or tab
+work depends on it. Building the shell first would make every component a
+suspect when the engine turns out to be mute.
 
 ## Design rationale
 
