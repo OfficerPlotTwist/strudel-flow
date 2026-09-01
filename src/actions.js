@@ -26,6 +26,7 @@ export function createActions({ pane, panel, status }) {
         // onError (wired in main.js) has already reported it to the status
         // strip - don't overwrite that here.
         pane.clearHighlight(id);
+        return;
       }
       status.info(`active: ${pane.getTabs().find((t) => t.id === id).name}`);
     },
