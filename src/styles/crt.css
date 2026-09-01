@@ -53,13 +53,14 @@ body::after {
 main {
   display: grid;
   grid-template-columns: 1fr 22rem;
-  grid-template-rows: 1fr auto;
-  grid-template-areas: "editor library" "status status";
+  grid-template-rows: 1fr auto auto;
+  grid-template-areas: "editor library" "editor settings" "status status";
   height: 100vh;
 }
 
 #editor-pane { grid-area: editor; overflow: hidden; }
 #library-pane { grid-area: library; border-left: 1px solid var(--phosphor-dim); overflow-y: auto; }
+#settings-pane { grid-area: settings; border-left: 1px solid var(--phosphor-dim); overflow-y: auto; }
 #status-strip {
   grid-area: status;
   border-top: 1px solid var(--phosphor-dim);
@@ -141,3 +142,20 @@ main {
   padding: 0.3rem 0.5rem;
   cursor: pointer;
 }
+
+#status-strip { display: flex; gap: 1rem; align-items: center; }
+#status-strip .midi-state { margin-left: auto; color: var(--phosphor-dim); }
+
+.settings { padding: 0.5rem 0.4rem; font-size: 0.75rem; }
+.settings summary { cursor: pointer; color: var(--phosphor-dim); }
+.settings select {
+  background: var(--bg-raised);
+  color: var(--phosphor);
+  border: 1px solid var(--phosphor-dim);
+  font: inherit;
+  font-size: 0.75rem;
+}
+.settings-note { color: var(--phosphor-dim); }
+.trigger-map { width: 100%; border-collapse: collapse; color: var(--phosphor-dim); }
+.trigger-map td { padding: 0.15rem 0; }
+.trigger-map td:last-child { text-align: right; color: var(--phosphor); }

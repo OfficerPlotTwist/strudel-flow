@@ -1,9 +1,10 @@
 import { evaluateCode, initEngine, unlockAudio } from './engine.js';
-import { enableMidi, listInputs, onMidiMessage } from './midi.js';
+import { enableMidi, listInputs, listOutputs, onMidiMessage } from './midi.js';
 import { createEditorPane } from './editor.js';
 import { showBootScreen } from './ui/boot.js';
 import { createLibraryPanel } from './ui/panel.js';
 import { createStatus } from './ui/status.js';
+import { createSettings } from './ui/settings.js';
 import { createActions } from './actions.js';
 import { defaultTriggerMap, keyEventToTrigger, midiDataToTrigger, resolveAction } from './triggers.js';
 
@@ -38,13 +39,21 @@ window.addEventListener('keydown', (event) => {
 
 showBootScreen(async () => {
   await unlockAudio();
-  await enableMidi();
+  const midiOk = await enableMidi();
+  status.setMidi(midiOk ? (listOutputs()[0] ?? 'no outputs') : 'not connected');
   for (const input of listInputs()) {
     onMidiMessage(input, (data) => {
       const trigger = midiDataToTrigger(data);
       if (trigger) dispatch(trigger);
     });
   }
+  createSettings(document.getElementById('settings-pane'), {
+    triggerMap,
+    onPortPick: (name) => {
+      pane.insertAtCursor(`.midi('${name}')`);
+      status.setMidi(name);
+    },
+  });
   pane.setActiveTab(first);
   await evaluateCode(pane.getCode(first));
 });
