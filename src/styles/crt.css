@@ -69,3 +69,27 @@ main {
   white-space: pre-wrap;
 }
 #status-strip.error { color: var(--alert); }
+
+#editor-pane { display: flex; flex-direction: column; }
+
+.tab-bar { display: flex; gap: 1px; border-bottom: 1px solid var(--phosphor-dim); }
+
+.tab {
+  background: var(--bg-raised);
+  color: var(--phosphor-dim);
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 0.4rem 0.9rem;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.tab.viewed { color: var(--phosphor); }
+.tab.active {
+  border-bottom-color: var(--phosphor);
+  text-shadow: 0 0 8px var(--phosphor);
+}
+
+.tab-host { flex: 1; position: relative; overflow: hidden; }
+.tab-view { position: absolute; inset: 0; }
+.tab-view[hidden] { display: none; }
