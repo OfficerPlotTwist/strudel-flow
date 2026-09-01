@@ -1,0 +1,71 @@
+:root {
+  --phosphor: #7df7a8;
+  --phosphor-dim: #3a7d55;
+  --bg: #060a07;
+  --bg-raised: #0c130e;
+  --alert: #f7a87d;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--phosphor);
+  font-family: "Consolas", "DejaVu Sans Mono", monospace;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Scanline + vignette overlay, non-interactive */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.22) 0px,
+      rgba(0, 0, 0, 0.22) 1px,
+      transparent 1px,
+      transparent 3px
+    ),
+    radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.65) 100%);
+}
+
+#boot {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 1rem;
+  text-align: center;
+  cursor: pointer;
+  z-index: 100;
+  background: var(--bg);
+}
+
+#boot h1 { font-weight: normal; letter-spacing: 0.4em; }
+#boot p { color: var(--phosphor-dim); }
+
+main {
+  display: grid;
+  grid-template-columns: 1fr 22rem;
+  grid-template-rows: 1fr auto;
+  grid-template-areas: "editor library" "status status";
+  height: 100vh;
+}
+
+#editor-pane { grid-area: editor; overflow: hidden; }
+#library-pane { grid-area: library; border-left: 1px solid var(--phosphor-dim); overflow-y: auto; }
+#status-strip {
+  grid-area: status;
+  border-top: 1px solid var(--phosphor-dim);
+  padding: 0.25rem 0.75rem;
+  font-size: 0.8rem;
+  min-height: 1.75rem;
+  white-space: pre-wrap;
+}
+#status-strip.error { color: var(--alert); }
