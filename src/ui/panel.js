@@ -61,6 +61,7 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
       del.className = 'lib-mini';
       del.textContent = 'x';
       del.addEventListener('click', () => {
+        if (!window.confirm(`Delete "${entry.name}"? This cannot be undone.`)) return;
         lib = removeEntry(lib, kind, entry.id);
         persist();
       });
@@ -76,7 +77,7 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
     save.textContent = kind === 'songs' ? 'SAVE SONG' : 'SAVE AS SNIPPET';
     save.addEventListener('click', () => {
       const suggested = kind === 'songs' ? getSongName() : `${getSongName()}-block`;
-      const name = window.prompt('Name:', suggested);
+      const name = window.prompt('Name:', suggested)?.trim();
       if (!name) return;
       lib = addEntry(lib, kind, name, getSongCode());
       persist();
@@ -85,9 +86,14 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
     const exportBtn = document.createElement('button');
     exportBtn.textContent = 'EXPORT';
     exportBtn.addEventListener('click', async () => {
-      await navigator.clipboard.writeText(exportJson(lib));
-      exportBtn.textContent = 'COPIED';
-      setTimeout(() => (exportBtn.textContent = 'EXPORT'), 1200);
+      const json = exportJson(lib);
+      try {
+        await navigator.clipboard.writeText(json);
+        exportBtn.textContent = 'COPIED';
+        setTimeout(() => (exportBtn.textContent = 'EXPORT'), 1200);
+      } catch {
+        window.prompt('Copy your library JSON:', json);
+      }
     });
 
     const importBtn = document.createElement('button');
