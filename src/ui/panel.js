@@ -1,11 +1,11 @@
 import { addEntry, removeEntry } from '../library.js';
-import { exportJson, importJson, loadLibrary, saveLibrary } from '../storage.js';
+import { exportJson, importJson, saveLibrary, seedLibrary } from '../storage.js';
 import { getSoundEntries } from '../engine.js';
 
 const TABS = ['snippets', 'songs', 'sounds'];
 
 export function createLibraryPanel(container, { onInsert, getSongCode, getSongName }) {
-  let lib = loadLibrary(localStorage);
+  let lib = seedLibrary(localStorage);
   let kind = 'snippets';
   let selectedId = null;
   let soundFilter = '';
