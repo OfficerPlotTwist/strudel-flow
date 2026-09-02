@@ -5,6 +5,48 @@ import { initStrudel, evaluate, hush, samples, aliasBank, registerZZFXSounds, so
 import { Drawer } from '@strudel/draw';
 import '@strudel/midi';
 
+/**
+ * Loads public/samples/local.json (written by scripts/import-sample.mjs) if
+ * present. A missing file is the expected state on a fresh clone with no
+ * imports yet, so it must NOT surface as a warning: fetch it directly (rather
+ * than via superdough's samples(url), which console.errors on a failed
+ * fetch) and treat anything other than a real JSON payload as "nothing to
+ * load". Vite's dev server SPA-fallback complicates this: an unmatched path
+ * resolves to a 200 `text/html` response (index.html), not a 404, whenever
+ * the request's Accept header lacks "text/html" - which is exactly what
+ * fetch() sends by default (Accept: star-slash-star, i.e. any type). So
+ * `res.ok` alone isn't enough;
+ * also check the content-type, and treat a JSON-parse failure the same way
+ * rather than letting it throw out to prebake's warning path.
+ */
+async function loadLocalSamples() {
+  let res;
+  try {
+    res = await fetch('/samples/local.json');
+  } catch (err) {
+    console.debug('[engine] local samples: fetch failed, skipping', err);
+    return;
+  }
+  const contentType = res.headers.get('content-type') ?? '';
+  if (!res.ok || !contentType.includes('json')) {
+    console.debug('[engine] local samples: none found, skipping');
+    return;
+  }
+  let json;
+  try {
+    json = await res.json();
+  } catch (err) {
+    // Unlike a missing file or the dev-server fallback above, this response
+    // claimed to be JSON and wasn't - the file exists but is broken (a bad
+    // hand-edit, a bad merge, disk corruption). That's a genuine anomaly on
+    // a file this pipeline itself writes, not an expected absence, so it
+    // must not be silenced at the same level as the "nothing to load" cases.
+    console.warn('[engine] local samples: /samples/local.json exists but is not valid JSON, skipping', err);
+    return;
+  }
+  await samples(json, json._base);
+}
+
 let ready = null;
 let repl = null;
 let drawer = null;
@@ -53,6 +95,11 @@ export function initEngine({ onError, onDraw } = {}) {
         ['vcsl', () => samples(`${doughSamples}/vcsl.json`)],
         ['mridangam', () => samples(`${doughSamples}/mridangam.json`)],
         ['strudel', () => samples(`${uzuDrumkit}/strudel.json`)],
+        // Locally-imported samples (scripts/import-sample.mjs writes this file
+        // under public/samples/). It's absent on a fresh clone with no
+        // imports yet, so a 404 here is expected, not an error - swallow it
+        // quietly (debug-level only) rather than warning on every boot.
+        ['local samples', () => loadLocalSamples()],
       ];
 
       await Promise.all(
