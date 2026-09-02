@@ -14,7 +14,8 @@ import '@strudel/midi';
  * load". Vite's dev server SPA-fallback complicates this: an unmatched path
  * resolves to a 200 `text/html` response (index.html), not a 404, whenever
  * the request's Accept header lacks "text/html" - which is exactly what
- * fetch() sends by default (Accept: */*). So `res.ok` alone isn't enough;
+ * fetch() sends by default (Accept: star-slash-star, i.e. any type). So
+ * `res.ok` alone isn't enough;
  * also check the content-type, and treat a JSON-parse failure the same way
  * rather than letting it throw out to prebake's warning path.
  */
@@ -35,7 +36,12 @@ async function loadLocalSamples() {
   try {
     json = await res.json();
   } catch (err) {
-    console.debug('[engine] local samples: response was not valid JSON, skipping', err);
+    // Unlike a missing file or the dev-server fallback above, this response
+    // claimed to be JSON and wasn't - the file exists but is broken (a bad
+    // hand-edit, a bad merge, disk corruption). That's a genuine anomaly on
+    // a file this pipeline itself writes, not an expected absence, so it
+    // must not be silenced at the same level as the "nothing to load" cases.
+    console.warn('[engine] local samples: /samples/local.json exists but is not valid JSON, skipping', err);
     return;
   }
   await samples(json, json._base);

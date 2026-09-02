@@ -120,3 +120,97 @@ Resulting `public/samples/local.json`:
 - Two `.wav` files (`public/samples/bow/4Nu3fOo_QPc.wav`,
   `public/samples/bowtwang/bow_twang_4Nu3fOo_QPc.wav`) are committed as binary
   project assets, per the task's instruction.
+
+## Fix round 1
+
+Three review follow-ups addressed in `scripts/import-sample.mjs` and `src/engine.js`.
+
+**Finding 1 (must-fix, silent data loss)** - Two source files sharing a
+basename, imported under the same `--name`, would silently overwrite each
+other on disk with no error. Fixed with a pre-copy conflict check: before
+copying or touching `local.json`, every destination is checked with
+`fs.existsSync` + a new `filesEqual()` helper (size check, then
+`Buffer.equals()` on the full contents). Identical contents -> skip the copy
+silently (normal idempotent re-run). Different contents -> `fail()` with a
+message naming both paths and suggesting a different `--name` or renaming the
+source, and `process.exit(1)` before any copy or JSON write happens for that
+run.
+
+**Finding 2 (must-fix, one word)** - `loadLocalSamples()`'s malformed-JSON
+catch block was logging at `console.debug`, identical to the two legitimately-
+expected "nothing to load" paths (missing file, dev-server SPA-fallback
+non-JSON response). Raised that one branch to `console.warn`, naming
+`/samples/local.json` explicitly, so a genuinely broken file (bad hand-edit,
+bad merge, disk issue) is distinguishable from an empty fresh clone. The two
+expected-absence paths remain at `console.debug`.
+
+**Finding 3 (fix if cheap - index shifting)** - Since `local.json` entries are
+sorted lexicographically, a newly-imported file that sorts before existing
+entries for the same `--name` shifts every later index, silently changing
+what `s("name:n")` resolves to for any saved pattern. Added a post-merge diff:
+build an `oldIndex` map from the pre-merge array, compare every entry's index
+after the sort, and if anything moved, print a `console.warn`-style block
+naming the sound, each shifted file's old -> new `s("name:n")` mapping, and a
+note that saved patterns may now resolve differently. Script-side warning
+only, no auto-renumbering.
+
+**Own bug caught during verification:** the round-0 SPA-fallback doc comment
+in `src/engine.js` contained the literal text `Accept: */*` inside a `/* */`
+block comment - the embedded `*/` terminates the comment early, which is
+valid-looking but breaks parsing. `npm test` never caught it (no test file
+imports `engine.js`, so esbuild/vitest never transforms it), but
+`npx vite build` correctly failed with an import-analysis syntax error the
+first time it was re-run in this round. Fixed by rewording the comment to say
+"star-slash-star" instead of the literal token. Lesson: after any edit to a
+file untouched by the test suite, a build pass, not just `npm test`, is
+required before claiming done - noted here since it's exactly the kind of gap
+`verification-before-completion` exists to catch.
+
+### Verification (fix round 1)
+
+1. **Finding 1 demo**: created two 10-byte / 16-byte files both named `hit.wav`
+   in separate scratch folders with different contents (`AAAAAAAAAA` vs.
+   `BBBBBBBBBBBBBBBB`). Imported the first under `--name testconflict` (exit 0).
+   Imported the second under the same name - got:
+   ```
+   [import-sample] refusing to overwrite "public\samples\testconflict\hit.wav" -
+   it already exists with different contents than source "...dirB\hit.wav".
+   Pass a different --name, or rename the source file so it doesn't collide.
+   ```
+   exit code 1. Confirmed afterward: `public/samples/testconflict/hit.wav`
+   still contained `AAAAAAAAAA` (unchanged), and `local.json`'s `testconflict`
+   entry was still exactly `["testconflict/hit.wav"]` (no duplicate, no
+   corruption from the failed attempt).
+2. **Idempotent re-run**: re-ran the import with the *first* file (dirA/hit.wav)
+   under the same name again - exit 0, no warning, `local.json` unchanged
+   (still a single `testconflict/hit.wav` entry, no duplicate).
+3. **Finding 3 demo**: imported a third file `aaa.wav` (sorts before `hit.wav`)
+   under the same `testconflict` name. Output:
+   ```
+   [import-sample] WARNING: import shifted existing indices for "testconflict":
+     testconflict/hit.wav: s("testconflict:0") -> s("testconflict:1")
+     Saved patterns referencing s("testconflict:<n>") may now play a different
+     sample. No files were changed to compensate - update any saved patterns
+     manually.
+   ```
+4. `npm test` -> **34 passed** (3 files). `npx vite build` -> succeeded (after
+   fixing the comment bug above); `dist/` output confirmed clean.
+5. `evaluateCode` call sites re-checked: still exactly **3**
+   (`src/actions.js:20`, `src/main.js:39`, `src/main.js:77`), plus the
+   definition at `src/engine.js:149`.
+6. Cleanup: removed `public/samples/testconflict/` and the scratch temp
+   folders/files, and rewrote `public/samples/local.json` back to only `bow`
+   and `bowtwang`:
+   ```json
+   {
+     "_base": "/samples/",
+     "bow": [
+       "bow/4Nu3fOo_QPc.wav"
+     ],
+     "bowtwang": [
+       "bowtwang/bow_twang_4Nu3fOo_QPc.wav"
+     ]
+   }
+   ```
+   `git status --short` confirms only `scripts/import-sample.mjs` and
+   `src/engine.js` are modified - no stray files left in `public/samples/`.

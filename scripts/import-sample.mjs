@@ -85,6 +85,16 @@ function validateSoundName(name) {
   return name;
 }
 
+/** True if two files have identical contents (size check first, then bytes). */
+function filesEqual(a, b) {
+  const statA = fs.statSync(a);
+  const statB = fs.statSync(b);
+  if (statA.size !== statB.size) {
+    return false;
+  }
+  return fs.readFileSync(a).equals(fs.readFileSync(b));
+}
+
 function loadOrInitMap() {
   if (!fs.existsSync(mapPath)) {
     return { _base: '/samples/' };
@@ -108,9 +118,30 @@ function main() {
   const destDir = path.join(samplesRoot, name);
   fs.mkdirSync(destDir, { recursive: true });
 
+  // Two different source files can share a basename (e.g. two unrelated
+  // "hit.wav"s). Copying either would silently overwrite the other's bytes
+  // (and the JSON dedup can't tell them apart either, since both produce the
+  // same relative-path string). Check every destination BEFORE copying
+  // anything or touching local.json, so a conflict aborts cleanly with the
+  // user's audio and the existing map both untouched.
   for (const src of wavFiles) {
-    const filename = path.basename(src);
-    const dest = path.join(destDir, filename);
+    const dest = path.join(destDir, path.basename(src));
+    if (fs.existsSync(dest) && !filesEqual(src, dest)) {
+      fail(
+        `refusing to overwrite "${path.relative(projectRoot, dest)}" - it already exists ` +
+          `with different contents than source "${src}". Pass a different --name, or rename ` +
+          `the source file so it doesn't collide.`,
+      );
+    }
+  }
+
+  for (const src of wavFiles) {
+    const dest = path.join(destDir, path.basename(src));
+    if (fs.existsSync(dest)) {
+      // Already verified identical above - this is just a normal idempotent
+      // re-run, skip the redundant copy.
+      continue;
+    }
     fs.copyFileSync(src, dest);
   }
 
@@ -130,6 +161,29 @@ function main() {
     const pattern = i === 0 ? `s("${name}")` : `s("${name}:${i}")`;
     console.log(`  [${i}] ${rel}  ->  ${pattern}`);
   });
+
+  // Indices are assigned by lexicographic sort, not import order, so a file
+  // that sorts before existing entries shifts every later index. That's not
+  // cosmetic - a saved pattern referencing s("name:n") would now resolve to
+  // a different sample. Warn loudly; no auto-migration.
+  const oldIndex = new Map(existing.map((rel, i) => [rel, i]));
+  const shifted = [];
+  merged.forEach((rel, newIdx) => {
+    const oldIdx = oldIndex.get(rel);
+    if (oldIdx !== undefined && oldIdx !== newIdx) {
+      shifted.push({ rel, oldIdx, newIdx });
+    }
+  });
+  if (shifted.length > 0) {
+    console.warn(`[import-sample] WARNING: import shifted existing indices for "${name}":`);
+    shifted.forEach(({ rel, oldIdx, newIdx }) => {
+      console.warn(`  ${rel}: s("${name}:${oldIdx}") -> s("${name}:${newIdx}")`);
+    });
+    console.warn(
+      `  Saved patterns referencing s("${name}:<n>") may now play a different sample. ` +
+        `No files were changed to compensate - update any saved patterns manually.`,
+    );
+  }
 }
 
 main();
