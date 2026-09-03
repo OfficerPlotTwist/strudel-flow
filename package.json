@@ -8,6 +8,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "app": "node scripts/launch-app.mjs",
+    "launcher": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-launcher.ps1",
     "docs": "node scripts/build-docs.mjs",
     "smoke": "node scripts/smoke.mjs",
     "verify:snippets": "node scripts/verify-snippets.mjs",

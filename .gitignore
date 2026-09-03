@@ -1,3 +1,5 @@
 node_modules/
 dist/
 .superpowers/
+scripts/launcher/launch.log
+scripts/launcher/.launching
