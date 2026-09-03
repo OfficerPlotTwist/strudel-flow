@@ -1,11 +1,12 @@
 import { getTransport } from './engine.js';
-import { isStandaloneBlock, listBlocks } from './blocks.js';
+import { isStandaloneBlock, listBlocks, toggleBlocksComment } from './blocks.js';
 import { extractBlocks, removeBlocks, RIP_CYCLES } from './rip.js';
+import { armable, crossfaderCycles } from './arm.js';
 
 /** The bottom-bar tab ripped material is parked in. Created on first use. */
 const RETURN_TAB = 'to return';
 
-export function createActions({ pane, panel, status, live, explainer }) {
+export function createActions({ pane, panel, status, live, explainer, getCrossfader }) {
   function shiftTab(delta) {
     const tabs = pane.getTabs();
     if (tabs.length < 2) return;
@@ -78,7 +79,80 @@ export function createActions({ pane, panel, status, live, explainer }) {
     }
   }
 
+  // Which arming press is current. A second press supersedes the first, and
+  // the loser must not commit its edit when its own wait finally elapses -
+  // that is the difference between overwriting a countdown and racing it.
+  let armGeneration = 0;
+
+  /**
+   * Play or stop the selected blocks, after a countdown of whole cycles set by
+   * the crossfader.
+   *
+   * The countdown itself is not a timer over the music - it is written INTO
+   * the music, as a gain gate resolved by the same clock the pattern is on
+   * (see arm.js). The wait here only decides when the buffer catches up with
+   * what the gate has already done.
+   *
+   * Blocks are addressed by INDEX and re-resolved after the wait rather than
+   * captured up front, for the same reason a rip does: several cycles is
+   * seconds of wall clock, and line numbers taken before an edit would name
+   * the wrong text by the time the commit lands.
+   */
+  async function arm(action) {
+    const id = pane.getViewedId();
+    if (live.getRipping()?.tabId === id) {
+      status.info('rip in progress');
+      return;
+    }
+    const selected = pane.getSelectedBlocks(id);
+    if (selected.length === 0) {
+      status.info('no block in selection');
+      return;
+    }
+    const lines = pane.getCode(id).split('\n');
+    const targets = armable(lines, selected, action);
+    if (targets.length === 0) {
+      // Not a failure: pressing play on something already playing is a
+      // deliberate no-op, and saying so is more use than silence.
+      status.info(`already ${action === 'play' ? 'playing' : 'stopped'}`);
+      return;
+    }
+    const indexes = targets.map((block) => selected.find((s) => s.start === block.start).index);
+    const { cycle, cps } = getTransport() ?? { cycle: 0, cps: 1 };
+    const cycles = crossfaderCycles(getCrossfader?.());
+
+    const generation = (armGeneration += 1);
+    live.setArmed({ tabId: id, blockIndexes: indexes, action, cycles, cycle });
+    // Play must be able to start a stopped transport - that is what the button
+    // means. Stop only re-renders: it has nothing to start.
+    await (action === 'play' ? live.evaluateActive() : live.refresh());
+    status.info(
+      cycles === 0
+        ? `${action} ${indexes.length} block(s)`
+        : `${action} ${indexes.length} block(s) in ${cycles} cycle(s)`,
+    );
+
+    if (cycles > 0) {
+      await new Promise((resolve) => setTimeout(resolve, (cycles / cps) * 1000));
+      if (generation !== armGeneration) return; // superseded by a later press
+    }
+
+    const current = pane.getCode(id).split('\n');
+    const blocks = indexes.map((i) => listBlocks(current)[i]).filter(Boolean);
+    if (blocks.length > 0) {
+      // `armable` guarantees every target is in the SAME state, which is
+      // exactly the condition under which a toggle is a directed set.
+      pane.setCode(id, toggleBlocksComment(current, blocks).join('\n'));
+    }
+    live.setArmed(null);
+    await live.refresh();
+  }
+
   return {
+    /** Selected blocks start playing after the crossfader's count of cycles. */
+    armPlay: () => arm('play'),
+    /** The same countdown, in the other direction. */
+    armStop: () => arm('stop'),
     /** 1: park the blocks in the bottom bar's holding tab. */
     ripToReturn: () =>
       rip((text) => pane.appendBlock(returnTabId(), text), RETURN_TAB),

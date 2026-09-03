@@ -59,6 +59,11 @@ export function defaultTriggerMap() {
     'note:37': 'setActiveScript',
     'note:38': 'hush',
     'note:39': 'nextTab',
+    // Named controls from the device map (see device-map.js). The transport
+    // buttons are where a performer's hand already goes for start and stop,
+    // and the crossfader beside them sets how many cycles it takes.
+    'apc40.global.play': 'armPlay',
+    'apc40.global.stop': 'armStop',
   };
 }
 

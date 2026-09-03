@@ -1,6 +1,7 @@
 import { listBlocks, uncommentForPlayback } from './blocks.js';
 import { evaluateCode, hushEngine } from './engine.js';
 import { applyFade, unshiftLocations } from './rip.js';
+import { applyArm } from './arm.js';
 
 /** Blank line between tabs, so two songs can never fuse into one statement. */
 const JOIN = '\n\n';
@@ -29,6 +30,9 @@ export function createLive({ pane }) {
   // which cycle. Unlike the holds above it is not momentary - it survives the
   // key release and ends when the blocks are removed from the document.
   let ripping = null; // { tabId, blockIndexes: number[], cycle }
+  // The armed play/stop countdown, or null. Like a rip it outlives the button
+  // press; unlike a rip it ends by editing the buffer rather than emptying it.
+  let armed = null; // { tabId, blockIndexes: number[], action, cycles, cycle }
   // Is the transport running? The app boots into silence and stays there until
   // something is deliberately triggered, so there has to be a difference
   // between "play this" and "the thing that is playing changed". Without it,
@@ -70,6 +74,17 @@ export function createLive({ pane }) {
       const doomed = ripping.blockIndexes.map((index) => blocks[index]).filter(Boolean);
       const faded = applyFade(lines, doomed, ripping.cycle);
       return { text: faded.lines.join('\n'), edits: faded.edits };
+    }
+    if (armed && armed.tabId === id) {
+      const blocks = listBlocks(lines);
+      const targets = armed.blockIndexes.map((index) => blocks[index]).filter(Boolean);
+      // A block counting down to PLAY is still commented in the buffer - it
+      // has to be made live now, or there is nothing for the gate to hold
+      // silent and nothing to un-silence when the count runs out. The
+      // uncomment is length-preserving, so it contributes no edits of its own.
+      const source = armed.action === 'play' ? uncommentForPlayback(lines, targets) : lines;
+      const gated = applyArm(source, targets, armed.action, armed.cycles, armed.cycle);
+      return { text: gated.lines.join('\n'), edits: gated.edits };
     }
     return { text: lines.join('\n'), edits: [] };
   }
@@ -209,6 +224,16 @@ export function createLive({ pane }) {
       ripping = next;
     },
     getRipping: () => ripping,
+    /**
+     * Start (or clear, with null) a play/stop countdown. One at a time: a
+     * second press replaces the first rather than rendering two gates over the
+     * same blocks - which is what overwriting the timer has to mean, since two
+     * gates would multiply into each other and mute the block outright.
+     */
+    setArmed(next) {
+      armed = next;
+    },
+    getArmed: () => armed,
     setTabHeld(tabId, mode, isDown) {
       return setHeld(mode === 'solo' ? heldSolo : heldAdd, tabId, isDown);
     },

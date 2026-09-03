@@ -94,7 +94,21 @@ function captureControl(control) {
   return true;
 }
 const currentTabHolds = () => tabHoldBindings(pane.getTabs(), tabHoldOverrides);
-const actions = createActions({ pane, panel, status, live, explainer });
+
+// Last crossfader position, 0..1, or null until it has been moved. A fader has
+// a physical position the app cannot read - nothing arrives until it is
+// touched - so "never moved" has to be a distinct state from "at zero", even
+// though both arm an immediate change.
+let crossfader = null;
+
+const actions = createActions({
+  pane,
+  panel,
+  status,
+  live,
+  explainer,
+  getCrossfader: () => crossfader,
+});
 
 function dispatch(trigger) {
   const name = resolveAction(triggerMap, trigger);
@@ -200,6 +214,7 @@ showBootScreen(
         // every existing note:/cc: binding still works, and still catches
         // surfaces this app has no map for.
         const control = device.resolve(data);
+        if (control?.name === 'apc40.global.crossfader') crossfader = control.value;
         if (control && captureControl(control)) return;
 
         // Holds first within each vocabulary: a pad bound to a hold must not
