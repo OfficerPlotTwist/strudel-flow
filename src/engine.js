@@ -129,7 +129,18 @@ export function initEngine({ onError, onDraw } = {}) {
 
 /** Resume the AudioContext. Call from the boot screen's click handler. */
 export async function unlockAudio() {
-  await initAudioOnFirstClick();
+  const unlocked = initAudioOnFirstClick();
+  // superdough resolves that promise on the NEXT document mousedown after its
+  // listener is registered. initStrudel registers it at page load precisely so
+  // the boot click satisfies it - but on a slow load the click can land BEFORE
+  // the listener exists, and then there is no next mousedown: the boot screen's
+  // listener is `once`, so the app sits on "warming up..." forever.
+  //
+  // We only get here from inside a real click, and the page therefore has
+  // sticky user activation, so re-dispatching a mousedown is enough to satisfy
+  // a listener that arrived late without needing a second click from the user.
+  document.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+  await unlocked;
   const ctx = getAudioContext();
   if (ctx.state === 'suspended') {
     await ctx.resume();
@@ -157,6 +168,23 @@ export async function evaluateCode(code) {
   }
   const success = !repl.state.evalError;
   return { success, miniLocations: success ? repl.state.miniLocations : null };
+}
+
+/**
+ * Where the transport is right now: the current cycle position and the cycle
+ * rate. Both are needed by the rip keys - the cycle to phase-align a fade so
+ * it starts at full volume instead of wherever a free-running signal happens
+ * to be, and the rate to know how long in wall-clock seconds four cycles are.
+ *
+ * Returns null before the first evaluation, when there is no scheduler and
+ * therefore no "now" to speak of.
+ */
+export function getTransport() {
+  const scheduler = repl?.scheduler;
+  if (!scheduler) return null;
+  const cycle = typeof scheduler.now === 'function' ? scheduler.now() : 0;
+  const cps = scheduler.cps || 1;
+  return { cycle, cps };
 }
 
 /** Stop playback AND stop showing whatever was last outlined - nothing should

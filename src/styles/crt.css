@@ -196,3 +196,158 @@ main {
 .trigger-map { width: 100%; border-collapse: collapse; color: var(--phosphor-dim); }
 .trigger-map td { padding: 0.15rem 0; }
 .trigger-map td:last-child { text-align: right; color: var(--phosphor); }
+
+/* FUNCS tab - the Strudel function index (src/strudel-docs.json). Reuses the
+   SOUNDS tab's filter/list shapes; only the expandable detail row is new. */
+.lib-funcs { display: flex; flex-direction: column; height: 100%; }
+.lib-func .lib-name { text-align: left; }
+.lib-func-detail {
+  padding: 0.35rem 0.6rem 0.6rem;
+  background: var(--bg-raised);
+  border-left: 2px solid var(--phosphor-dim);
+  color: var(--phosphor);
+}
+.lib-func-detail p { margin: 0.3rem 0 0; line-height: 1.4; }
+.lib-func-detail pre {
+  margin: 0.4rem 0 0;
+  padding: 0.3rem;
+  overflow-x: auto;
+  color: var(--phosphor-dim);
+  white-space: pre-wrap;
+}
+.lib-func-sig { color: var(--alert); }
+.lib-func-alias { color: var(--phosphor-dim); font-size: 0.9em; }
+
+/* Hold-to-unmute bindings (blocks, and per-tab add/solo). */
+.settings-heading {
+  margin: 0.6rem 0 0.2rem;
+  font-size: 0.75rem;
+  font-weight: normal;
+  color: var(--phosphor-dim);
+  letter-spacing: 0.1em;
+}
+.hold-map { width: 100%; border-collapse: collapse; }
+.hold-map th {
+  font-weight: normal;
+  text-align: left;
+  color: var(--phosphor-dim);
+}
+.hold-map td { padding: 0.1rem 0.15rem; }
+.hold-map td:first-child {
+  color: var(--phosphor-dim);
+  max-width: 7rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hold-key {
+  background: var(--bg-raised);
+  color: var(--phosphor);
+  border: 1px solid var(--phosphor-dim);
+  font: inherit;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.35rem;
+  cursor: pointer;
+  min-width: 5.5rem;
+}
+.hold-key.capturing { color: var(--alert); border-color: var(--alert); }
+
+/* The bottom tab strip: a mirror of the song bar, holding ripped-out parts.
+   Same chips, flipped border, so it reads as the same kind of surface. */
+.tab-bar-bottom {
+  border-bottom: none;
+  border-top: 1px solid var(--phosphor-dim);
+}
+.tab-bar-bottom .tab {
+  border-bottom: none;
+  border-top: 2px solid transparent;
+}
+.tab-bar-bottom .tab.active { border-top-color: var(--phosphor); }
+
+/* --- the paper rip ---------------------------------------------------
+   A clone of the doomed lines, painted over the editor and torn away while
+   the real document is left alone until the animation is done. `.rip-shred`
+   is a strip of "paper": it tears along a jagged edge (clip-path), curls
+   forward (rotateX at the top edge), then falls. */
+.rip-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  perspective: 600px;
+  animation: rip-overlay-life 0.85s linear forwards;
+}
+@keyframes rip-overlay-life { to { opacity: 1; } }
+
+.rip-shred {
+  position: absolute;
+  left: 0;
+  right: 0;
+  white-space: pre;
+  font: inherit;
+  color: var(--phosphor);
+  background: var(--bg-raised);
+  border-top: 1px solid var(--phosphor-dim);
+  border-bottom: 1px solid var(--phosphor-dim);
+  transform-origin: 50% 0%;
+  /* The torn edges. A few percent of vertical jitter reads as fibre rather
+     than as a cut, which is the whole difference between "ripped" and "cropped". */
+  clip-path: polygon(
+    0% 4%, 6% 0%, 13% 5%, 21% 1%, 29% 6%, 38% 1%, 47% 5%, 56% 0%, 65% 5%,
+    74% 1%, 83% 6%, 92% 1%, 100% 5%,
+    100% 95%, 92% 100%, 83% 94%, 74% 99%, 65% 94%, 56% 100%, 47% 95%,
+    38% 100%, 29% 94%, 21% 99%, 13% 95%, 6% 100%, 0% 96%
+  );
+  animation: rip-fold 0.85s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+}
+
+@keyframes rip-fold {
+  0%   { transform: none; opacity: 1; }
+  /* tear free of the line above */
+  18%  { transform: translateX(3px) rotate(-0.6deg); opacity: 1; }
+  /* fold along the middle, face curling away from the reader */
+  55%  { transform: translateY(6px) rotateX(72deg) scaleY(0.45) rotate(1.5deg); opacity: 0.85; }
+  /* and drop */
+  100% { transform: translateY(120px) rotateX(96deg) scaleY(0.12) rotate(7deg); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rip-shred { animation: rip-fade 0.3s linear forwards; clip-path: none; }
+  @keyframes rip-fade { to { opacity: 0; } }
+}
+
+/* FUNCS category headings. A sticky table of contents over ~430 functions:
+   click a heading to fold its section away. Deliberately quieter than a
+   function row - it is scaffolding, not content. */
+.lib-func-cat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg);
+  border-top: 1px solid var(--phosphor-dim);
+  margin-top: 6px;
+}
+.lib-func-cat:first-child { margin-top: 0; border-top: none; }
+.lib-func-cat-btn {
+  flex: 1;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--phosphor-dim);
+  font: inherit;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 4px 6px;
+  cursor: pointer;
+}
+.lib-func-cat-btn:hover { color: var(--phosphor); text-shadow: 0 0 8px var(--phosphor); }
+.lib-func-cat-n {
+  color: var(--phosphor-dim);
+  padding-right: 8px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+}
+.lib-func-cat.collapsed .lib-func-cat-btn { opacity: 0.75; }

@@ -11,14 +11,19 @@ function fakeStorage() {
   };
 }
 
+const kindOf = (seed) => seed.kind ?? 'snippets';
+const countOfKind = (kind) => SEED_SNIPPETS.filter((s) => kindOf(s) === kind).length;
+
 describe('seedLibrary', () => {
   it('seeds all starter snippets into an empty library', () => {
     const storage = fakeStorage();
     const lib = seedLibrary(storage);
     for (const seed of SEED_SNIPPETS) {
-      expect(findEntry(lib, 'snippets', seed.name).code).toBe(seed.code);
+      expect(findEntry(lib, kindOf(seed), seed.name).code).toBe(seed.code);
     }
-    expect(loadLibrary(storage).snippets).toHaveLength(SEED_SNIPPETS.length);
+    const stored = loadLibrary(storage);
+    expect(stored.snippets).toHaveLength(countOfKind('snippets'));
+    expect(stored.songs).toHaveLength(countOfKind('songs'));
   });
 
   it('does not duplicate seeds on a second run', () => {
@@ -26,9 +31,16 @@ describe('seedLibrary', () => {
     seedLibrary(storage);
     const lib = seedLibrary(storage);
     for (const seed of SEED_SNIPPETS) {
-      const matches = lib.snippets.filter((e) => e.name === seed.name);
+      const matches = lib[kindOf(seed)].filter((e) => e.name === seed.name);
       expect(matches).toHaveLength(1);
     }
+  });
+
+  it('routes a `songs` seed into the songs library, not snippets', () => {
+    const storage = fakeStorage();
+    const lib = seedLibrary(storage);
+    expect(findEntry(lib, 'songs', 'get_got')).toBeDefined();
+    expect(findEntry(lib, 'snippets', 'get_got')).toBeUndefined();
   });
 
   it('never overwrites a user-edited snippet with the same name', () => {

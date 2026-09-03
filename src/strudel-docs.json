@@ -1,0 +1,6073 @@
+{
+  "FX": {
+    "description": "Establishes an FX chain. Can be called by chaining .FX(fx1).FX(fx2).. calls and/or in a single .FX(fx1, fx2, ..) call.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "$: s(\"[sbd <hh [bd | lt | oh]>]*4\").dec(.4)"
+  },
+  "K": {
+    "description": "Produces a Kabelsalat modular sound engine. This can be used as either an effect (by including audioin() at the beginning of your kabel expression) or as a sound source (via any expression which doesn't start with audioin()).",
+    "params": [
+      "expr"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "note(\"A c e\".fast(4)).transpose(\"<0 2 4 6 8>\")"
+  },
+  "accelerate": {
+    "description": "A pattern of numbers that speed up (or slow down) samples while they play.",
+    "params": [
+      "amount"
+    ],
+    "package": "core",
+    "category": "sample",
+    "example": "s(\"sax\").accelerate(\"<0 1 2 4 8 16>\").slow(2).osc()"
+  },
+  "activeLabel": {
+    "description": "Sets the displayed text for an event on the pianoroll",
+    "params": [
+      "label"
+    ],
+    "package": "core",
+    "category": "visual",
+    "aliasOf": "label"
+  },
+  "add": {
+    "description": "Assumes a pattern of numbers. Adds the given number to each item in the pattern.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "// Here, the triad 0, 2, 4 is shifted by different amounts"
+  },
+  "addVoicings": {
+    "description": "Adds a new custom voicing dictionary.",
+    "params": [
+      "name",
+      "dictionary",
+      "range"
+    ],
+    "package": "tonal",
+    "category": "harmony",
+    "example": "addVoicings('cookie', {"
+  },
+  "adsr": {
+    "description": "ADSR envelope: Combination of Attack, Decay, Sustain, and Release.",
+    "params": [
+      "time",
+      "time",
+      "gain",
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "example": "note(\"[c3 bb2 f3 eb3]*2\").sound(\"sawtooth\").lpf(600).adsr(\".1:.1:.5:.2\")"
+  },
+  "almostAlways": {
+    "description": "Shorthand for .sometimesBy(0.9, fn)",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "s(\"hh*8\").almostAlways(x=>x.speed(\"0.5\"))"
+  },
+  "almostNever": {
+    "description": "Shorthand for .sometimesBy(0.1, fn)",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "s(\"hh*8\").almostNever(x=>x.speed(\"0.5\"))"
+  },
+  "always": {
+    "description": "Shorthand for .sometimesBy(1, fn) (always calls fn)",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "s(\"hh*8\").always(x=>x.speed(\"0.5\"))"
+  },
+  "amp": {
+    "description": "Like gain, but linear.",
+    "params": [
+      "amount"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "s(\"bd*8\").amp(\".1*2 .5 .1*2 .5 .1 .5\").osc()"
+  },
+  "anchor": {
+    "description": "The top note to align the voicing to. Defaults to c5",
+    "params": [
+      "anchorNote"
+    ],
+    "package": "core",
+    "category": "harmony",
+    "example": "anchor(\"<c4 g4 c5 g5>\").chord(\"C\").voicing()"
+  },
+  "apply": {
+    "description": "Layers the result of the given function(s). Like superimpose, but without the original pattern:",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "aliasOf": "layer",
+    "example": "\"<0 2 4 6 ~ 4 ~ 2 0!3 ~!5>*8\""
+  },
+  "arp": {
+    "description": "Selects indices in in stacked notes.",
+    "params": [],
+    "package": "core",
+    "category": "harmony",
+    "example": "note(\"<[c,eb,g]!2 [c,f,ab] [d,f,ab]>\")"
+  },
+  "arpWith": {
+    "description": "Selects indices in in stacked notes.",
+    "params": [],
+    "package": "core",
+    "category": "harmony",
+    "example": "note(\"<[c,eb,g]!2 [c,f,ab] [d,f,ab]>\")"
+  },
+  "arrange": {
+    "description": "Allows to arrange multiple patterns together over multiple cycles.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "arrange("
+  },
+  "as": {
+    "description": "Sets properties in a batch.",
+    "params": [
+      "mapping"
+    ],
+    "package": "core",
+    "category": "routing",
+    "example": "\"c:.5 a:1 f:.25 e:.8\".as(\"note:clip\")"
+  },
+  "asym": {
+    "description": "Asymmetrical diode distortion",
+    "params": [
+      "distortion",
+      "volume"
+    ],
+    "package": "core",
+    "category": "pattern"
+  },
+  "att": {
+    "description": "Amplitude envelope attack time: Specifies how long it takes for the sound to reach its peak value, relative to the onset.",
+    "params": [
+      "attack"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "attack",
+    "example": "note(\"c3 e3 f3 g3\").attack(\"<0 .1 .5>\")"
+  },
+  "attack": {
+    "description": "Amplitude envelope attack time: Specifies how long it takes for the sound to reach its peak value, relative to the onset.",
+    "params": [
+      "attack"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "example": "note(\"c3 e3 f3 g3\").attack(\"<0 .1 .5>\")"
+  },
+  "bandf": {
+    "description": "Sets the center frequency of the band-pass filter. When using mininotation, you can also optionally supply the 'bpq' parameter separated by ':'.",
+    "params": [
+      "frequency"
+    ],
+    "package": "core",
+    "category": "filter",
+    "aliasOf": "bpf",
+    "example": "s(\"bd sd [~ bd] sd,hh*6\").bpf(\"<1000 2000 4000 8000>\")"
+  },
+  "bandq": {
+    "description": "Sets the band-pass q-factor (resonance).",
+    "params": [
+      "q"
+    ],
+    "package": "core",
+    "category": "filter",
+    "aliasOf": "bpq",
+    "example": "s(\"bd sd [~ bd] sd\").bpf(500).bpq(\"<0 1 2 3>\")"
+  },
+  "bank": {
+    "description": "Select the sound bank to use. To be used together with s.",
+    "params": [
+      "bank"
+    ],
+    "package": "core",
+    "category": "sample",
+    "example": "s(\"bd sd [~ bd] sd\").bank('RolandTR909') // = s(\"RolandTR909_bd RolandTR909_sd\")"
+  },
+  "bbexpr": {
+    "description": "Create byte beats with custom expressions",
+    "params": [
+      "byteBeatExpression"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "byteBeatExpression",
+    "example": "s(\"bytebeat\").bbexpr('t*(t>>15^t>>66)')"
+  },
+  "bbst": {
+    "description": "Create byte beats with custom expressions",
+    "params": [
+      "byteBeatStartTime"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "byteBeatStartTime",
+    "example": "note(\"c3!8\".add(\"{0 0 12 0 7 5 3}%8\")).s(\"bytebeat:5\").bbst(\"<3 1>\".mul(10000))._scope()"
+  },
+  "beat": {
+    "description": "creates a structure pattern from divisions of a cycle especially useful for creating rhythms",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "s(\"bd\").beat(\"0,7,10\", 16)"
+  },
+  "begin": {
+    "description": "A pattern of numbers from 0 to 1. Skips the beginning of each sample, e.g. 0.25 to cut off the first quarter from each sample.",
+    "params": [
+      "amount"
+    ],
+    "package": "core",
+    "category": "sample",
+    "example": "samples({ rave: 'rave/AREUREADY.wav' }, 'github:tidalcycles/dirt-samples')"
+  },
+  "berlin": {
+    "description": "Generates a continuous pattern of berlin noise, in the range 0..1.",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "// ascending arpeggios"
+  },
+  "bgain": {
+    "description": "Postgain multiplier prior to sending the signal to the audio bus.",
+    "params": [
+      "number"
+    ],
+    "package": "core",
+    "category": "routing",
+    "aliasOf": "busgain"
+  },
+  "binary": {
+    "description": "Creates a binary pattern from a number.",
+    "params": [
+      "n"
+    ],
+    "package": "core",
+    "category": "signal",
+    "example": "\"hh\".s().struct(binary(5))"
+  },
+  "binaryL": {
+    "description": "Creates a binary list pattern from a number.",
+    "params": [
+      "n"
+    ],
+    "package": "core",
+    "category": "signal"
+  },
+  "binaryN": {
+    "description": "Creates a binary pattern from a number, padded to n bits long.",
+    "params": [
+      "n",
+      "nBits"
+    ],
+    "package": "core",
+    "category": "signal",
+    "example": "\"hh\".s().struct(binaryN(55532, 16))"
+  },
+  "binaryNL": {
+    "description": "Creates a binary list pattern from a number, padded to n bits long.",
+    "params": [
+      "n",
+      "nBits"
+    ],
+    "package": "core",
+    "category": "signal"
+  },
+  "bite": {
+    "description": "Splits a pattern into the given number of slices, and plays them according to a pattern of slice numbers.",
+    "params": [
+      "number",
+      "slices"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "note(\"0 1 2 3 4 5 6 7\".scale('c:mixolydian'))"
+  },
+  "bmod": {
+    "description": "Modulates with the output from a given bus. Can be called in sequence like pat.bmod(...).bmod(...) to set up multiple modulators Send to an audio bus with otherPat.bus(..).",
+    "params": [
+      "config",
+      "config.bus",
+      "config.control",
+      "config.subControl",
+      "config.depth",
+      "config.depthabs",
+      "config.dc",
+      "config.fxi",
+      "id"
+    ],
+    "package": "core",
+    "category": "other",
+    "example": "modulator: s(\"one\").seg(64).gain(slider(0, 0, 1)).bus(1).dry(0)"
+  },
+  "bp": {
+    "description": "Sets the center frequency of the band-pass filter. When using mininotation, you can also optionally supply the 'bpq' parameter separated by ':'.",
+    "params": [
+      "frequency"
+    ],
+    "package": "core",
+    "category": "filter",
+    "aliasOf": "bpf",
+    "example": "s(\"bd sd [~ bd] sd,hh*6\").bpf(\"<1000 2000 4000 8000>\")"
+  },
+  "bpa": {
+    "description": "Sets the attack duration for the bandpass filter envelope.",
+    "params": [
+      "attack"
+    ],
+    "package": "core",
+    "category": "filter",
+    "aliasOf": "bpattack",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "bpattack": {
+    "description": "Sets the attack duration for the bandpass filter envelope.",
+    "params": [
+      "attack"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "bpd": {
+    "description": "Sets the decay duration for the bandpass filter envelope.",
+    "params": [
+      "decay"
+    ],
+    "package": "core",
+    "category": "filter",
+    "aliasOf": "bpdecay",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "bpdc": {
+    "description": "DC offset of the LFO for the bandpass filter",
+    "params": [
+      "dcoffset"
+    ],
+    "package": "core",
+    "category": "filter"
+  },
+  "bpdecay": {
+    "description": "Sets the decay duration for the bandpass filter envelope.",
+    "params": [
+      "decay"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "bpdepth": {
+    "description": "Depth of the LFO for the bandpass filter",
+    "params": [
+      "depth"
+    ],
+    "package": "core",
+    "category": "filter"
+  },
+  "bpdepthfreq": {
+    "description": "Depth of the LFO for the bandpass filter, in HZ",
+    "params": [
+      "depth"
+    ],
+    "package": "core",
+    "category": "filter",
+    "aliasOf": "bpdepthfrequency",
+    "example": "note(\"<c c c# c c c4>*16\").s(\"sawtooth\").lpf(600).bpdepthfrequency(\"<200 500 100 0>\")"
+  },
+  "bpdepthfrequency": {
+    "description": "Depth of the LFO for the bandpass filter, in HZ",
+    "params": [
+      "depth"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "note(\"<c c c# c c c4>*16\").s(\"sawtooth\").lpf(600).bpdepthfrequency(\"<200 500 100 0>\")"
+  },
+  "bpe": {
+    "description": "Sets the bandpass filter envelope modulation depth.",
+    "params": [
+      "modulation"
+    ],
+    "package": "core",
+    "category": "filter",
+    "aliasOf": "bpenv",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "bpenv": {
+    "description": "Sets the bandpass filter envelope modulation depth.",
+    "params": [
+      "modulation"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "bpf": {
+    "description": "Sets the center frequency of the band-pass filter. When using mininotation, you can also optionally supply the 'bpq' parameter separated by ':'.",
+    "params": [
+      "frequency"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "s(\"bd sd [~ bd] sd,hh*6\").bpf(\"<1000 2000 4000 8000>\")"
+  },
+  "bpq": {
+    "description": "Sets the band-pass q-factor (resonance).",
+    "params": [
+      "q"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "s(\"bd sd [~ bd] sd\").bpf(500).bpq(\"<0 1 2 3>\")"
+  },
+  "bpr": {
+    "description": "Sets the release time for the bandpass filter envelope.",
+    "params": [
+      "release"
+    ],
+    "package": "core",
+    "category": "filter",
+    "aliasOf": "bprelease",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "bprate": {
+    "description": "Rate of the LFO for the bandpass filter",
+    "params": [
+      "rate"
+    ],
+    "package": "core",
+    "category": "filter"
+  },
+  "bprelease": {
+    "description": "Sets the release time for the bandpass filter envelope.",
+    "params": [
+      "release"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "bps": {
+    "description": "Sets the sustain amplitude for the bandpass filter envelope.",
+    "params": [
+      "sustain"
+    ],
+    "package": "core",
+    "category": "filter",
+    "aliasOf": "bpsustain",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "bpshape": {
+    "description": "Shape of the LFO for the bandpass filter",
+    "params": [
+      "shape"
+    ],
+    "package": "core",
+    "category": "filter"
+  },
+  "bpskew": {
+    "description": "Skew of the LFO for the bandpass filter",
+    "params": [
+      "skew"
+    ],
+    "package": "core",
+    "category": "filter"
+  },
+  "bpsustain": {
+    "description": "Sets the sustain amplitude for the bandpass filter envelope.",
+    "params": [
+      "sustain"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "bpsync": {
+    "description": "Cycle-synced rate of the LFO for the bandpass filter",
+    "params": [
+      "rate"
+    ],
+    "package": "core",
+    "category": "filter"
+  },
+  "brak": {
+    "description": "Returns a new pattern where every other cycle is played once, twice as fast, and offset in time by one quarter of a cycle.",
+    "params": [],
+    "package": "core",
+    "category": "pattern"
+  },
+  "brand": {
+    "description": "A continuous pattern of 0 or 1 (binary random)",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "s(\"hh*10\").pan(brand)"
+  },
+  "brandBy": {
+    "description": "A continuous pattern of 0 or 1 (binary random), with a probability for the value being 1",
+    "params": [
+      "probability"
+    ],
+    "package": "core",
+    "category": "signal",
+    "example": "s(\"hh*10\").pan(brandBy(0.2))"
+  },
+  "bus": {
+    "description": "A bus is a send which can be used for mixing patterns. It combines with.. s(\"bus\") to play that bus through another pattern (for, say, applying non-linear effects like distortion to multiple signals) otherPat.bmod(..) (to modulate anothe...",
+    "params": [
+      "number"
+    ],
+    "package": "core",
+    "category": "routing"
+  },
+  "busgain": {
+    "description": "Postgain multiplier prior to sending the signal to the audio bus.",
+    "params": [
+      "number"
+    ],
+    "package": "core",
+    "category": "routing"
+  },
+  "byteBeatExpression": {
+    "description": "Create byte beats with custom expressions",
+    "params": [
+      "byteBeatExpression"
+    ],
+    "package": "core",
+    "category": "synth",
+    "example": "s(\"bytebeat\").bbexpr('t*(t>>15^t>>66)')"
+  },
+  "byteBeatStartTime": {
+    "description": "Create byte beats with custom expressions",
+    "params": [
+      "byteBeatStartTime"
+    ],
+    "package": "core",
+    "category": "synth",
+    "example": "note(\"c3!8\".add(\"{0 0 12 0 7 5 3}%8\")).s(\"bytebeat:5\").bbst(\"<3 1>\".mul(10000))._scope()"
+  },
+  "cat": {
+    "description": "Concatenation: combines a list of patterns, switching between them successively, one per cycle.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "aliasOf": "slowcat",
+    "example": "slowcat(\"e5\", \"b4\", [\"d5\", \"c5\"])"
+  },
+  "ccn": {
+    "description": "MIDI control number: Sends a MIDI control change message.",
+    "params": [
+      "MIDI"
+    ],
+    "package": "core",
+    "category": "midi"
+  },
+  "ccv": {
+    "description": "MIDI control value: Sends a MIDI control change message.",
+    "params": [
+      "MIDI"
+    ],
+    "package": "core",
+    "category": "midi"
+  },
+  "ceil": {
+    "description": "Assumes a numerical pattern. Returns a new pattern with all values set to their mathematical ceiling.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "note(\"42 42.1 42.5 43\".ceil())"
+  },
+  "ch": {
+    "description": "Allows you to set the output channels on the interface",
+    "params": [
+      "channels"
+    ],
+    "package": "core",
+    "category": "sample",
+    "aliasOf": "channels",
+    "example": "note(\"e a d b g\").channels(\"3:4\")"
+  },
+  "channel": {
+    "description": "Choose the channel the pattern is sent to in superdirt",
+    "params": [
+      "channel"
+    ],
+    "package": "core",
+    "category": "midi"
+  },
+  "channels": {
+    "description": "Allows you to set the output channels on the interface",
+    "params": [
+      "channels"
+    ],
+    "package": "core",
+    "category": "sample",
+    "example": "note(\"e a d b g\").channels(\"3:4\")"
+  },
+  "chebyshev": {
+    "description": "Distortion via Chebyshev polynomials",
+    "params": [
+      "distortion",
+      "volume"
+    ],
+    "package": "core",
+    "category": "pattern"
+  },
+  "choose": {
+    "description": "Chooses randomly from the given list of elements.",
+    "params": [
+      "xs"
+    ],
+    "package": "core",
+    "category": "signal",
+    "example": "note(\"c2 g2!2 d2 f1\").s(choose(\"sine\", \"triangle\", \"bd:6\"))"
+  },
+  "choose2": {
+    "description": "As with choose, but the pattern that this method is called on should be in the range -1 .. 1",
+    "params": [
+      "xs"
+    ],
+    "package": "core",
+    "category": "signal"
+  },
+  "chooseCycles": {
+    "description": "Picks one of the elements at random each cycle.",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "chooseCycles(\"bd\", \"hh\", \"sd\").s().fast(8)"
+  },
+  "chooseInWith": {
+    "description": "As with {chooseWith}, but the structure comes from the chosen values, rather than the pattern you're using to choose with.",
+    "params": [
+      "pat",
+      "xs"
+    ],
+    "package": "core",
+    "category": "signal"
+  },
+  "chooseWith": {
+    "description": "Choose from the list of values (or patterns of values) using the given pattern of numbers, which should be in the range of 0..1",
+    "params": [
+      "pat",
+      "xs"
+    ],
+    "package": "core",
+    "category": "signal",
+    "example": "note(\"c2 g2!2 d2 f1\").s(chooseWith(sine.fast(2), [\"sawtooth\", \"triangle\", \"bd:6\"]))"
+  },
+  "chop": {
+    "description": "Cuts each sample into the given number of parts, allowing you to explore a technique known as 'granular synthesis'.",
+    "params": [],
+    "package": "core",
+    "category": "sample",
+    "example": "samples({ rhodes: 'https://cdn.freesound.org/previews/132/132051_316502-lq.mp3' })"
+  },
+  "chord": {
+    "description": "The chord to voice",
+    "params": [
+      "symbols"
+    ],
+    "package": "core",
+    "category": "harmony",
+    "example": "chord(\"<Am C D F Am E Am E>\").voicing()"
+  },
+  "chorus": {
+    "description": "mix control for the chorus effect",
+    "params": [
+      "chorus"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "note(\"d d a# a\").s(\"sawtooth\").chorus(.5)"
+  },
+  "chunk": {
+    "description": "Divides a pattern into a given number of parts, then cycles through those parts in turn, applying the given function to each part in turn (one part per cycle).",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "\"0 1 2 3\".chunk(4, x=>x.add(7))"
+  },
+  "chunkBack": {
+    "description": "Like chunk, but cycles through the parts in reverse order. Known as chunk' in tidalcycles",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "\"0 1 2 3\".chunkBack(4, x=>x.add(7))"
+  },
+  "chunkBackInto": {
+    "description": "Like chunkInto, but moves backwards through the chunks.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "sound(\"bd sd ht lt bd - cp lt\").chunkInto(4, hurry(2))"
+  },
+  "chunkInto": {
+    "description": "Like chunk, but the function is applied to a looped subcycle of the source pattern.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "sound(\"bd sd ht lt bd - cp lt\").chunkInto(4, hurry(2))"
+  },
+  "chunkback": {
+    "description": "Like chunk, but cycles through the parts in reverse order. Known as chunk' in tidalcycles",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "aliasOf": "chunkBack",
+    "example": "\"0 1 2 3\".chunkBack(4, x=>x.add(7))"
+  },
+  "chunkbackinto": {
+    "description": "Like chunkInto, but moves backwards through the chunks.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "aliasOf": "chunkBackInto",
+    "example": "sound(\"bd sd ht lt bd - cp lt\").chunkInto(4, hurry(2))"
+  },
+  "chunkinto": {
+    "description": "Like chunk, but the function is applied to a looped subcycle of the source pattern.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "aliasOf": "chunkInto",
+    "example": "sound(\"bd sd ht lt bd - cp lt\").chunkInto(4, hurry(2))"
+  },
+  "clip": {
+    "description": "Multiplies the duration with the given number. Also cuts samples off at the end if they exceed the duration.",
+    "params": [
+      "factor"
+    ],
+    "package": "core",
+    "category": "transport",
+    "example": "note(\"c a f e\").s(\"piano\").clip(\"<.5 1 2>\")"
+  },
+  "coarse": {
+    "description": "Fake-resampling for lowering the sample rate. Caution: This effect seems to only work in chromium based browsers",
+    "params": [
+      "factor"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "s(\"bd sd [~ bd] sd,hh*8\").coarse(\"<1 4 8 16 32>\")"
+  },
+  "color": {
+    "description": "Sets the color of the hap in visualizations like pianoroll or highlighting.",
+    "params": [
+      "color"
+    ],
+    "package": "core",
+    "category": "visual"
+  },
+  "colour": {
+    "description": "Sets the color of the hap in visualizations like pianoroll or highlighting.",
+    "params": [
+      "color"
+    ],
+    "package": "core",
+    "category": "visual",
+    "aliasOf": "color"
+  },
+  "compress": {
+    "description": "Compress each cycle into the given timespan, leaving a gap",
+    "params": [],
+    "package": "core",
+    "category": "fx",
+    "example": "cat("
+  },
+  "compressor": {
+    "description": "Dynamics Compressor. The params are compressor(\"threshold:ratio:knee:attack:release\") More info here",
+    "params": [],
+    "package": "core",
+    "category": "fx",
+    "example": "s(\"bd sd [~ bd] sd,hh*8\")"
+  },
+  "contract": {
+    "description": "*Experimental* Contracts the step size of the pattern by the given factor.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "sound(\"tha dhi thom nam\").bank(\"mridangam\").contract(\"3 2 1 1 2 3\").pace(8)"
+  },
+  "control": {
+    "description": "MIDI control: Sends a MIDI control change message.",
+    "params": [
+      "MIDI",
+      "MIDI"
+    ],
+    "package": "core",
+    "category": "midi"
+  },
+  "cosine": {
+    "description": "A cosine signal between 0 and 1.",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "n(stack(sine,cosine).segment(16).range(0,15))"
+  },
+  "cosine2": {
+    "description": "A cosine signal between -1 and 1 (like cosine, but bipolar).",
+    "params": [],
+    "package": "core",
+    "category": "signal"
+  },
+  "crush": {
+    "description": "Bit crusher effect.",
+    "params": [
+      "depth"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "s(\"<bd sd>,hh*3\").fast(2).crush(\"<16 8 7 6 5 4 3 2>\")"
+  },
+  "ctf": {
+    "description": "Applies the cutoff frequency of the low-pass filter. When using mininotation, you can also optionally add the 'lpq' parameter, separated by ':'.",
+    "params": [
+      "frequency"
+    ],
+    "package": "core",
+    "category": "filter",
+    "aliasOf": "lpf",
+    "example": "s(\"bd sd [~ bd] sd,hh*6\").lpf(\"<4000 2000 1000 500 200 100>\")"
+  },
+  "cubic": {
+    "description": "Cubic polynomial distortion",
+    "params": [
+      "distortion",
+      "volume"
+    ],
+    "package": "core",
+    "category": "pattern"
+  },
+  "cut": {
+    "description": "In the style of classic drum-machines, cut will stop a playing sample as soon as another samples with in same cutgroup is to be played.",
+    "params": [
+      "group"
+    ],
+    "package": "core",
+    "category": "sample",
+    "example": "s(\"[oh hh]*4\").cut(1)"
+  },
+  "cutoff": {
+    "description": "Applies the cutoff frequency of the low-pass filter. When using mininotation, you can also optionally add the 'lpq' parameter, separated by ':'.",
+    "params": [
+      "frequency"
+    ],
+    "package": "core",
+    "category": "filter",
+    "aliasOf": "lpf",
+    "example": "s(\"bd sd [~ bd] sd,hh*6\").lpf(\"<4000 2000 1000 500 200 100>\")"
+  },
+  "cyclesPer": {
+    "description": "A pattern measuring the duration of events, in cycles per event. cyclesPer doesn't have structure itself, but takes structure, and therefore event durations, from the pattern that it is combined with.",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "// Shorter events are lower in pitch"
+  },
+  "dec": {
+    "description": "Amplitude envelope decay time: the time it takes after the attack time to reach the sustain level.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "decay",
+    "example": "note(\"c3 e3 f3 g3\").decay(\"<.1 .2 .3 .4>\").sustain(0)"
+  },
+  "decay": {
+    "description": "Amplitude envelope decay time: the time it takes after the attack time to reach the sustain level.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "example": "note(\"c3 e3 f3 g3\").decay(\"<.1 .2 .3 .4>\").sustain(0)"
+  },
+  "defaultmidimap": {
+    "description": "configures the default midimap, which is used when no \"midimap\" port is set",
+    "params": [],
+    "package": "midi",
+    "category": "midi",
+    "example": "defaultmidimap({ lpf: 74 })"
+  },
+  "degrade": {
+    "description": "Randomly removes 50% of events from the pattern. Shorthand for .degradeBy(0.5)",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "s(\"hh*8\").degrade()"
+  },
+  "degradeBy": {
+    "description": "Randomly removes events from the pattern by a given amount. 0 = 0% chance of removal 1 = 100% chance of removal",
+    "params": [
+      "amount"
+    ],
+    "package": "core",
+    "category": "signal",
+    "example": "s(\"hh*8\").degradeBy(0.2)"
+  },
+  "delay": {
+    "description": "Sets the level of the delay signal. When using mininotation, you can also optionally add the 'delaytime' and 'delayfeedback' parameter, separated by ':'.",
+    "params": [
+      "level"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "s(\"bd bd\").delay(\"<0 .25 .5 1>\")"
+  },
+  "delayfb": {
+    "description": "Sets the level of the signal that is fed back into the delay.",
+    "params": [
+      "feedback"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "delayfeedback",
+    "example": "s(\"bd\").delay(.25).delayfeedback(\"<.25 .5 .75 1>\")"
+  },
+  "delayfeedback": {
+    "description": "Sets the level of the signal that is fed back into the delay.",
+    "params": [
+      "feedback"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "s(\"bd\").delay(.25).delayfeedback(\"<.25 .5 .75 1>\")"
+  },
+  "delayspeed": {
+    "description": "Sets the level of the signal that is fed back into the delay.",
+    "params": [
+      "feedback"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "delayfeedback",
+    "example": "s(\"bd\").delay(.25).delayfeedback(\"<.25 .5 .75 1>\")"
+  },
+  "delaysync": {
+    "description": "Sets the time of the delay effect in cycles.",
+    "params": [
+      "cycles"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "s(\"bd bd\").delay(.25).delaysync(\"<1 2 3 5>\".div(8))"
+  },
+  "delayt": {
+    "description": "Sets the time of the delay effect.",
+    "params": [
+      "delayspeed"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "delayspeed",
+    "example": "note(\"d d a# a\".fast(2)).s(\"sawtooth\").delay(.8).delaytime(1/2).delayspeed(\"<2 .5 -1 -2>\")"
+  },
+  "delaytime": {
+    "description": "Sets the time of the delay effect.",
+    "params": [
+      "delayspeed"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "delayspeed",
+    "example": "note(\"d d a# a\".fast(2)).s(\"sawtooth\").delay(.8).delaytime(1/2).delayspeed(\"<2 .5 -1 -2>\")"
+  },
+  "density": {
+    "description": "Noise crackle density",
+    "params": [
+      "density"
+    ],
+    "package": "core",
+    "category": "synth",
+    "example": "s(\"crackle*4\").density(\"<0.01 0.04 0.2 0.5>\".slow(4))"
+  },
+  "det": {
+    "description": "Set detune for stacked voices of supported oscillators",
+    "params": [
+      "amount"
+    ],
+    "package": "core",
+    "category": "harmony",
+    "aliasOf": "detune",
+    "example": "note(\"d f a a# a d3\").fast(2).s(\"supersaw\").detune(\"<.1 .2 .5 24.1>\")"
+  },
+  "detune": {
+    "description": "Set detune for stacked voices of supported oscillators",
+    "params": [
+      "amount"
+    ],
+    "package": "core",
+    "category": "harmony",
+    "example": "note(\"d f a a# a d3\").fast(2).s(\"supersaw\").detune(\"<.1 .2 .5 24.1>\")"
+  },
+  "dfb": {
+    "description": "Sets the level of the signal that is fed back into the delay.",
+    "params": [
+      "feedback"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "delayfeedback",
+    "example": "s(\"bd\").delay(.25).delayfeedback(\"<.25 .5 .75 1>\")"
+  },
+  "dict": {
+    "description": "Which dictionary to use for the voicings. This falls back to the default dictionary if not provided",
+    "params": [
+      "dictionaryName"
+    ],
+    "package": "core",
+    "category": "routing",
+    "aliasOf": "dictionary",
+    "example": "addVoicings('house', {"
+  },
+  "dictionary": {
+    "description": "Which dictionary to use for the voicings. This falls back to the default dictionary if not provided",
+    "params": [
+      "dictionaryName"
+    ],
+    "package": "core",
+    "category": "routing",
+    "example": "addVoicings('house', {"
+  },
+  "diode": {
+    "description": "Diode-emulating distortion",
+    "params": [
+      "distortion",
+      "volume"
+    ],
+    "package": "core",
+    "category": "pattern"
+  },
+  "dist": {
+    "description": "Wave shaping distortion. CAUTION: it can get loud.",
+    "params": [
+      "distortion",
+      "volume",
+      "type"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "distort",
+    "example": "s(\"bd sd [~ bd] sd,hh*8\").distort(\"<0 2 3 10:.5>\")"
+  },
+  "distort": {
+    "description": "Wave shaping distortion. CAUTION: it can get loud.",
+    "params": [
+      "distortion",
+      "volume",
+      "type"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "s(\"bd sd [~ bd] sd,hh*8\").distort(\"<0 2 3 10:.5>\")"
+  },
+  "distorttype": {
+    "description": "Type of waveshaping distortion to apply.",
+    "params": [
+      "type"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "s(\"bd*4\").bank(\"tr909\").distort(2).distorttype(\"<0 1 2>\")"
+  },
+  "distortvol": {
+    "description": "Postgain for waveshaping distortion.",
+    "params": [
+      "volume"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "s(\"bd*4\").bank(\"tr909\").distort(2).distortvol(0.8)"
+  },
+  "disttype": {
+    "description": "Type of waveshaping distortion to apply.",
+    "params": [
+      "type"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "distorttype",
+    "example": "s(\"bd*4\").bank(\"tr909\").distort(2).distorttype(\"<0 1 2>\")"
+  },
+  "distvol": {
+    "description": "Postgain for waveshaping distortion.",
+    "params": [
+      "volume"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "distortvol",
+    "example": "s(\"bd*4\").bank(\"tr909\").distort(2).distortvol(0.8)"
+  },
+  "div": {
+    "description": "Divides each number by the given factor.",
+    "params": [],
+    "package": "core",
+    "category": "pattern"
+  },
+  "djf": {
+    "description": "DJ filter, below 0.5 is low pass filter, above is high pass filter.",
+    "params": [
+      "cutoff"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "n(irand(16).seg(8)).scale(\"d:phrygian\").s(\"supersaw\").djf(\"<.5 .3 .2 .75>\")"
+  },
+  "drive": {
+    "description": "Filter overdrive for supported filter types",
+    "params": [
+      "amount"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "note(\"{f g g c d a a#}%16\".sub(17)).s(\"supersaw\").lpenv(8).lpf(150).lpq(.8).ftype('ladder').drive(\"<.5 4>\")"
+  },
+  "drop": {
+    "description": "*Experimental* Drops the given number of steps from a pattern.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "\"tha dhi thom nam\".drop(\"1\").sound().bank(\"mridangam\")"
+  },
+  "dry": {
+    "description": "Set dryness of reverb. See room and size for more information about reverb.",
+    "params": [
+      "dry"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "n(\"[0,3,7](3,8)\").s(\"superpiano\").room(.7).dry(\"<0 .5 .75 1>\").osc()"
+  },
+  "dt": {
+    "description": "Sets the time of the delay effect.",
+    "params": [
+      "delayspeed"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "delayspeed",
+    "example": "note(\"d d a# a\".fast(2)).s(\"sawtooth\").delay(.8).delaytime(1/2).delayspeed(\"<2 .5 -1 -2>\")"
+  },
+  "duck": {
+    "description": "Modulate the amplitude of an orbit to create a \"sidechain\" like effect.",
+    "params": [
+      "orbit"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "duckorbit",
+    "example": "$: n(run(16)).scale(\"c:minor:pentatonic\").s(\"sawtooth\").delay(.7).orbit(2)"
+  },
+  "duckatt": {
+    "description": "The time required for the ducked signal(s) to return to their normal volume.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "duckattack",
+    "example": "sound: n(run(8)).scale(\"c:minor\").s(\"sawtooth\").delay(.7).orbit(2)"
+  },
+  "duckattack": {
+    "description": "The time required for the ducked signal(s) to return to their normal volume.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "example": "sound: n(run(8)).scale(\"c:minor\").s(\"sawtooth\").delay(.7).orbit(2)"
+  },
+  "duckdepth": {
+    "description": "The amount of ducking applied to target orbit Can vary across orbits with the ':' mininotation, e.g. duckdepth(\"0.3:0.1\").",
+    "params": [
+      "depth"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "stack( n(run(8)).scale(\"c:minor\").s(\"sawtooth\").delay(.7).orbit(2), s(\"bd:4!4\").beat(\"0,4,8,11,14\",16).duckorbit(2).duckattack(0.2).duckdepth(\"<1 .9 .6 0>\"))"
+  },
+  "duckons": {
+    "description": "The time required for the ducked signal(s) to reach their lowest volume.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "duckonset",
+    "example": "// Clicks"
+  },
+  "duckonset": {
+    "description": "The time required for the ducked signal(s) to reach their lowest volume.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "// Clicks"
+  },
+  "duckorbit": {
+    "description": "Modulate the amplitude of an orbit to create a \"sidechain\" like effect.",
+    "params": [
+      "orbit"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "$: n(run(16)).scale(\"c:minor:pentatonic\").s(\"sawtooth\").delay(.7).orbit(2)"
+  },
+  "dur": {
+    "description": "Sets the duration of the event in cycles. Similar to clip / legato, it also cuts samples off at the end if they exceed the duration.",
+    "params": [
+      "seconds"
+    ],
+    "package": "core",
+    "category": "transport",
+    "aliasOf": "duration",
+    "example": "note(\"c a f e\").s(\"piano\").dur(\"<.5 1 2>\")"
+  },
+  "duration": {
+    "description": "Sets the duration of the event in cycles. Similar to clip / legato, it also cuts samples off at the end if they exceed the duration.",
+    "params": [
+      "seconds"
+    ],
+    "package": "core",
+    "category": "transport",
+    "example": "note(\"c a f e\").s(\"piano\").dur(\"<.5 1 2>\")"
+  },
+  "early": {
+    "description": "Nudge a pattern to start earlier in time. Equivalent of Tidal's <~ operator",
+    "params": [
+      "cycles"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "\"bd ~\".stack(\"hh ~\".early(.1)).s()"
+  },
+  "echo": {
+    "description": "Superimpose and offset multiple times, gradually decreasing the velocity",
+    "params": [
+      "times",
+      "time",
+      "feedback"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "s(\"bd sd\").echo(3, 1/6, .8)"
+  },
+  "echoWith": {
+    "description": "Superimpose and offset multiple times, applying the given function each time.",
+    "params": [
+      "times",
+      "time",
+      "func"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "\"<0 [2 4]>\""
+  },
+  "echowith": {
+    "description": "Superimpose and offset multiple times, applying the given function each time.",
+    "params": [
+      "times",
+      "time",
+      "func"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "echoWith",
+    "example": "\"<0 [2 4]>\""
+  },
+  "eish": {
+    "description": "A 'euclid' variant with an additional parameter that morphs the resulting rhythm from 0 (no morphing) to 1 (completely 'even').",
+    "params": [
+      "pulses",
+      "steps",
+      "groove"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "aliasOf": "euclidish",
+    "example": "sound(\"hh\").euclidish(7,12,sine.slow(8))"
+  },
+  "end": {
+    "description": "The same as .begin, but cuts off the end off each sample.",
+    "params": [
+      "length"
+    ],
+    "package": "core",
+    "category": "sample",
+    "example": "s(\"bd*2,oh*4\").end(\"<.1 .2 .5 1>\").fast(2)"
+  },
+  "env": {
+    "description": "Configures an envelope. Can be called in sequence like pat.env(...).env(...) to set up multiple envelopes There are two ways to declare which control will be modulated: 1.",
+    "params": [
+      "config",
+      "config.control",
+      "config.subControl",
+      "config.depth",
+      "config.depthabs",
+      "config.attack",
+      "config.decay",
+      "config.sustain",
+      "config.release",
+      "config.acurve",
+      "config.dcurve",
+      "config.rcurve",
+      "config.fxi",
+      "id"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "example": "s(\"saw\").note(\"F1\").lpf(500).env({ a: 1 })"
+  },
+  "euclid": {
+    "description": "Changes the structure of the pattern to form an Euclidean rhythm.",
+    "params": [
+      "pulses",
+      "steps"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "// The Cuban tresillo pattern."
+  },
+  "euclidLegato": {
+    "description": "Similar to euclid, but each pulse is held until the next pulse, so there will be no gaps.",
+    "params": [
+      "pulses",
+      "steps",
+      "rotation",
+      "pat"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "note(\"c3\").euclidLegato(3,8)"
+  },
+  "euclidLegatoRot": {
+    "description": "Similar to euclid, but each pulse is held until the next pulse, so there will be no gaps, and has an additional parameter for 'rotating' the resulting sequence",
+    "params": [
+      "pulses",
+      "steps",
+      "rotation"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "note(\"c3\").euclidLegatoRot(3,5,2)"
+  },
+  "euclidRot": {
+    "description": "Like euclid, but has an additional parameter for 'rotating' the resulting sequence.",
+    "params": [
+      "pulses",
+      "steps",
+      "rotation"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "// A Samba rhythm necklace from Brazil"
+  },
+  "euclidish": {
+    "description": "A 'euclid' variant with an additional parameter that morphs the resulting rhythm from 0 (no morphing) to 1 (completely 'even').",
+    "params": [
+      "pulses",
+      "steps",
+      "groove"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "sound(\"hh\").euclidish(7,12,sine.slow(8))"
+  },
+  "every": {
+    "description": "An alias for firstOf",
+    "params": [
+      "n",
+      "func"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "note(\"c3 d3 e3 g3\").every(4, x=>x.rev())"
+  },
+  "expand": {
+    "description": "*Experimental* Expands the step size of the pattern by the given factor.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "sound(\"tha dhi thom nam\").bank(\"mridangam\").expand(\"3 2 1 1 2 3\").pace(8)"
+  },
+  "extend": {
+    "description": "*Experimental* extend is similar to fast in that it increases its density, but it also increases the step count accordingly.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "stepcat("
+  },
+  "fanchor": {
+    "description": "controls the center of the filter envelope. 0 is unipolar positive, .5 is bipolar, 1 is unipolar negative",
+    "params": [
+      "center"
+    ],
+    "package": "core",
+    "category": "harmony",
+    "example": "note(\"{f g g c d a a#}%8\").s(\"sawtooth\").lpf(\"{1000}%2\")"
+  },
+  "fast": {
+    "description": "Speed up a pattern by the given factor. Used by \"*\" in mini notation.",
+    "params": [
+      "factor"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "s(\"bd hh sd hh\").fast(2) // s(\"[bd hh sd hh]*2\")"
+  },
+  "fastChunk": {
+    "description": "Like chunk, but the cycles of the source pattern aren't repeated for each set of chunks.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "\"<0 8> 1 2 3 4 5 6 7\""
+  },
+  "fastGap": {
+    "description": "speeds up a pattern like fast, but rather than it playing multiple times as fast would it instead leaves a gap in the remaining space of the cycle.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "s(\"bd sd\").fastGap(2)"
+  },
+  "fastcat": {
+    "description": "Like cat, but the items are crammed into one cycle.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "aliasOf": "seq",
+    "example": "seq(\"e5\", \"b4\", [\"d5\", \"c5\"]).note()"
+  },
+  "fastchunk": {
+    "description": "Like chunk, but the cycles of the source pattern aren't repeated for each set of chunks.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "aliasOf": "fastChunk",
+    "example": "\"<0 8> 1 2 3 4 5 6 7\""
+  },
+  "fastgap": {
+    "description": "speeds up a pattern like fast, but rather than it playing multiple times as fast would it instead leaves a gap in the remaining space of the cycle.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "aliasOf": "fastGap",
+    "example": "s(\"bd sd\").fastGap(2)"
+  },
+  "filter": {
+    "description": "Filters haps using the given function",
+    "params": [
+      "test"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "s(\"hh!7 oh\").filter(hap => hap.value.s === 'hh')"
+  },
+  "filterWhen": {
+    "description": "Filters haps by their begin time",
+    "params": [
+      "test"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "oneCycle: s(\"bd*4\").filterWhen((t) => t < 1)"
+  },
+  "firstOf": {
+    "description": "Applies the given function every n cycles, starting from the first cycle.",
+    "params": [
+      "n",
+      "func"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "note(\"c3 d3 e3 g3\").firstOf(4, x=>x.rev())"
+  },
+  "fit": {
+    "description": "Makes the sample fit its event duration. Good for rhythmical loops like drum breaks.",
+    "params": [],
+    "package": "core",
+    "category": "sample",
+    "example": "samples({ rhodes: 'https://cdn.freesound.org/previews/132/132051_316502-lq.mp3' })"
+  },
+  "floor": {
+    "description": "Assumes a numerical pattern. Returns a new pattern with all values set to their mathematical floor.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "note(\"42 42.1 42.5 43\".floor())"
+  },
+  "fm": {
+    "description": "Sets the Frequency Modulation of the synth. Controls the modulation index, which defines the brightness of the sound.",
+    "params": [
+      "brightness"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmi",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fm1": {
+    "description": "Sets the Frequency Modulation of the synth. Controls the modulation index, which defines the brightness of the sound.",
+    "params": [
+      "brightness"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmi",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fm2": {
+    "description": "Sets the Frequency Modulation of the synth. Controls the modulation index, which defines the brightness of the sound.",
+    "params": [
+      "brightness"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmi",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fm3": {
+    "description": "Sets the Frequency Modulation of the synth. Controls the modulation index, which defines the brightness of the sound.",
+    "params": [
+      "brightness"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmi",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fm4": {
+    "description": "Sets the Frequency Modulation of the synth. Controls the modulation index, which defines the brightness of the sound.",
+    "params": [
+      "brightness"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmi",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fm5": {
+    "description": "Sets the Frequency Modulation of the synth. Controls the modulation index, which defines the brightness of the sound.",
+    "params": [
+      "brightness"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmi",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fm6": {
+    "description": "Sets the Frequency Modulation of the synth. Controls the modulation index, which defines the brightness of the sound.",
+    "params": [
+      "brightness"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmi",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fm7": {
+    "description": "Sets the Frequency Modulation of the synth. Controls the modulation index, which defines the brightness of the sound.",
+    "params": [
+      "brightness"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmi",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fm8": {
+    "description": "Sets the Frequency Modulation of the synth. Controls the modulation index, which defines the brightness of the sound.",
+    "params": [
+      "brightness"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmi",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmap": {
+    "description": "Returns a new pattern, with the function applied to the value of each hap.",
+    "params": [
+      "func"
+    ],
+    "package": "core",
+    "category": "synth",
+    "example": "\"0 1 2\".withValue(v => v + 10).log()"
+  },
+  "fmatt": {
+    "description": "Attack time for the FM envelope: time it takes to reach maximum modulation A number may be added afterwards to control the attack of the envelope of any of the 8 individual FMs (e.g. fmatt5)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmattack",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmatt1": {
+    "description": "Attack time for the FM envelope: time it takes to reach maximum modulation A number may be added afterwards to control the attack of the envelope of any of the 8 individual FMs (e.g. fmatt5)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmattack",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmatt2": {
+    "description": "Attack time for the FM envelope: time it takes to reach maximum modulation A number may be added afterwards to control the attack of the envelope of any of the 8 individual FMs (e.g. fmatt5)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmattack",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmatt3": {
+    "description": "Attack time for the FM envelope: time it takes to reach maximum modulation A number may be added afterwards to control the attack of the envelope of any of the 8 individual FMs (e.g. fmatt5)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmattack",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmatt4": {
+    "description": "Attack time for the FM envelope: time it takes to reach maximum modulation A number may be added afterwards to control the attack of the envelope of any of the 8 individual FMs (e.g. fmatt5)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmattack",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmatt5": {
+    "description": "Attack time for the FM envelope: time it takes to reach maximum modulation A number may be added afterwards to control the attack of the envelope of any of the 8 individual FMs (e.g. fmatt5)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmattack",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmatt6": {
+    "description": "Attack time for the FM envelope: time it takes to reach maximum modulation A number may be added afterwards to control the attack of the envelope of any of the 8 individual FMs (e.g. fmatt5)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmattack",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmatt7": {
+    "description": "Attack time for the FM envelope: time it takes to reach maximum modulation A number may be added afterwards to control the attack of the envelope of any of the 8 individual FMs (e.g. fmatt5)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmattack",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmatt8": {
+    "description": "Attack time for the FM envelope: time it takes to reach maximum modulation A number may be added afterwards to control the attack of the envelope of any of the 8 individual FMs (e.g. fmatt5)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmattack",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmattack": {
+    "description": "Attack time for the FM envelope: time it takes to reach maximum modulation A number may be added afterwards to control the attack of the envelope of any of the 8 individual FMs (e.g. fmatt5)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmattack1": {
+    "description": "Attack time for the FM envelope: time it takes to reach maximum modulation A number may be added afterwards to control the attack of the envelope of any of the 8 individual FMs (e.g. fmatt5)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmattack",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmattack2": {
+    "description": "Attack time for the FM envelope: time it takes to reach maximum modulation A number may be added afterwards to control the attack of the envelope of any of the 8 individual FMs (e.g. fmatt5)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmattack",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmattack3": {
+    "description": "Attack time for the FM envelope: time it takes to reach maximum modulation A number may be added afterwards to control the attack of the envelope of any of the 8 individual FMs (e.g. fmatt5)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmattack",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmattack4": {
+    "description": "Attack time for the FM envelope: time it takes to reach maximum modulation A number may be added afterwards to control the attack of the envelope of any of the 8 individual FMs (e.g. fmatt5)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmattack",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmattack5": {
+    "description": "Attack time for the FM envelope: time it takes to reach maximum modulation A number may be added afterwards to control the attack of the envelope of any of the 8 individual FMs (e.g. fmatt5)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmattack",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmattack6": {
+    "description": "Attack time for the FM envelope: time it takes to reach maximum modulation A number may be added afterwards to control the attack of the envelope of any of the 8 individual FMs (e.g. fmatt5)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmattack",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmattack7": {
+    "description": "Attack time for the FM envelope: time it takes to reach maximum modulation A number may be added afterwards to control the attack of the envelope of any of the 8 individual FMs (e.g. fmatt5)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmattack",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmattack8": {
+    "description": "Attack time for the FM envelope: time it takes to reach maximum modulation A number may be added afterwards to control the attack of the envelope of any of the 8 individual FMs (e.g. fmatt5)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmattack",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmdec": {
+    "description": "Decay time for the FM envelope: seconds until the sustain level is reached after the attack phase.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmdecay",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmdec1": {
+    "description": "Decay time for the FM envelope: seconds until the sustain level is reached after the attack phase.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmdecay",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmdec2": {
+    "description": "Decay time for the FM envelope: seconds until the sustain level is reached after the attack phase.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmdecay",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmdec3": {
+    "description": "Decay time for the FM envelope: seconds until the sustain level is reached after the attack phase.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmdecay",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmdec4": {
+    "description": "Decay time for the FM envelope: seconds until the sustain level is reached after the attack phase.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmdecay",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmdec5": {
+    "description": "Decay time for the FM envelope: seconds until the sustain level is reached after the attack phase.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmdecay",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmdec6": {
+    "description": "Decay time for the FM envelope: seconds until the sustain level is reached after the attack phase.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmdecay",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmdec7": {
+    "description": "Decay time for the FM envelope: seconds until the sustain level is reached after the attack phase.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmdecay",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmdec8": {
+    "description": "Decay time for the FM envelope: seconds until the sustain level is reached after the attack phase.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmdecay",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmdecay": {
+    "description": "Decay time for the FM envelope: seconds until the sustain level is reached after the attack phase.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmdecay1": {
+    "description": "Decay time for the FM envelope: seconds until the sustain level is reached after the attack phase.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmdecay",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmdecay2": {
+    "description": "Decay time for the FM envelope: seconds until the sustain level is reached after the attack phase.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmdecay",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmdecay3": {
+    "description": "Decay time for the FM envelope: seconds until the sustain level is reached after the attack phase.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmdecay",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmdecay4": {
+    "description": "Decay time for the FM envelope: seconds until the sustain level is reached after the attack phase.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmdecay",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmdecay5": {
+    "description": "Decay time for the FM envelope: seconds until the sustain level is reached after the attack phase.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmdecay",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmdecay6": {
+    "description": "Decay time for the FM envelope: seconds until the sustain level is reached after the attack phase.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmdecay",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmdecay7": {
+    "description": "Decay time for the FM envelope: seconds until the sustain level is reached after the attack phase.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmdecay",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmdecay8": {
+    "description": "Decay time for the FM envelope: seconds until the sustain level is reached after the attack phase.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmdecay",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmenv": {
+    "description": "Ramp type of fm envelope. Exp might be a bit broken..",
+    "params": [
+      "type"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmenv1": {
+    "description": "Ramp type of fm envelope. Exp might be a bit broken..",
+    "params": [
+      "type"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmenv",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmenv2": {
+    "description": "Ramp type of fm envelope. Exp might be a bit broken..",
+    "params": [
+      "type"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmenv",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmenv3": {
+    "description": "Ramp type of fm envelope. Exp might be a bit broken..",
+    "params": [
+      "type"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmenv",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmenv4": {
+    "description": "Ramp type of fm envelope. Exp might be a bit broken..",
+    "params": [
+      "type"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmenv",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmenv5": {
+    "description": "Ramp type of fm envelope. Exp might be a bit broken..",
+    "params": [
+      "type"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmenv",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmenv6": {
+    "description": "Ramp type of fm envelope. Exp might be a bit broken..",
+    "params": [
+      "type"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmenv",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmenv7": {
+    "description": "Ramp type of fm envelope. Exp might be a bit broken..",
+    "params": [
+      "type"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmenv",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmenv8": {
+    "description": "Ramp type of fm envelope. Exp might be a bit broken..",
+    "params": [
+      "type"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmenv",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmh": {
+    "description": "Sets the Frequency Modulation Harmonicity Ratio. Controls the timbre of the sound.",
+    "params": [
+      "harmonicity"
+    ],
+    "package": "core",
+    "category": "synth",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmh1": {
+    "description": "Sets the Frequency Modulation Harmonicity Ratio. Controls the timbre of the sound.",
+    "params": [
+      "harmonicity"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmh",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmh2": {
+    "description": "Sets the Frequency Modulation Harmonicity Ratio. Controls the timbre of the sound.",
+    "params": [
+      "harmonicity"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmh",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmh3": {
+    "description": "Sets the Frequency Modulation Harmonicity Ratio. Controls the timbre of the sound.",
+    "params": [
+      "harmonicity"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmh",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmh4": {
+    "description": "Sets the Frequency Modulation Harmonicity Ratio. Controls the timbre of the sound.",
+    "params": [
+      "harmonicity"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmh",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmh5": {
+    "description": "Sets the Frequency Modulation Harmonicity Ratio. Controls the timbre of the sound.",
+    "params": [
+      "harmonicity"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmh",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmh6": {
+    "description": "Sets the Frequency Modulation Harmonicity Ratio. Controls the timbre of the sound.",
+    "params": [
+      "harmonicity"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmh",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmh7": {
+    "description": "Sets the Frequency Modulation Harmonicity Ratio. Controls the timbre of the sound.",
+    "params": [
+      "harmonicity"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmh",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmh8": {
+    "description": "Sets the Frequency Modulation Harmonicity Ratio. Controls the timbre of the sound.",
+    "params": [
+      "harmonicity"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmh",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmi": {
+    "description": "Sets the Frequency Modulation of the synth. Controls the modulation index, which defines the brightness of the sound.",
+    "params": [
+      "brightness"
+    ],
+    "package": "core",
+    "category": "synth",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmi1": {
+    "description": "Sets the Frequency Modulation of the synth. Controls the modulation index, which defines the brightness of the sound.",
+    "params": [
+      "brightness"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmi",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmi2": {
+    "description": "Sets the Frequency Modulation of the synth. Controls the modulation index, which defines the brightness of the sound.",
+    "params": [
+      "brightness"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmi",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmi3": {
+    "description": "Sets the Frequency Modulation of the synth. Controls the modulation index, which defines the brightness of the sound.",
+    "params": [
+      "brightness"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmi",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmi4": {
+    "description": "Sets the Frequency Modulation of the synth. Controls the modulation index, which defines the brightness of the sound.",
+    "params": [
+      "brightness"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmi",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmi5": {
+    "description": "Sets the Frequency Modulation of the synth. Controls the modulation index, which defines the brightness of the sound.",
+    "params": [
+      "brightness"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmi",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmi6": {
+    "description": "Sets the Frequency Modulation of the synth. Controls the modulation index, which defines the brightness of the sound.",
+    "params": [
+      "brightness"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmi",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmi7": {
+    "description": "Sets the Frequency Modulation of the synth. Controls the modulation index, which defines the brightness of the sound.",
+    "params": [
+      "brightness"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmi",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmi8": {
+    "description": "Sets the Frequency Modulation of the synth. Controls the modulation index, which defines the brightness of the sound.",
+    "params": [
+      "brightness"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmi",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmrel": {
+    "description": "Release time for the FM envelope: how much modulation is applied after the note is released A number may be added afterwards to control the release of the envelope of any of the 8 individual FMs (e.g. fmrel8)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmrelease"
+  },
+  "fmrel1": {
+    "description": "Release time for the FM envelope: how much modulation is applied after the note is released A number may be added afterwards to control the release of the envelope of any of the 8 individual FMs (e.g. fmrel8)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmrelease"
+  },
+  "fmrel2": {
+    "description": "Release time for the FM envelope: how much modulation is applied after the note is released A number may be added afterwards to control the release of the envelope of any of the 8 individual FMs (e.g. fmrel8)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmrelease"
+  },
+  "fmrel3": {
+    "description": "Release time for the FM envelope: how much modulation is applied after the note is released A number may be added afterwards to control the release of the envelope of any of the 8 individual FMs (e.g. fmrel8)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmrelease"
+  },
+  "fmrel4": {
+    "description": "Release time for the FM envelope: how much modulation is applied after the note is released A number may be added afterwards to control the release of the envelope of any of the 8 individual FMs (e.g. fmrel8)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmrelease"
+  },
+  "fmrel5": {
+    "description": "Release time for the FM envelope: how much modulation is applied after the note is released A number may be added afterwards to control the release of the envelope of any of the 8 individual FMs (e.g. fmrel8)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmrelease"
+  },
+  "fmrel6": {
+    "description": "Release time for the FM envelope: how much modulation is applied after the note is released A number may be added afterwards to control the release of the envelope of any of the 8 individual FMs (e.g. fmrel8)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmrelease"
+  },
+  "fmrel7": {
+    "description": "Release time for the FM envelope: how much modulation is applied after the note is released A number may be added afterwards to control the release of the envelope of any of the 8 individual FMs (e.g. fmrel8)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmrelease"
+  },
+  "fmrel8": {
+    "description": "Release time for the FM envelope: how much modulation is applied after the note is released A number may be added afterwards to control the release of the envelope of any of the 8 individual FMs (e.g. fmrel8)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmrelease"
+  },
+  "fmrelease": {
+    "description": "Release time for the FM envelope: how much modulation is applied after the note is released A number may be added afterwards to control the release of the envelope of any of the 8 individual FMs (e.g. fmrel8)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope"
+  },
+  "fmrelease1": {
+    "description": "Release time for the FM envelope: how much modulation is applied after the note is released A number may be added afterwards to control the release of the envelope of any of the 8 individual FMs (e.g. fmrel8)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmrelease"
+  },
+  "fmrelease2": {
+    "description": "Release time for the FM envelope: how much modulation is applied after the note is released A number may be added afterwards to control the release of the envelope of any of the 8 individual FMs (e.g. fmrel8)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmrelease"
+  },
+  "fmrelease3": {
+    "description": "Release time for the FM envelope: how much modulation is applied after the note is released A number may be added afterwards to control the release of the envelope of any of the 8 individual FMs (e.g. fmrel8)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmrelease"
+  },
+  "fmrelease4": {
+    "description": "Release time for the FM envelope: how much modulation is applied after the note is released A number may be added afterwards to control the release of the envelope of any of the 8 individual FMs (e.g. fmrel8)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmrelease"
+  },
+  "fmrelease5": {
+    "description": "Release time for the FM envelope: how much modulation is applied after the note is released A number may be added afterwards to control the release of the envelope of any of the 8 individual FMs (e.g. fmrel8)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmrelease"
+  },
+  "fmrelease6": {
+    "description": "Release time for the FM envelope: how much modulation is applied after the note is released A number may be added afterwards to control the release of the envelope of any of the 8 individual FMs (e.g. fmrel8)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmrelease"
+  },
+  "fmrelease7": {
+    "description": "Release time for the FM envelope: how much modulation is applied after the note is released A number may be added afterwards to control the release of the envelope of any of the 8 individual FMs (e.g. fmrel8)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmrelease"
+  },
+  "fmrelease8": {
+    "description": "Release time for the FM envelope: how much modulation is applied after the note is released A number may be added afterwards to control the release of the envelope of any of the 8 individual FMs (e.g. fmrel8)",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmrelease"
+  },
+  "fmsus": {
+    "description": "Sustain level for the FM envelope: how much modulation is applied after the decay phase A number may be added afterwards to control the sustain of the envelope of any of the 8 individual FMs (e.g. fmsus7)",
+    "params": [
+      "level"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmsustain",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmsus1": {
+    "description": "Sustain level for the FM envelope: how much modulation is applied after the decay phase A number may be added afterwards to control the sustain of the envelope of any of the 8 individual FMs (e.g. fmsus7)",
+    "params": [
+      "level"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmsustain",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmsus2": {
+    "description": "Sustain level for the FM envelope: how much modulation is applied after the decay phase A number may be added afterwards to control the sustain of the envelope of any of the 8 individual FMs (e.g. fmsus7)",
+    "params": [
+      "level"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmsustain",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmsus3": {
+    "description": "Sustain level for the FM envelope: how much modulation is applied after the decay phase A number may be added afterwards to control the sustain of the envelope of any of the 8 individual FMs (e.g. fmsus7)",
+    "params": [
+      "level"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmsustain",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmsus4": {
+    "description": "Sustain level for the FM envelope: how much modulation is applied after the decay phase A number may be added afterwards to control the sustain of the envelope of any of the 8 individual FMs (e.g. fmsus7)",
+    "params": [
+      "level"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmsustain",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmsus5": {
+    "description": "Sustain level for the FM envelope: how much modulation is applied after the decay phase A number may be added afterwards to control the sustain of the envelope of any of the 8 individual FMs (e.g. fmsus7)",
+    "params": [
+      "level"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmsustain",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmsus6": {
+    "description": "Sustain level for the FM envelope: how much modulation is applied after the decay phase A number may be added afterwards to control the sustain of the envelope of any of the 8 individual FMs (e.g. fmsus7)",
+    "params": [
+      "level"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmsustain",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmsus7": {
+    "description": "Sustain level for the FM envelope: how much modulation is applied after the decay phase A number may be added afterwards to control the sustain of the envelope of any of the 8 individual FMs (e.g. fmsus7)",
+    "params": [
+      "level"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmsustain",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmsus8": {
+    "description": "Sustain level for the FM envelope: how much modulation is applied after the decay phase A number may be added afterwards to control the sustain of the envelope of any of the 8 individual FMs (e.g. fmsus7)",
+    "params": [
+      "level"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmsustain",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmsustain": {
+    "description": "Sustain level for the FM envelope: how much modulation is applied after the decay phase A number may be added afterwards to control the sustain of the envelope of any of the 8 individual FMs (e.g. fmsus7)",
+    "params": [
+      "level"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmsustain1": {
+    "description": "Sustain level for the FM envelope: how much modulation is applied after the decay phase A number may be added afterwards to control the sustain of the envelope of any of the 8 individual FMs (e.g. fmsus7)",
+    "params": [
+      "level"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmsustain",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmsustain2": {
+    "description": "Sustain level for the FM envelope: how much modulation is applied after the decay phase A number may be added afterwards to control the sustain of the envelope of any of the 8 individual FMs (e.g. fmsus7)",
+    "params": [
+      "level"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmsustain",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmsustain3": {
+    "description": "Sustain level for the FM envelope: how much modulation is applied after the decay phase A number may be added afterwards to control the sustain of the envelope of any of the 8 individual FMs (e.g. fmsus7)",
+    "params": [
+      "level"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmsustain",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmsustain4": {
+    "description": "Sustain level for the FM envelope: how much modulation is applied after the decay phase A number may be added afterwards to control the sustain of the envelope of any of the 8 individual FMs (e.g. fmsus7)",
+    "params": [
+      "level"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmsustain",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmsustain5": {
+    "description": "Sustain level for the FM envelope: how much modulation is applied after the decay phase A number may be added afterwards to control the sustain of the envelope of any of the 8 individual FMs (e.g. fmsus7)",
+    "params": [
+      "level"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmsustain",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmsustain6": {
+    "description": "Sustain level for the FM envelope: how much modulation is applied after the decay phase A number may be added afterwards to control the sustain of the envelope of any of the 8 individual FMs (e.g. fmsus7)",
+    "params": [
+      "level"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmsustain",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmsustain7": {
+    "description": "Sustain level for the FM envelope: how much modulation is applied after the decay phase A number may be added afterwards to control the sustain of the envelope of any of the 8 individual FMs (e.g. fmsus7)",
+    "params": [
+      "level"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmsustain",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmsustain8": {
+    "description": "Sustain level for the FM envelope: how much modulation is applied after the decay phase A number may be added afterwards to control the sustain of the envelope of any of the 8 individual FMs (e.g. fmsus7)",
+    "params": [
+      "level"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "fmsustain",
+    "example": "note(\"c e g b g e\")"
+  },
+  "fmwave": {
+    "description": "Waveform of the fm modulator A number may be added afterwards to control the waveform any of the 8 individual FMs (e.g. fmwave6)",
+    "params": [
+      "wave"
+    ],
+    "package": "core",
+    "category": "synth",
+    "example": "n(\"0 1 2 3\".fast(4)).scale(\"d:minor\").s(\"sine\").fmwave(\"<sine square sawtooth crackle>\").fm(4).fmh(2.01)"
+  },
+  "fmwave1": {
+    "description": "Waveform of the fm modulator A number may be added afterwards to control the waveform any of the 8 individual FMs (e.g. fmwave6)",
+    "params": [
+      "wave"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmwave",
+    "example": "n(\"0 1 2 3\".fast(4)).scale(\"d:minor\").s(\"sine\").fmwave(\"<sine square sawtooth crackle>\").fm(4).fmh(2.01)"
+  },
+  "fmwave2": {
+    "description": "Waveform of the fm modulator A number may be added afterwards to control the waveform any of the 8 individual FMs (e.g. fmwave6)",
+    "params": [
+      "wave"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmwave",
+    "example": "n(\"0 1 2 3\".fast(4)).scale(\"d:minor\").s(\"sine\").fmwave(\"<sine square sawtooth crackle>\").fm(4).fmh(2.01)"
+  },
+  "fmwave3": {
+    "description": "Waveform of the fm modulator A number may be added afterwards to control the waveform any of the 8 individual FMs (e.g. fmwave6)",
+    "params": [
+      "wave"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmwave",
+    "example": "n(\"0 1 2 3\".fast(4)).scale(\"d:minor\").s(\"sine\").fmwave(\"<sine square sawtooth crackle>\").fm(4).fmh(2.01)"
+  },
+  "fmwave4": {
+    "description": "Waveform of the fm modulator A number may be added afterwards to control the waveform any of the 8 individual FMs (e.g. fmwave6)",
+    "params": [
+      "wave"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmwave",
+    "example": "n(\"0 1 2 3\".fast(4)).scale(\"d:minor\").s(\"sine\").fmwave(\"<sine square sawtooth crackle>\").fm(4).fmh(2.01)"
+  },
+  "fmwave5": {
+    "description": "Waveform of the fm modulator A number may be added afterwards to control the waveform any of the 8 individual FMs (e.g. fmwave6)",
+    "params": [
+      "wave"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmwave",
+    "example": "n(\"0 1 2 3\".fast(4)).scale(\"d:minor\").s(\"sine\").fmwave(\"<sine square sawtooth crackle>\").fm(4).fmh(2.01)"
+  },
+  "fmwave6": {
+    "description": "Waveform of the fm modulator A number may be added afterwards to control the waveform any of the 8 individual FMs (e.g. fmwave6)",
+    "params": [
+      "wave"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmwave",
+    "example": "n(\"0 1 2 3\".fast(4)).scale(\"d:minor\").s(\"sine\").fmwave(\"<sine square sawtooth crackle>\").fm(4).fmh(2.01)"
+  },
+  "fmwave7": {
+    "description": "Waveform of the fm modulator A number may be added afterwards to control the waveform any of the 8 individual FMs (e.g. fmwave6)",
+    "params": [
+      "wave"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmwave",
+    "example": "n(\"0 1 2 3\".fast(4)).scale(\"d:minor\").s(\"sine\").fmwave(\"<sine square sawtooth crackle>\").fm(4).fmh(2.01)"
+  },
+  "fmwave8": {
+    "description": "Waveform of the fm modulator A number may be added afterwards to control the waveform any of the 8 individual FMs (e.g. fmwave6)",
+    "params": [
+      "wave"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "fmwave",
+    "example": "n(\"0 1 2 3\".fast(4)).scale(\"d:minor\").s(\"sine\").fmwave(\"<sine square sawtooth crackle>\").fm(4).fmh(2.01)"
+  },
+  "focus": {
+    "description": "Similar to compress, but doesn't leave gaps, and the 'focus' can be bigger than a cycle",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "s(\"bd hh sd hh\").focus(1/4, 3/4)"
+  },
+  "fold": {
+    "description": "Wavefolding distortion",
+    "params": [
+      "distortion",
+      "volume"
+    ],
+    "package": "core",
+    "category": "pattern"
+  },
+  "freq": {
+    "description": "Set frequency of sound.",
+    "params": [
+      "frequency"
+    ],
+    "package": "core",
+    "category": "harmony",
+    "example": "freq(\"220 110 440 110\").s(\"superzow\").osc()"
+  },
+  "fromBipolar": {
+    "description": "Assumes a numerical pattern, containing bipolar values in the range -1 .. 1 Returns a new pattern with values scaled to the unipolar range 0 .. 1",
+    "params": [],
+    "package": "core",
+    "category": "pattern"
+  },
+  "fscope": {
+    "description": "Renders an oscilloscope for the frequency domain of the audio signal.",
+    "params": [
+      "color",
+      "scale",
+      "pos",
+      "lean",
+      "min",
+      "max"
+    ],
+    "package": "webaudio",
+    "category": "visual",
+    "example": "s(\"sawtooth\").fscope()"
+  },
+  "ftype": {
+    "description": "Sets the filter type. The ladder filter is more aggressive.",
+    "params": [
+      "type"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "note(\"{f g g c d a a#}%8\").s(\"sawtooth\").lpenv(4).lpf(500).ftype(\"<0 1 2>\").lpq(1)"
+  },
+  "gain": {
+    "description": "Controls the gain by an exponential amount.",
+    "params": [
+      "amount"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "s(\"hh*8\").gain(\".4!2 1 .4!2 1 .4 1\").fast(2)"
+  },
+  "gap": {
+    "description": "Does absolutely nothing, but with a given metrical 'steps'",
+    "params": [
+      "steps"
+    ],
+    "package": "core",
+    "category": "routing",
+    "example": "gap(3) // \"~@3\""
+  },
+  "grow": {
+    "description": "*Experimental* Progressively grows the pattern by 'n' steps until the full pattern is played, or if a second value is given (using mininotation list syntax with :), that number of times.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "\"tha dhi thom nam\".grow(\"1\").sound()"
+  },
+  "hard": {
+    "description": "Hard-clipping distortion",
+    "params": [
+      "distortion",
+      "volume"
+    ],
+    "package": "core",
+    "category": "pattern"
+  },
+  "hcutoff": {
+    "description": "Applies the cutoff frequency of the high-pass filter. When using mininotation, you can also optionally add the 'hpq' parameter, separated by ':'.",
+    "params": [
+      "frequency"
+    ],
+    "package": "core",
+    "category": "filter",
+    "aliasOf": "hpf",
+    "example": "s(\"bd sd [~ bd] sd,hh*8\").hpf(\"<4000 2000 1000 500 200 100>\")"
+  },
+  "hp": {
+    "description": "Applies the cutoff frequency of the high-pass filter. When using mininotation, you can also optionally add the 'hpq' parameter, separated by ':'.",
+    "params": [
+      "frequency"
+    ],
+    "package": "core",
+    "category": "filter",
+    "aliasOf": "hpf",
+    "example": "s(\"bd sd [~ bd] sd,hh*8\").hpf(\"<4000 2000 1000 500 200 100>\")"
+  },
+  "hpa": {
+    "description": "Sets the attack duration for the highpass filter envelope.",
+    "params": [
+      "attack"
+    ],
+    "package": "core",
+    "category": "filter",
+    "aliasOf": "hpattack",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "hpattack": {
+    "description": "Sets the attack duration for the highpass filter envelope.",
+    "params": [
+      "attack"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "hpd": {
+    "description": "Sets the decay duration for the highpass filter envelope.",
+    "params": [
+      "decay"
+    ],
+    "package": "core",
+    "category": "filter",
+    "aliasOf": "hpdecay",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "hpdc": {
+    "description": "DC offset of the LFO for the highpass filter",
+    "params": [
+      "dcoffset"
+    ],
+    "package": "core",
+    "category": "filter"
+  },
+  "hpdecay": {
+    "description": "Sets the decay duration for the highpass filter envelope.",
+    "params": [
+      "decay"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "hpdepth": {
+    "description": "Depth of the LFO for the highpass filter",
+    "params": [
+      "depth"
+    ],
+    "package": "core",
+    "category": "filter"
+  },
+  "hpdepthfreq": {
+    "description": "Depth of the LFO for the hipass filter, in hz",
+    "params": [
+      "depth"
+    ],
+    "package": "core",
+    "category": "filter",
+    "aliasOf": "hpdepthfrequency",
+    "example": "note(\"<c c c# c c c4>*16\").s(\"sawtooth\").lpf(600).hpdepthfrequency(\"<200 500 100 0>\")"
+  },
+  "hpdepthfrequency": {
+    "description": "Depth of the LFO for the hipass filter, in hz",
+    "params": [
+      "depth"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "note(\"<c c c# c c c4>*16\").s(\"sawtooth\").lpf(600).hpdepthfrequency(\"<200 500 100 0>\")"
+  },
+  "hpe": {
+    "description": "Sets the highpass filter envelope modulation depth.",
+    "params": [
+      "modulation"
+    ],
+    "package": "core",
+    "category": "filter",
+    "aliasOf": "hpenv",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "hpenv": {
+    "description": "Sets the highpass filter envelope modulation depth.",
+    "params": [
+      "modulation"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "hpf": {
+    "description": "Applies the cutoff frequency of the high-pass filter. When using mininotation, you can also optionally add the 'hpq' parameter, separated by ':'.",
+    "params": [
+      "frequency"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "s(\"bd sd [~ bd] sd,hh*8\").hpf(\"<4000 2000 1000 500 200 100>\")"
+  },
+  "hpq": {
+    "description": "Controls the high-pass q-value.",
+    "params": [
+      "q"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "s(\"bd sd [~ bd] sd,hh*8\").hpf(2000).hpq(\"<0 10 20 30>\")"
+  },
+  "hpr": {
+    "description": "Sets the release time for the highpass filter envelope.",
+    "params": [
+      "release"
+    ],
+    "package": "core",
+    "category": "filter",
+    "aliasOf": "hprelease",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "hprate": {
+    "description": "Rate of the LFO for the highpass filter",
+    "params": [
+      "rate"
+    ],
+    "package": "core",
+    "category": "filter"
+  },
+  "hprelease": {
+    "description": "Sets the release time for the highpass filter envelope.",
+    "params": [
+      "release"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "hps": {
+    "description": "Sets the sustain amplitude for the highpass filter envelope.",
+    "params": [
+      "sustain"
+    ],
+    "package": "core",
+    "category": "filter",
+    "aliasOf": "hpsustain",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "hpshape": {
+    "description": "Shape of the LFO for the highpass filter",
+    "params": [
+      "shape"
+    ],
+    "package": "core",
+    "category": "filter"
+  },
+  "hpskew": {
+    "description": "Skew of the LFO for the highpass filter",
+    "params": [
+      "skew"
+    ],
+    "package": "core",
+    "category": "filter"
+  },
+  "hpsustain": {
+    "description": "Sets the sustain amplitude for the highpass filter envelope.",
+    "params": [
+      "sustain"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "hpsync": {
+    "description": "Cycle-synced rate of the LFO for the highpass filter",
+    "params": [
+      "rate"
+    ],
+    "package": "core",
+    "category": "filter"
+  },
+  "hresonance": {
+    "description": "Controls the high-pass q-value.",
+    "params": [
+      "q"
+    ],
+    "package": "core",
+    "category": "filter",
+    "aliasOf": "hpq",
+    "example": "s(\"bd sd [~ bd] sd,hh*8\").hpf(2000).hpq(\"<0 10 20 30>\")"
+  },
+  "hurry": {
+    "description": "Both speeds up the pattern (like 'fast') and the sample playback (like 'speed').",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "s(\"bd sd:2\").hurry(\"<1 2 4 3>\").slow(1.5)"
+  },
+  "hush": {
+    "description": "Silences a pattern.",
+    "params": [],
+    "package": "core",
+    "category": "transport",
+    "example": "stack("
+  },
+  "inhabit": {
+    "description": "Picks patterns (or plain values) either from a list (by index) or a lookup table (by name).",
+    "params": [
+      "pat",
+      "xs"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "\"<a b [a,b]>\".inhabit({a: s(\"bd(3,8)\"),"
+  },
+  "inhabitmod": {
+    "description": "The same as inhabit, but if you pick a number greater than the size of the list, it wraps around, rather than sticking at the maximum value.",
+    "params": [
+      "pat",
+      "xs"
+    ],
+    "package": "core",
+    "category": "pattern"
+  },
+  "inside": {
+    "description": "Carries out an operation 'inside' a cycle.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "\"0 1 2 3 4 3 2 1\".inside(4, rev).scale('C major').note()"
+  },
+  "into": {
+    "description": "Breaks a pattern into pieces according to the structure of a given pattern.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "sound(\"bd sd ht lt\").into(\"1 0\", hurry(2))"
+  },
+  "inv": {
+    "description": "Swaps 1s and 0s in a binary pattern.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "aliasOf": "invert",
+    "example": "s(\"bd\").struct(\"1 0 0 1 0 0 1 0\".lastOf(4, invert))"
+  },
+  "invert": {
+    "description": "Swaps 1s and 0s in a binary pattern.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "s(\"bd\").struct(\"1 0 0 1 0 0 1 0\".lastOf(4, invert))"
+  },
+  "ir": {
+    "description": "Sets the sample to use as an impulse response for the reverb.",
+    "params": [
+      "sample"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "iresponse",
+    "example": "s(\"bd sd [~ bd] sd\").room(.8).ir(\"<shaker_large:0 shaker_large:2>\")"
+  },
+  "irand": {
+    "description": "A continuous pattern of random integers, between 0 and n-1.",
+    "params": [
+      "n"
+    ],
+    "package": "core",
+    "category": "signal",
+    "example": "// randomly select scale notes from 0 - 7 (= C to C)"
+  },
+  "irbegin": {
+    "description": "Sets the beginning of the IR response sample",
+    "params": [
+      "begin"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "samples('github:switchangel/pad')"
+  },
+  "iresponse": {
+    "description": "Sets the sample to use as an impulse response for the reverb.",
+    "params": [
+      "sample"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "s(\"bd sd [~ bd] sd\").room(.8).ir(\"<shaker_large:0 shaker_large:2>\")"
+  },
+  "irspeed": {
+    "description": "Sets speed of the sample for the impulse response.",
+    "params": [
+      "speed"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "samples('github:switchangel/pad')"
+  },
+  "isaw": {
+    "description": "A sawtooth signal between 1 and 0 (like saw, but flipped).",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "note(\"<c3 [eb3,g3] g2 [g3,bb3]>*8\")"
+  },
+  "isaw2": {
+    "description": "A sawtooth signal between 1 and -1 (like saw2, but flipped).",
+    "params": [],
+    "package": "core",
+    "category": "signal"
+  },
+  "iter": {
+    "description": "Divides a pattern into a given number of subdivisions, plays the subdivisions in order, but increments the starting subdivision each cycle.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "note(\"0 1 2 3\".scale('A minor')).iter(4)"
+  },
+  "iterBack": {
+    "description": "Like iter, but plays the subdivisions in reverse order. Known as iter' in tidalcycles",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "note(\"0 1 2 3\".scale('A minor')).iterBack(4)"
+  },
+  "iterback": {
+    "description": "Like iter, but plays the subdivisions in reverse order. Known as iter' in tidalcycles",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "aliasOf": "iterBack",
+    "example": "note(\"0 1 2 3\".scale('A minor')).iterBack(4)"
+  },
+  "itri": {
+    "description": "An inverted triangle signal between 1 and 0 (like tri, but flipped).",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "n(itri.segment(8).range(0,7)).scale(\"C:minor\")"
+  },
+  "itri2": {
+    "description": "An inverted triangle signal between -1 and 1 (like itri, but bipolar).",
+    "params": [],
+    "package": "core",
+    "category": "signal"
+  },
+  "jux": {
+    "description": "The jux function creates strange stereo effects, by applying a function to a pattern, but only in the right-hand channel.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "s(\"bd lt [~ ht] mt cp ~ bd hh\").jux(rev)"
+  },
+  "juxBy": {
+    "description": "Jux with adjustable stereo width. 0 = mono, 1 = full stereo.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "s(\"bd lt [~ ht] mt cp ~ bd hh\").juxBy(\"<0 .5 1>/2\", rev)"
+  },
+  "juxby": {
+    "description": "Jux with adjustable stereo width. 0 = mono, 1 = full stereo.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "aliasOf": "juxBy",
+    "example": "s(\"bd lt [~ ht] mt cp ~ bd hh\").juxBy(\"<0 .5 1>/2\", rev)"
+  },
+  "keyDown": {
+    "description": "returns true when a key or array of keys is held Key name reference",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "keyDown(\"Control:j\").pick([s(\"bd(5,8)\"), s(\"cp(3,8)\")])"
+  },
+  "label": {
+    "description": "Sets the displayed text for an event on the pianoroll",
+    "params": [
+      "label"
+    ],
+    "package": "core",
+    "category": "visual"
+  },
+  "lastOf": {
+    "description": "Applies the given function every n cycles, starting from the last cycle.",
+    "params": [
+      "n",
+      "func"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "note(\"c3 d3 e3 g3\").lastOf(4, x=>x.rev())"
+  },
+  "late": {
+    "description": "Nudge a pattern to start later in time. Equivalent of Tidal's ~> operator",
+    "params": [
+      "cycles"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "\"bd ~\".stack(\"hh ~\".late(.1)).s()"
+  },
+  "layer": {
+    "description": "Layers the result of the given function(s). Like superimpose, but without the original pattern:",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "\"<0 2 4 6 ~ 4 ~ 2 0!3 ~!5>*8\""
+  },
+  "legato": {
+    "description": "Multiplies the duration with the given number. Also cuts samples off at the end if they exceed the duration.",
+    "params": [
+      "factor"
+    ],
+    "package": "core",
+    "category": "transport",
+    "aliasOf": "clip",
+    "example": "note(\"c a f e\").s(\"piano\").clip(\"<.5 1 2>\")"
+  },
+  "leslie": {
+    "description": "Emulation of a Leslie speaker: speakers rotating in a wooden amplified cabinet.",
+    "params": [
+      "wet"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "n(\"0,4,7\").s(\"supersquare\").leslie(\"<0 .4 .6 1>\").osc()"
+  },
+  "lfo": {
+    "description": "Configures an LFO. Can be called in sequence like pat.lfo(...).lfo(...) to set up multiple LFOs.",
+    "params": [
+      "config",
+      "config.control",
+      "config.subControl",
+      "config.rate",
+      "config.depth",
+      "config.depthabs",
+      "config.dcoffset",
+      "config.shape",
+      "config.skew",
+      "config.curve",
+      "config.sync",
+      "config.fxi",
+      "id"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "s(\"saw\").note(\"F1\").lpf(500).lfo()"
+  },
+  "linger": {
+    "description": "Selects the given fraction of the pattern and repeats that part to fill the remainder of the cycle.",
+    "params": [
+      "fraction"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "s(\"lt ht mt cp, [hh oh]*2\").linger(\"<1 .5 .25 .125>\")"
+  },
+  "lock": {
+    "description": "Specifies whether delaytime is calculated relative to cps.",
+    "params": [
+      "enable"
+    ],
+    "package": "core",
+    "category": "routing",
+    "example": "s(\"sd\").delay().lock(1).osc()"
+  },
+  "log": {
+    "description": "Writes the content of the current event to the console (visible in the side menu).",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "s(\"bd sd\").log()"
+  },
+  "logValues": {
+    "description": "A simplified version of log which writes all \"values\" (various configurable parameters) within the event to the console (visible in the side menu).",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "s(\"bd sd\").gain(\"0.25 0.5 1\").n(\"2 1 0\").logValues()"
+  },
+  "loop": {
+    "description": "Loops the sample. Note that the tempo of the loop is not synced with the cycle tempo.",
+    "params": [
+      "on"
+    ],
+    "package": "core",
+    "category": "sample",
+    "example": "s(\"casio\").loop(1)"
+  },
+  "loopAt": {
+    "description": "Makes the sample fit the given number of cycles by changing the speed.",
+    "params": [],
+    "package": "core",
+    "category": "sample",
+    "example": "samples({ rhodes: 'https://cdn.freesound.org/previews/132/132051_316502-lq.mp3' })"
+  },
+  "loopAtCps": {
+    "description": "Makes the sample fit the given number of cycles and cps value, by changing the speed.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "samples({ rhodes: 'https://cdn.freesound.org/previews/132/132051_316502-lq.mp3' })"
+  },
+  "loopBegin": {
+    "description": "Begin to loop at a specific point in the sample (inbetween begin and end).",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "sample",
+    "example": "s(\"space\").loop(1)"
+  },
+  "loopEnd": {
+    "description": "End the looping section at a specific point in the sample (inbetween begin and end).",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "sample",
+    "example": "s(\"space\").loop(1)"
+  },
+  "loopb": {
+    "description": "Begin to loop at a specific point in the sample (inbetween begin and end).",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "sample",
+    "aliasOf": "loopBegin",
+    "example": "s(\"space\").loop(1)"
+  },
+  "loope": {
+    "description": "End the looping section at a specific point in the sample (inbetween begin and end).",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "sample",
+    "aliasOf": "loopEnd",
+    "example": "s(\"space\").loop(1)"
+  },
+  "lp": {
+    "description": "Applies the cutoff frequency of the low-pass filter. When using mininotation, you can also optionally add the 'lpq' parameter, separated by ':'.",
+    "params": [
+      "frequency"
+    ],
+    "package": "core",
+    "category": "filter",
+    "aliasOf": "lpf",
+    "example": "s(\"bd sd [~ bd] sd,hh*6\").lpf(\"<4000 2000 1000 500 200 100>\")"
+  },
+  "lpa": {
+    "description": "Sets the attack duration for the lowpass filter envelope.",
+    "params": [
+      "attack"
+    ],
+    "package": "core",
+    "category": "filter",
+    "aliasOf": "lpattack",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "lpattack": {
+    "description": "Sets the attack duration for the lowpass filter envelope.",
+    "params": [
+      "attack"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "lpd": {
+    "description": "Sets the decay duration for the lowpass filter envelope.",
+    "params": [
+      "decay"
+    ],
+    "package": "core",
+    "category": "filter",
+    "aliasOf": "lpdecay",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "lpdc": {
+    "description": "DC offset of the LFO for the lowpass filter",
+    "params": [
+      "dcoffset"
+    ],
+    "package": "core",
+    "category": "filter"
+  },
+  "lpdecay": {
+    "description": "Sets the decay duration for the lowpass filter envelope.",
+    "params": [
+      "decay"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "lpdepth": {
+    "description": "Depth of the LFO for the lowpass filter",
+    "params": [
+      "depth"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "note(\"<c c c# c c c4>*16\").s(\"sawtooth\").lpf(600).lpdepth(\"<1 .5 1.8 0>\")"
+  },
+  "lpdepthfreq": {
+    "description": "Depth of the LFO for the lowpass filter, in HZ",
+    "params": [
+      "depth"
+    ],
+    "package": "core",
+    "category": "filter",
+    "aliasOf": "lpdepthfrequency",
+    "example": "note(\"<c c c# c c c4>*16\").s(\"sawtooth\").lpf(600).lpdepthfrequency(\"<200 500 100 0>\")"
+  },
+  "lpdepthfrequency": {
+    "description": "Depth of the LFO for the lowpass filter, in HZ",
+    "params": [
+      "depth"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "note(\"<c c c# c c c4>*16\").s(\"sawtooth\").lpf(600).lpdepthfrequency(\"<200 500 100 0>\")"
+  },
+  "lpe": {
+    "description": "Sets the lowpass filter envelope modulation depth.",
+    "params": [
+      "modulation"
+    ],
+    "package": "core",
+    "category": "filter",
+    "aliasOf": "lpenv",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "lpenv": {
+    "description": "Sets the lowpass filter envelope modulation depth.",
+    "params": [
+      "modulation"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "lpf": {
+    "description": "Applies the cutoff frequency of the low-pass filter. When using mininotation, you can also optionally add the 'lpq' parameter, separated by ':'.",
+    "params": [
+      "frequency"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "s(\"bd sd [~ bd] sd,hh*6\").lpf(\"<4000 2000 1000 500 200 100>\")"
+  },
+  "lpq": {
+    "description": "Controls the low-pass q-value.",
+    "params": [
+      "q"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "s(\"bd sd [~ bd] sd,hh*8\").lpf(2000).lpq(\"<0 10 20 30>\")"
+  },
+  "lpr": {
+    "description": "Sets the release time for the lowpass filter envelope.",
+    "params": [
+      "release"
+    ],
+    "package": "core",
+    "category": "filter",
+    "aliasOf": "lprelease",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "lprate": {
+    "description": "Rate of the LFO for the lowpass filter",
+    "params": [
+      "rate"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "note(\"<c c c# c c c4>*16\").s(\"sawtooth\").lpf(600).lprate(\"<4 8 2 1>\")"
+  },
+  "lprelease": {
+    "description": "Sets the release time for the lowpass filter envelope.",
+    "params": [
+      "release"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "lps": {
+    "description": "Sets the sustain amplitude for the lowpass filter envelope.",
+    "params": [
+      "sustain"
+    ],
+    "package": "core",
+    "category": "filter",
+    "aliasOf": "lpsustain",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "lpshape": {
+    "description": "Shape of the LFO for the lowpass filter",
+    "params": [
+      "shape"
+    ],
+    "package": "core",
+    "category": "filter"
+  },
+  "lpskew": {
+    "description": "Skew of the LFO for the lowpass filter",
+    "params": [
+      "skew"
+    ],
+    "package": "core",
+    "category": "filter"
+  },
+  "lpsustain": {
+    "description": "Sets the sustain amplitude for the lowpass filter envelope.",
+    "params": [
+      "sustain"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "note(\"c2 e2 f2 g2\")"
+  },
+  "lpsync": {
+    "description": "Cycle-synced rate of the LFO for the lowpass filter",
+    "params": [
+      "rate"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "note(\"<c c c# c c c4>*16\").s(\"sawtooth\").lpf(600).lpsync(\"<4 8 2 1>\")"
+  },
+  "lrate": {
+    "description": "Rate of modulation / rotation for leslie effect",
+    "params": [
+      "rate"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "n(\"0,4,7\").s(\"supersquare\").leslie(1).lrate(\"<1 2 4 8>\").osc()"
+  },
+  "lsize": {
+    "description": "Physical size of the cabinet in meters. Be careful, it might be slightly larger than your computer.",
+    "params": [
+      "meters"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "n(\"0,4,7\").s(\"supersquare\").leslie(1).lrate(2).lsize(\"<.1 .5 1>\").osc()"
+  },
+  "mask": {
+    "description": "Returns silence when mask is 0 or \"~\"",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "note(\"c [eb,g] d [eb,g]\").mask(\"<1 [0 1]>\")"
+  },
+  "midi": {
+    "description": "MIDI output: Opens a MIDI output port.",
+    "params": [
+      "midiport",
+      "options"
+    ],
+    "package": "midi",
+    "category": "midi",
+    "example": "note(\"c4\").midichan(1).midi('IAC Driver Bus 1')"
+  },
+  "midibend": {
+    "description": "MIDI pitch bend: Sends a MIDI pitch bend message.",
+    "params": [
+      "midibend"
+    ],
+    "package": "core",
+    "category": "midi",
+    "example": "note(\"c4\").midibend(sine.slow(4).range(-0.4,0.4)).midi()"
+  },
+  "midichan": {
+    "description": "MIDI channel: Sets the MIDI channel for the event.",
+    "params": [
+      "channel"
+    ],
+    "package": "core",
+    "category": "midi",
+    "example": "note(\"c4\").midichan(1).midi()"
+  },
+  "midicmd": {
+    "description": "MIDI command: Sends a MIDI command message.",
+    "params": [
+      "command"
+    ],
+    "package": "core",
+    "category": "midi",
+    "example": "midicmd(\"clock*48,<start stop>/2\").midi()"
+  },
+  "midikeys": {
+    "description": "MIDI keyboard: Opens a MIDI input port to receive MIDI keyboard messages.",
+    "params": [
+      "input"
+    ],
+    "package": "midi",
+    "category": "midi",
+    "example": "const kb = await midikeys('Arturia KeyStep 32')"
+  },
+  "midimaps": {
+    "description": "Adds midimaps to the registry. Inside each midimap, control names (e.g. lpf) are mapped to cc numbers.",
+    "params": [],
+    "package": "midi",
+    "category": "midi",
+    "example": "midimaps({ mymap: { lpf: 74 } })"
+  },
+  "midin": {
+    "description": "MIDI input: Opens a MIDI input port to receive MIDI control change messages.",
+    "params": [
+      "input"
+    ],
+    "package": "midi",
+    "category": "midi",
+    "example": "const cc = await midin('IAC Driver Bus 1')"
+  },
+  "midiport": {
+    "description": "MIDI port: Sets the MIDI port for the event.",
+    "params": [
+      "port"
+    ],
+    "package": "core",
+    "category": "midi",
+    "example": "note(\"c a f e\").midiport(\"<0 1 2 3>\").midi()"
+  },
+  "miditouch": {
+    "description": "MIDI key after touch: Sends a MIDI key after touch message.",
+    "params": [
+      "miditouch"
+    ],
+    "package": "core",
+    "category": "midi",
+    "example": "note(\"c4\").miditouch(sine.slow(4).range(0,1)).midi()"
+  },
+  "mode": {
+    "description": "Remove anchor note from the voicing. Useful for melody harmonization",
+    "params": [
+      "modeName"
+    ],
+    "package": "core",
+    "category": "harmony",
+    "example": "mode(\"<below above duck root>\").chord(\"C\").voicing()"
+  },
+  "morph": {
+    "description": "Takes two binary rhythms represented as lists of 1s and 0s, and a number between 0 and 1 that morphs between them.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "sound(\"hh\").struct(morph([1,0,1,0,1,0,1,0], // straight rhythm"
+  },
+  "mousex": {
+    "description": "The mouse's x position value ranges from 0 to 1.",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "n(mousex.segment(4).range(0,7)).scale(\"C:minor\")"
+  },
+  "mousey": {
+    "description": "The mouse's y position value ranges from 0 to 1.",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "n(mousey.segment(4).range(0,7)).scale(\"C:minor\")"
+  },
+  "mul": {
+    "description": "Multiplies each number by the given factor.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "\"<1 1.5 [1.66, <2 2.33>]>*4\".mul(150).freq()"
+  },
+  "n": {
+    "description": "Selects the given index from the sample map. Numbers too high will wrap around. n can also be used to play midi numbers, but it is recommended to use note instead.",
+    "params": [
+      "value"
+    ],
+    "package": "core",
+    "category": "harmony",
+    "example": "s(\"bd sd [~ bd] sd,hh*6\").n(\"<0 1>\")"
+  },
+  "never": {
+    "description": "Shorthand for .sometimesBy(0, fn) (never calls fn)",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "s(\"hh*8\").never(x=>x.speed(\"0.5\"))"
+  },
+  "noise": {
+    "description": "Adds pink noise to the mix",
+    "params": [
+      "wet"
+    ],
+    "package": "core",
+    "category": "synth",
+    "example": "sound(\"<white pink brown>/2\")"
+  },
+  "note": {
+    "description": "Plays the given note name or midi number. A note name consists of - a letter (a-g or A-G) - optional accidentals (b or #) - optional (possibly negative) octave number (0-9).",
+    "params": [],
+    "package": "core",
+    "category": "harmony",
+    "example": "note(\"c a f e\")"
+  },
+  "nrpnn": {
+    "description": "MIDI NRPN non-registered parameter number: Sends a MIDI NRPN non-registered parameter number message.",
+    "params": [
+      "nrpnn"
+    ],
+    "package": "core",
+    "category": "midi",
+    "example": "note(\"c4\").nrpnn(\"1:8\").nrpv(\"123\").midichan(1).midi()"
+  },
+  "nrpv": {
+    "description": "MIDI NRPN non-registered parameter value: Sends a MIDI NRPN non-registered parameter value message.",
+    "params": [
+      "nrpv"
+    ],
+    "package": "core",
+    "category": "midi",
+    "example": "note(\"c4\").nrpnn(\"1:8\").nrpv(\"123\").midichan(1).midi()"
+  },
+  "o": {
+    "description": "An orbit is a global parameter context for patterns. Patterns with the same orbit will share the same global effects.",
+    "params": [
+      "number"
+    ],
+    "package": "core",
+    "category": "routing",
+    "aliasOf": "orbit",
+    "example": "stack("
+  },
+  "oct": {
+    "description": "Sets the default octave of a synth.",
+    "params": [
+      "octave"
+    ],
+    "package": "core",
+    "category": "harmony",
+    "aliasOf": "octave",
+    "example": "n(\"0,4,7\").scale(\"F:minor\").s('supersaw').octave(\"<0 1 2 3>\")"
+  },
+  "octave": {
+    "description": "Sets the default octave of a synth.",
+    "params": [
+      "octave"
+    ],
+    "package": "core",
+    "category": "harmony",
+    "example": "n(\"0,4,7\").scale(\"F:minor\").s('supersaw').octave(\"<0 1 2 3>\")"
+  },
+  "octaves": {
+    "description": "How many octaves are voicing steps spread apart, defaults to 1",
+    "params": [],
+    "package": "core",
+    "category": "harmony"
+  },
+  "off": {
+    "description": "Superimposes the function result on top of the original pattern, delayed by the given time.",
+    "params": [
+      "time",
+      "func"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "\"c3 eb3 g3\".off(1/8, x=>x.add(7)).note()"
+  },
+  "offset": {
+    "description": "Sets how the voicing is offset from the anchored position",
+    "params": [
+      "shift"
+    ],
+    "package": "core",
+    "category": "other",
+    "example": "chord(\"<Am C D F Am E Am E>\").offset(\"<0 1 2 3 4 5>\") // alter the voicing each time"
+  },
+  "often": {
+    "description": "Shorthand for .sometimesBy(0.75, fn)",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "s(\"hh*8\").often(x=>x.speed(\"0.5\"))"
+  },
+  "onTriggerTime": {
+    "description": "make something happen on event time uses browser timeout which is innacurate for audio tasks",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "s(\"bd!8\").onTriggerTime((hap) => {console.log(hap)})"
+  },
+  "orbit": {
+    "description": "An orbit is a global parameter context for patterns. Patterns with the same orbit will share the same global effects.",
+    "params": [
+      "number"
+    ],
+    "package": "core",
+    "category": "routing",
+    "example": "stack("
+  },
+  "oschost": {
+    "description": "The host to send open sound control messages to. Requires running the OSC bridge.",
+    "params": [
+      "oschost"
+    ],
+    "package": "core",
+    "category": "synth",
+    "example": "note(\"c4\").oschost('127.0.0.1').oscport(57120).osc();"
+  },
+  "oscport": {
+    "description": "The port to send open sound control messages to. Requires running the OSC bridge.",
+    "params": [
+      "oscport"
+    ],
+    "package": "core",
+    "category": "synth",
+    "example": "note(\"c4\").oschost('127.0.0.1').oscport(57120).osc();"
+  },
+  "outside": {
+    "description": "Carries out an operation 'outside' a cycle.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "\"<[0 1] 2 [3 4] 5>\".outside(4, rev).scale('C major').note()"
+  },
+  "pace": {
+    "description": "*Experimental* Speeds a pattern up or down, to fit to the given number of steps per cycle.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "sound(\"bd sd cp\").pace(4)"
+  },
+  "palindrome": {
+    "description": "Applies rev to a pattern every other cycle, so that the pattern alternates between forwards and backwards.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "note(\"c d e g\").palindrome()"
+  },
+  "pan": {
+    "description": "Sets position in stereo.",
+    "params": [
+      "pan"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "s(\"[bd hh]*2\").pan(\"<.5 1 .5 0>\")"
+  },
+  "panchor": {
+    "description": "Sets the range anchor of the envelope: - anchor 0: range = [note, note + penv] - anchor 1: range = [note - penv, note] If you don't set an anchor, the value will default to the psustain value.",
+    "params": [
+      "anchor"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "note(\"c c4\").penv(12).panchor(\"<0 .5 1 .5>\")"
+  },
+  "parray": {
+    "description": "Turns a list of patterns into a single pattern which outputs list-values",
+    "params": [],
+    "package": "core",
+    "category": "pattern"
+  },
+  "partials": {
+    "description": "Scale the magnitude of the harmonics of one of the core synths ('sine', 'tri', 'saw', ..) Can also be used to create a new synth via s('user').partials(...)",
+    "params": [
+      "magnitudes"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "s(\"user\").seg(16).n(irand(8)).scale(\"A:major\")"
+  },
+  "patt": {
+    "description": "Attack time of pitch envelope.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "pattack",
+    "example": "note(\"c eb g bb\").pattack(\"0 .1 .25 .5\").slow(2)"
+  },
+  "pattack": {
+    "description": "Attack time of pitch envelope.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "example": "note(\"c eb g bb\").pattack(\"0 .1 .25 .5\").slow(2)"
+  },
+  "pcurve": {
+    "description": "Curve of envelope. Defaults to linear. exponential is good for kicks",
+    "params": [
+      "type"
+    ],
+    "package": "core",
+    "category": "synth",
+    "example": "note(\"g1*4\")"
+  },
+  "pdec": {
+    "description": "Decay time of pitch envelope.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "pdecay",
+    "example": "note(\"<c eb g bb>\").pdecay(\"<0 .1 .25 .5>\")"
+  },
+  "pdecay": {
+    "description": "Decay time of pitch envelope.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "example": "note(\"<c eb g bb>\").pdecay(\"<0 .1 .25 .5>\")"
+  },
+  "penv": {
+    "description": "Amount of pitch envelope. Negative values will flip the envelope.",
+    "params": [
+      "semitones"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "example": "note(\"c\")"
+  },
+  "per": {
+    "description": "A pattern measuring the 'shortness' of events, or in other words, the duration of pattern events, in events per cycle. per doesn't have structure itself, but takes structure, and therefore event durations, from the pattern that it is com...",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "// Shorter events are more distorted"
+  },
+  "perCycle": {
+    "description": "A pattern measuring the 'shortness' of events, or in other words, the duration of pattern events, in events per cycle. per doesn't have structure itself, but takes structure, and therefore event durations, from the pattern that it is com...",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "aliasOf": "per",
+    "example": "// Shorter events are more distorted"
+  },
+  "perlin": {
+    "description": "Generates a continuous pattern of perlin noise, in the range 0..1.",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "// randomly change the cutoff"
+  },
+  "perx": {
+    "description": "Like per but measures the shortness of events according to an exponential curve.",
+    "params": [],
+    "package": "core",
+    "category": "signal"
+  },
+  "ph": {
+    "description": "Phaser audio effect that approximates popular guitar pedals.",
+    "params": [
+      "speed"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "phaser",
+    "example": "n(run(8)).scale(\"D:pentatonic\").s(\"sawtooth\").release(0.5)"
+  },
+  "phasdp": {
+    "description": "The amount the signal is affected by the phaser effect. Defaults to 0.75",
+    "params": [
+      "depth"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "phaserdepth",
+    "example": "n(run(8)).scale(\"D:pentatonic\").s(\"sawtooth\").release(0.5)"
+  },
+  "phaser": {
+    "description": "Phaser audio effect that approximates popular guitar pedals.",
+    "params": [
+      "speed"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "n(run(8)).scale(\"D:pentatonic\").s(\"sawtooth\").release(0.5)"
+  },
+  "phasercenter": {
+    "description": "The center frequency of the phaser in HZ. Defaults to 1000",
+    "params": [
+      "centerfrequency"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "n(run(8)).scale(\"D:pentatonic\").s(\"sawtooth\").release(0.5)"
+  },
+  "phaserdepth": {
+    "description": "The amount the signal is affected by the phaser effect. Defaults to 0.75",
+    "params": [
+      "depth"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "n(run(8)).scale(\"D:pentatonic\").s(\"sawtooth\").release(0.5)"
+  },
+  "phaserrate": {
+    "description": "Phaser audio effect that approximates popular guitar pedals.",
+    "params": [
+      "speed"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "phaser",
+    "example": "n(run(8)).scale(\"D:pentatonic\").s(\"sawtooth\").release(0.5)"
+  },
+  "phasersweep": {
+    "description": "The frequency sweep range of the lfo for the phaser effect. Defaults to 2000",
+    "params": [
+      "phasersweep"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "n(run(8)).scale(\"D:pentatonic\").s(\"sawtooth\").release(0.5)"
+  },
+  "phases": {
+    "description": "Rotates the harmonics of one of the core synths ('sine', 'tri', 'saw', 'user', ..) by a list of phases",
+    "params": [
+      "phases"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "// Phase cancellation"
+  },
+  "phc": {
+    "description": "The center frequency of the phaser in HZ. Defaults to 1000",
+    "params": [
+      "centerfrequency"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "phasercenter",
+    "example": "n(run(8)).scale(\"D:pentatonic\").s(\"sawtooth\").release(0.5)"
+  },
+  "phd": {
+    "description": "The amount the signal is affected by the phaser effect. Defaults to 0.75",
+    "params": [
+      "depth"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "phaserdepth",
+    "example": "n(run(8)).scale(\"D:pentatonic\").s(\"sawtooth\").release(0.5)"
+  },
+  "phs": {
+    "description": "The frequency sweep range of the lfo for the phaser effect. Defaults to 2000",
+    "params": [
+      "phasersweep"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "phasersweep",
+    "example": "n(run(8)).scale(\"D:pentatonic\").s(\"sawtooth\").release(0.5)"
+  },
+  "pianoroll": {
+    "description": "Visualises a pattern as a scrolling 'pianoroll', displayed in the background of the editor.",
+    "params": [
+      "options",
+      "cycles",
+      "playhead",
+      "vertical",
+      "labels",
+      "flipTime",
+      "flipValues",
+      "overscan",
+      "hideNegative",
+      "smear",
+      "fold",
+      "active",
+      "inactive",
+      "background",
+      "playheadColor",
+      "fill",
+      "fillActive",
+      "stroke",
+      "strokeActive",
+      "hideInactive",
+      "colorizeInactive",
+      "fontFamily",
+      "minMidi",
+      "maxMidi",
+      "autorange"
+    ],
+    "package": "draw",
+    "category": "visual",
+    "example": "note(\"c2 a2 eb2\")"
+  },
+  "pick": {
+    "description": "Picks patterns (or plain values) either from a list (by index) or a lookup table (by name).",
+    "params": [
+      "pat",
+      "xs"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "note(\"<0 1 2!2 3>\".pick([\"g a\", \"e f\", \"f g f g\" , \"g c d\"]))"
+  },
+  "pickF": {
+    "description": "pickF lets you use a pattern of numbers to pick which function to apply to another pattern.",
+    "params": [
+      "pat",
+      "lookup",
+      "funcs"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "s(\"bd [rim hh]\").pickF(\"<0 1 2>\", [rev,jux(rev),fast(2)])"
+  },
+  "pickOut": {
+    "description": "Similar to pick, but it applies an outerJoin instead of an innerJoin.",
+    "params": [
+      "pat",
+      "xs"
+    ],
+    "package": "core",
+    "category": "pattern"
+  },
+  "pickReset": {
+    "description": "Similar to pick, but the choosen pattern is reset when its index is triggered.",
+    "params": [
+      "pat",
+      "xs"
+    ],
+    "package": "core",
+    "category": "pattern"
+  },
+  "pickRestart": {
+    "description": "Similar to pick, but the choosen pattern is restarted when its index is triggered.",
+    "params": [
+      "pat",
+      "xs"
+    ],
+    "package": "core",
+    "category": "pattern"
+  },
+  "pickSqueeze": {
+    "description": "Picks patterns (or plain values) either from a list (by index) or a lookup table (by name).",
+    "params": [
+      "pat",
+      "xs"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "aliasOf": "inhabit",
+    "example": "\"<a b [a,b]>\".inhabit({a: s(\"bd(3,8)\"),"
+  },
+  "pickmod": {
+    "description": "The same as pick, but if you pick a number greater than the size of the list, it wraps around, rather than sticking at the maximum value.",
+    "params": [
+      "pat",
+      "xs"
+    ],
+    "package": "core",
+    "category": "pattern"
+  },
+  "pickmodF": {
+    "description": "The same as pickF, but if you pick a number greater than the size of the functions list, it wraps around, rather than sticking at the maximum value.",
+    "params": [
+      "pat",
+      "lookup",
+      "funcs"
+    ],
+    "package": "core",
+    "category": "pattern"
+  },
+  "pickmodOut": {
+    "description": "The same as pickOut, but if you pick a number greater than the size of the list, it wraps around, rather than sticking at the maximum value.",
+    "params": [
+      "pat",
+      "xs"
+    ],
+    "package": "core",
+    "category": "pattern"
+  },
+  "pickmodReset": {
+    "description": "The same as pickReset, but if you pick a number greater than the size of the list, it wraps around, rather than sticking at the maximum value.",
+    "params": [
+      "pat",
+      "xs"
+    ],
+    "package": "core",
+    "category": "pattern"
+  },
+  "pickmodRestart": {
+    "description": "The same as pickRestart, but if you pick a number greater than the size of the list, it wraps around, rather than sticking at the maximum value.",
+    "params": [
+      "pat",
+      "xs"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "\"<a@2 b@2 c@2 d@2>\".pickRestart({"
+  },
+  "pickmodSqueeze": {
+    "description": "The same as inhabit, but if you pick a number greater than the size of the list, it wraps around, rather than sticking at the maximum value.",
+    "params": [
+      "pat",
+      "xs"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "aliasOf": "inhabitmod"
+  },
+  "pitchwheel": {
+    "description": "Renders a pitch circle to visualize frequencies within one octave",
+    "params": [
+      "hapcircles",
+      "circle",
+      "edo",
+      "root",
+      "thickness",
+      "hapRadius",
+      "mode",
+      "margin"
+    ],
+    "package": "draw",
+    "category": "visual",
+    "example": "n(\"0 .. 12\").scale(\"C:chromatic\")"
+  },
+  "ply": {
+    "description": "The ply function repeats each event the given number of times.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "s(\"bd ~ sd cp\").ply(\"<1 2 3>\")"
+  },
+  "plyForEach": {
+    "description": "The plyForEach function repeats each event the given number of times, applying the given function to each event.",
+    "params": [
+      "factor",
+      "func"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "\"<0 [2 4]>\""
+  },
+  "plyWith": {
+    "description": "The plyWith function repeats each event the given number of times, applying the given function to each event.\\n",
+    "params": [
+      "factor",
+      "func"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "\"<0 [2 4]>\""
+  },
+  "plyforeach": {
+    "description": "The plyForEach function repeats each event the given number of times, applying the given function to each event.",
+    "params": [
+      "factor",
+      "func"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "aliasOf": "plyForEach",
+    "example": "\"<0 [2 4]>\""
+  },
+  "plywith": {
+    "description": "The plyWith function repeats each event the given number of times, applying the given function to each event.\\n",
+    "params": [
+      "factor",
+      "func"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "aliasOf": "plyWith",
+    "example": "\"<0 [2 4]>\""
+  },
+  "pm": {
+    "description": "*Experimental* Aligns the steps of the patterns, creating polymeters.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "aliasOf": "polymeter",
+    "example": "// The same as note(\"{c eb g, c2 g2}%6\")"
+  },
+  "polymeter": {
+    "description": "*Experimental* Aligns the steps of the patterns, creating polymeters.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "// The same as note(\"{c eb g, c2 g2}%6\")"
+  },
+  "polyrhythm": {
+    "description": "The given items are played at the same time at the same length.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "aliasOf": "stack",
+    "example": "stack(\"g3\", \"b3\", [\"e4\", \"d4\"]).note()"
+  },
+  "postgain": {
+    "description": "Gain applied after all effects have been processed.",
+    "params": [],
+    "package": "core",
+    "category": "fx",
+    "example": "s(\"bd sd [~ bd] sd,hh*8\")"
+  },
+  "pr": {
+    "description": "The given items are played at the same time at the same length.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "aliasOf": "stack",
+    "example": "stack(\"g3\", \"b3\", [\"e4\", \"d4\"]).note()"
+  },
+  "prel": {
+    "description": "Release time of pitch envelope",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "prelease",
+    "example": "note(\"<c eb g bb> ~\")"
+  },
+  "prelease": {
+    "description": "Release time of pitch envelope",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "example": "note(\"<c eb g bb> ~\")"
+  },
+  "press": {
+    "description": "Syncopates a rhythm, by shifting each event halfway into its timespan.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "stack(s(\"hh*4\"),"
+  },
+  "pressBy": {
+    "description": "Like press, but allows you to specify the amount by which each event is shifted. pressBy(0.5) is the same as press, while pressBy(1/3) shifts each event by a third of its timespan.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "stack(s(\"hh*4\"),"
+  },
+  "progNum": {
+    "description": "MIDI program number: Sends a MIDI program change message.",
+    "params": [
+      "program"
+    ],
+    "package": "core",
+    "category": "midi",
+    "example": "note(\"c4\").progNum(10).midichan(1).midi()"
+  },
+  "punchcard": {
+    "description": "Visualises a pattern as a scrolling 'pianoroll', displayed in the background of the editor.",
+    "params": [
+      "options",
+      "cycles",
+      "playhead",
+      "vertical",
+      "labels",
+      "flipTime",
+      "flipValues",
+      "overscan",
+      "hideNegative",
+      "smear",
+      "fold",
+      "active",
+      "inactive",
+      "background",
+      "playheadColor",
+      "fill",
+      "fillActive",
+      "stroke",
+      "strokeActive",
+      "hideInactive",
+      "colorizeInactive",
+      "fontFamily",
+      "minMidi",
+      "maxMidi",
+      "autorange"
+    ],
+    "package": "draw",
+    "category": "visual",
+    "aliasOf": "pianoroll",
+    "example": "note(\"c2 a2 eb2\")"
+  },
+  "pure": {
+    "description": "A discrete value that repeats once per cycle.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "pure('e4') // \"e4\""
+  },
+  "pw": {
+    "description": "Controls the pulsewidth of the pulse oscillator",
+    "params": [
+      "pulsewidth"
+    ],
+    "package": "core",
+    "category": "synth",
+    "example": "note(\"{f a c e}%16\").s(\"pulse\").pw(\".8:1:.2\")"
+  },
+  "pwrate": {
+    "description": "Controls the lfo rate for the pulsewidth of the pulse oscillator",
+    "params": [
+      "rate"
+    ],
+    "package": "core",
+    "category": "synth",
+    "example": "n(run(8)).scale(\"D:pentatonic\").s(\"pulse\").pw(\"0.5\").pwrate(\"<5 .1 25>\").pwsweep(\"<0.3 .8>\")"
+  },
+  "pwsweep": {
+    "description": "Controls the lfo sweep for the pulsewidth of the pulse oscillator",
+    "params": [
+      "sweep"
+    ],
+    "package": "core",
+    "category": "synth",
+    "example": "n(run(8)).scale(\"D:pentatonic\").s(\"pulse\").pw(\"0.5\").pwrate(\"<5 .1 25>\").pwsweep(\"<0.3 .8>\")"
+  },
+  "rand": {
+    "description": "A continuous pattern of random numbers, between 0 and 1.",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "// randomly change the cutoff"
+  },
+  "rand2": {
+    "description": "A continuous pattern of random numbers, between -1 and 1",
+    "params": [],
+    "package": "core",
+    "category": "signal"
+  },
+  "randL": {
+    "description": "Creates a list of random numbers of the given length",
+    "params": [
+      "n"
+    ],
+    "package": "core",
+    "category": "signal",
+    "example": "s(\"saw\").seg(16).n(irand(12)).scale(\"F1:minor\")"
+  },
+  "randcat": {
+    "description": "Picks one of the elements at random each cycle.",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "aliasOf": "chooseCycles",
+    "example": "chooseCycles(\"bd\", \"hh\", \"sd\").s().fast(8)"
+  },
+  "range": {
+    "description": "Assumes a numerical pattern, containing unipolar values in the range 0 .. 1.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "s(\"[bd sd]*2,hh*8\")"
+  },
+  "range2": {
+    "description": "Assumes a numerical pattern, containing bipolar values in the range -1 .. 1 Returns a new pattern with values scaled to the given min/max range.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "s(\"[bd sd]*2,hh*8\")"
+  },
+  "rangex": {
+    "description": "Assumes a numerical pattern, containing unipolar values in the range 0 .. 1 Returns a new pattern with values scaled to the given min/max range, following an exponential curve.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "s(\"[bd sd]*2,hh*8\")"
+  },
+  "rarely": {
+    "description": "Shorthand for .sometimesBy(0.25, fn)",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "s(\"hh*8\").rarely(x=>x.speed(\"0.5\"))"
+  },
+  "ratio": {
+    "description": "Allows dividing numbers via list notation using \":\". Returns a new pattern with just numbers.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "ratio(\"1, 5:4, 3:2\").mul(110)"
+  },
+  "rdim": {
+    "description": "Reverb lowpass frequency at -60dB (in hertz). When this property is changed, the reverb will be recaculated, so only change this sparsely..",
+    "params": [
+      "frequency"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "roomdim",
+    "example": "s(\"bd sd [~ bd] sd\").room(0.5).rlp(10000).rdim(8000)"
+  },
+  "ref": {
+    "description": "exposes a custom value at query time. basically allows mutating state without evaluation",
+    "params": [],
+    "package": "core",
+    "category": "pattern"
+  },
+  "register": {
+    "description": "Registers a new pattern method. The method is added to the Pattern class + the standalone function is returned from register.",
+    "params": [
+      "name",
+      "func",
+      "patternify"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "const vlpf = register('vlpf', (freq, pat) => {"
+  },
+  "rel": {
+    "description": "Amplitude envelope release time: The time it takes after the offset to go from sustain level to zero.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "release",
+    "example": "note(\"c3 e3 g3 c4\").release(\"<0 .1 .4 .6 1>/2\")"
+  },
+  "release": {
+    "description": "Amplitude envelope release time: The time it takes after the offset to go from sustain level to zero.",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "example": "note(\"c3 e3 g3 c4\").release(\"<0 .1 .4 .6 1>/2\")"
+  },
+  "repeatCycles": {
+    "description": "Repeats each cycle the given number of times.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "note(irand(12).add(34)).segment(4).repeatCycles(2).s(\"gm_acoustic_guitar_nylon\")"
+  },
+  "replicate": {
+    "description": "*Experimental* replicate is similar to fast in that it increases its density, but it also increases the step count accordingly.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "stepcat("
+  },
+  "reset": {
+    "description": "Resets the pattern to the start of the cycle for each onset of the reset pattern.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "s(\"[<bd lt> sd]*2, hh*8\").reset(\"<x@3 x(5,8)>\")"
+  },
+  "resonance": {
+    "description": "Controls the low-pass q-value.",
+    "params": [
+      "q"
+    ],
+    "package": "core",
+    "category": "filter",
+    "aliasOf": "lpq",
+    "example": "s(\"bd sd [~ bd] sd,hh*8\").lpf(2000).lpq(\"<0 10 20 30>\")"
+  },
+  "restart": {
+    "description": "Restarts the pattern for each onset of the restart pattern. While reset will only reset the current cycle, restart will start from cycle 0.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "s(\"[<bd lt> sd]*2, hh*8\").restart(\"<x@3 x(5,8)>\")"
+  },
+  "rev": {
+    "description": "Reverse all cycles in a pattern. See also revv for reversing a whole pattern.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "note(\"c d e g\").rev()"
+  },
+  "revv": {
+    "description": "Reverse a whole pattern. See also rev for reversing each cycle.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "// This is the same as `<[g e] [d c]>`. If `rev()` is used, you get"
+  },
+  "rfade": {
+    "description": "Reverb fade time (in seconds). When this property is changed, the reverb will be recaculated, so only change this sparsely..",
+    "params": [
+      "seconds"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "roomfade",
+    "example": "s(\"bd sd [~ bd] sd\").room(0.5).rlp(10000).rfade(0.5)"
+  },
+  "rib": {
+    "description": "Loops the pattern inside an offset for cycles. If you think of the entire span of time in cycles as a ribbon, you can cut a single piece and loop it.",
+    "params": [
+      "offset",
+      "cycles"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "aliasOf": "ribbon",
+    "example": "note(\"<c d e f>\").ribbon(1, 2)"
+  },
+  "ribbon": {
+    "description": "Loops the pattern inside an offset for cycles. If you think of the entire span of time in cycles as a ribbon, you can cut a single piece and loop it.",
+    "params": [
+      "offset",
+      "cycles"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "note(\"<c d e f>\").ribbon(1, 2)"
+  },
+  "rlp": {
+    "description": "Reverb lowpass starting frequency (in hertz). When this property is changed, the reverb will be recaculated, so only change this sparsely..",
+    "params": [
+      "frequency"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "roomlp",
+    "example": "s(\"bd sd [~ bd] sd\").room(0.5).rlp(10000)"
+  },
+  "room": {
+    "description": "Sets the level of reverb. When using mininotation, you can also optionally add the 'size' parameter, separated by ':'.",
+    "params": [
+      "level"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "s(\"bd sd [~ bd] sd\").room(\"<0 .2 .4 .6 .8 1>\")"
+  },
+  "roomdim": {
+    "description": "Reverb lowpass frequency at -60dB (in hertz). When this property is changed, the reverb will be recaculated, so only change this sparsely..",
+    "params": [
+      "frequency"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "s(\"bd sd [~ bd] sd\").room(0.5).rlp(10000).rdim(8000)"
+  },
+  "roomfade": {
+    "description": "Reverb fade time (in seconds). When this property is changed, the reverb will be recaculated, so only change this sparsely..",
+    "params": [
+      "seconds"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "s(\"bd sd [~ bd] sd\").room(0.5).rlp(10000).rfade(0.5)"
+  },
+  "roomlp": {
+    "description": "Reverb lowpass starting frequency (in hertz). When this property is changed, the reverb will be recaculated, so only change this sparsely..",
+    "params": [
+      "frequency"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "s(\"bd sd [~ bd] sd\").room(0.5).rlp(10000)"
+  },
+  "roomsize": {
+    "description": "Sets the room size of the reverb, see room. When this property is changed, the reverb will be recaculated, so only change this sparsely..",
+    "params": [
+      "size"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "s(\"bd sd [~ bd] sd\").room(.8).rsize(1)"
+  },
+  "rootNotes": {
+    "description": "Maps the chords of the incoming pattern to root notes in the given octave.",
+    "params": [
+      "octave"
+    ],
+    "package": "tonal",
+    "category": "harmony",
+    "example": "\"<C^7 A7 Dm7 G7>\".rootNotes(2).note()"
+  },
+  "round": {
+    "description": "Assumes a numerical pattern. Returns a new pattern with all values rounded to the nearest integer.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "n(\"0.5 1.5 2.5\".round()).scale(\"C:major\")"
+  },
+  "rsize": {
+    "description": "Sets the room size of the reverb, see room. When this property is changed, the reverb will be recaculated, so only change this sparsely..",
+    "params": [
+      "size"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "roomsize",
+    "example": "s(\"bd sd [~ bd] sd\").room(.8).rsize(1)"
+  },
+  "run": {
+    "description": "A discrete pattern of numbers from 0 to n-1",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "n(run(4)).scale(\"C4:pentatonic\")"
+  },
+  "s": {
+    "description": "Select a sound / sample by name. When using mininotation, you can also optionally supply 'n' and 'gain' parameters separated by ':'.",
+    "params": [
+      "sound"
+    ],
+    "package": "core",
+    "category": "sample",
+    "example": "s(\"bd hh\")"
+  },
+  "saw": {
+    "description": "A sawtooth signal between 0 and 1.",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "note(\"<c3 [eb3,g3] g2 [g3,bb3]>*8\")"
+  },
+  "saw2": {
+    "description": "A sawtooth signal between -1 and 1 (like saw, but bipolar).",
+    "params": [],
+    "package": "core",
+    "category": "signal"
+  },
+  "scale": {
+    "description": "Turns numbers into notes in the scale (zero indexed) or quantizes notes to a scale.",
+    "params": [
+      "scale"
+    ],
+    "package": "tonal",
+    "category": "harmony",
+    "example": "n(\"0 2 4 6 4 2\").scale(\"C:major\")"
+  },
+  "scaleTrans": {
+    "description": "Transposes notes inside the scale by the number of steps. Expected to be called on a Pattern which already has a {@link Pattern#scale}",
+    "params": [
+      "offset"
+    ],
+    "package": "tonal",
+    "category": "harmony",
+    "aliasOf": "scaleTranspose",
+    "example": "\"-8 [2,4,6]\""
+  },
+  "scaleTranspose": {
+    "description": "Transposes notes inside the scale by the number of steps. Expected to be called on a Pattern which already has a {@link Pattern#scale}",
+    "params": [
+      "offset"
+    ],
+    "package": "tonal",
+    "category": "harmony",
+    "example": "\"-8 [2,4,6]\""
+  },
+  "scope": {
+    "description": "Renders an oscilloscope for the time domain of the audio signal.",
+    "params": [
+      "config",
+      "align",
+      "color",
+      "thickness",
+      "scale",
+      "pos",
+      "trigger"
+    ],
+    "package": "webaudio",
+    "category": "visual",
+    "example": "s(\"sawtooth\")._scope()"
+  },
+  "scramble": {
+    "description": "Slices a pattern into the given number of parts, then plays those parts at random.",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "note(\"c d e f\").sound(\"piano\").scramble(4)"
+  },
+  "scrub": {
+    "description": "Allows you to scrub an audio file like a tape loop by passing values that represents the position in the audio file in the optional array syntax ex: \"0.5:2\", the second value controls the speed of playback",
+    "params": [],
+    "package": "core",
+    "category": "sample",
+    "example": "samples('github:switchangel/pad')"
+  },
+  "seed": {
+    "description": "Change the seed for random signals. Normally, random signals depend on time, so two patterns at the same time will have the same random values.",
+    "params": [
+      "n"
+    ],
+    "package": "core",
+    "category": "signal",
+    "example": "$: s(\"hh*4\").degrade();"
+  },
+  "seg": {
+    "description": "Samples the pattern at a rate of n events per cycle. Useful for turning a continuous pattern into a discrete one.",
+    "params": [
+      "segments"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "aliasOf": "segment",
+    "example": "note(saw.range(40,52).segment(24))"
+  },
+  "segment": {
+    "description": "Samples the pattern at a rate of n events per cycle. Useful for turning a continuous pattern into a discrete one.",
+    "params": [
+      "segments"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "note(saw.range(40,52).segment(24))"
+  },
+  "seq": {
+    "description": "Like cat, but the items are crammed into one cycle.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "seq(\"e5\", \"b4\", [\"d5\", \"c5\"]).note()"
+  },
+  "seqPLoop": {
+    "description": "Similarly to arrange, allows you to arrange multiple patterns together over multiple cycles.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "seqPLoop([0, 2, \"bd(3,8)\"],"
+  },
+  "sequence": {
+    "description": "See fastcat",
+    "params": [],
+    "package": "core",
+    "category": "pattern"
+  },
+  "sequenceP": {
+    "description": "Takes a list of patterns, and returns a pattern of lists.",
+    "params": [],
+    "package": "core",
+    "category": "pattern"
+  },
+  "setcpm": {
+    "description": "Changes the global tempo to the given cycles per minute",
+    "params": [
+      "cpm"
+    ],
+    "package": "core",
+    "category": "transport",
+    "example": "setcpm(140/4) // =140 bpm in 4/4"
+  },
+  "shape": {
+    "description": "(Deprecated) Wave shaping distortion. WARNING: can suddenly get unpredictably loud.",
+    "params": [
+      "distortion"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "s(\"bd sd [~ bd] sd,hh*8\").shape(\"<0 .2 .4 .6 .8>\")"
+  },
+  "shrink": {
+    "description": "*Experimental* Progressively shrinks the pattern by 'n' steps until there's nothing left, or if a second value is given (using mininotation list syntax with :), that number of times.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "\"tha dhi thom nam\".shrink(\"1\").sound()"
+  },
+  "shuffle": {
+    "description": "Slices a pattern into the given number of parts, then plays those parts in random order.",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "note(\"c d e f\").sound(\"piano\").shuffle(4)"
+  },
+  "silence": {
+    "description": "Does absolutely nothing..",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "silence // \"~\""
+  },
+  "sine": {
+    "description": "A sine signal between 0 and 1.",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "n(sine.segment(16).range(0,15))"
+  },
+  "sine2": {
+    "description": "A sine signal between -1 and 1 (like sine, but bipolar).",
+    "params": [],
+    "package": "core",
+    "category": "signal"
+  },
+  "sinefold": {
+    "description": "Wavefolding distortion composed with sinusoid",
+    "params": [
+      "distortion",
+      "volume"
+    ],
+    "package": "core",
+    "category": "pattern"
+  },
+  "size": {
+    "description": "Sets the room size of the reverb, see room. When this property is changed, the reverb will be recaculated, so only change this sparsely..",
+    "params": [
+      "size"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "roomsize",
+    "example": "s(\"bd sd [~ bd] sd\").room(.8).rsize(1)"
+  },
+  "slice": {
+    "description": "Chops samples into the given number of slices, triggering those slices with a given pattern of slice numbers.",
+    "params": [],
+    "package": "core",
+    "category": "sample",
+    "example": "samples('github:tidalcycles/dirt-samples')"
+  },
+  "slow": {
+    "description": "Slow down a pattern over the given number of cycles. Like the \"/\" operator in mini notation.",
+    "params": [
+      "factor"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "s(\"bd hh sd hh\").slow(2) // s(\"[bd hh sd hh]/2\")"
+  },
+  "slowChunk": {
+    "description": "Divides a pattern into a given number of parts, then cycles through those parts in turn, applying the given function to each part in turn (one part per cycle).",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "aliasOf": "chunk",
+    "example": "\"0 1 2 3\".chunk(4, x=>x.add(7))"
+  },
+  "slowcat": {
+    "description": "Concatenation: combines a list of patterns, switching between them successively, one per cycle.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "slowcat(\"e5\", \"b4\", [\"d5\", \"c5\"])"
+  },
+  "slowcatPrime": {
+    "description": "Concatenation: combines a list of patterns, switching between them successively, one per cycle.",
+    "params": [
+      "items"
+    ],
+    "package": "core",
+    "category": "pattern"
+  },
+  "slowchunk": {
+    "description": "Divides a pattern into a given number of parts, then cycles through those parts in turn, applying the given function to each part in turn (one part per cycle).",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "aliasOf": "chunk",
+    "example": "\"0 1 2 3\".chunk(4, x=>x.add(7))"
+  },
+  "soft": {
+    "description": "Soft-clipping distortion",
+    "params": [
+      "distortion",
+      "volume"
+    ],
+    "package": "core",
+    "category": "pattern"
+  },
+  "someCycles": {
+    "description": "Shorthand for .someCyclesBy(0.5, fn)",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "s(\"bd,hh*8\").someCycles(x=>x.speed(\"0.5\"))"
+  },
+  "someCyclesBy": {
+    "description": "Randomly applies the given function by the given probability on a cycle by cycle basis.",
+    "params": [
+      "probability",
+      "function"
+    ],
+    "package": "core",
+    "category": "signal",
+    "example": "s(\"bd,hh*8\").someCyclesBy(.3, x=>x.speed(\"0.5\"))"
+  },
+  "sometimes": {
+    "description": "Applies the given function with a 50% chance",
+    "params": [
+      "function"
+    ],
+    "package": "core",
+    "category": "signal",
+    "example": "s(\"hh*8\").sometimes(x=>x.speed(\"0.5\"))"
+  },
+  "sometimesBy": {
+    "description": "Randomly applies the given function by the given probability.",
+    "params": [
+      "probability",
+      "function"
+    ],
+    "package": "core",
+    "category": "signal",
+    "example": "s(\"hh*8\").sometimesBy(.4, x=>x.speed(\"0.5\"))"
+  },
+  "sound": {
+    "description": "Select a sound / sample by name. When using mininotation, you can also optionally supply 'n' and 'gain' parameters separated by ':'.",
+    "params": [
+      "sound"
+    ],
+    "package": "core",
+    "category": "sample",
+    "aliasOf": "s",
+    "example": "s(\"bd hh\")"
+  },
+  "source": {
+    "description": "Define a custom webaudio node to use as a sound source.",
+    "params": [
+      "getSource"
+    ],
+    "package": "core",
+    "category": "routing"
+  },
+  "sparsity": {
+    "description": "Slow down a pattern over the given number of cycles. Like the \"/\" operator in mini notation.",
+    "params": [
+      "factor"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "aliasOf": "slow",
+    "example": "s(\"bd hh sd hh\").slow(2) // s(\"[bd hh sd hh]/2\")"
+  },
+  "spectrum": {
+    "description": "Renders a spectrum analyzer for the incoming audio signal.",
+    "params": [
+      "config",
+      "thickness",
+      "speed",
+      "min",
+      "max"
+    ],
+    "package": "webaudio",
+    "category": "visual",
+    "example": "n(\"<0 4 <2 3> 1>*3\")"
+  },
+  "speed": {
+    "description": "Changes the speed of sample playback, i.e. a cheap way of changing pitch.",
+    "params": [
+      "speed"
+    ],
+    "package": "core",
+    "category": "sample",
+    "example": "s(\"bd*6\").speed(\"1 2 4 1 -2 -4\")"
+  },
+  "spiral": {
+    "description": "Displays a spiral visual.",
+    "params": [
+      "options",
+      "stretch",
+      "size",
+      "thickness",
+      "cap",
+      "inset",
+      "playheadColor",
+      "playheadLength",
+      "playheadThickness",
+      "padding",
+      "steady",
+      "activeColor",
+      "inactiveColor",
+      "colorizeInactive",
+      "fade",
+      "logSpiral"
+    ],
+    "package": "draw",
+    "category": "visual",
+    "example": "note(\"c2 a2 eb2\")"
+  },
+  "splice": {
+    "description": "Works the same as slice, but changes the playback speed of each slice to match the duration of its step.",
+    "params": [],
+    "package": "core",
+    "category": "sample",
+    "example": "samples('github:tidalcycles/dirt-samples')"
+  },
+  "spread": {
+    "description": "Set the stereo pan spread for supported oscillators",
+    "params": [
+      "spread"
+    ],
+    "package": "core",
+    "category": "synth",
+    "example": "note(\"d f a a# a d3\").fast(2).s(\"supersaw\").spread(\"<0 .3 1>\")"
+  },
+  "square": {
+    "description": "A square signal between 0 and 1.",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "n(square.segment(4).range(0,7)).scale(\"C:minor\")"
+  },
+  "square2": {
+    "description": "A square signal between -1 and 1 (like square, but bipolar).",
+    "params": [],
+    "package": "core",
+    "category": "signal"
+  },
+  "squeeze": {
+    "description": "Pick from the list of values (or patterns of values) via the index using the given pattern of integers.",
+    "params": [
+      "pat",
+      "xs"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "note(squeeze(\"<0@2 [1!2] 2>\", [\"g a\", \"f g f g\" , \"g a c d\"]))"
+  },
+  "squiz": {
+    "description": "Made by Calum Gunn. Reminiscent of some weird mixture of filter, ring-modulator and pitch-shifter.",
+    "params": [
+      "squiz"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "squiz(\"2 4/2 6 [8 16]\").s(\"bd\").osc()"
+  },
+  "src": {
+    "description": "Define a custom webaudio node to use as a sound source.",
+    "params": [
+      "getSource"
+    ],
+    "package": "core",
+    "category": "routing",
+    "aliasOf": "source"
+  },
+  "stack": {
+    "description": "The given items are played at the same time at the same length.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "stack(\"g3\", \"b3\", [\"e4\", \"d4\"]).note()"
+  },
+  "stepalt": {
+    "description": "*Experimental* Concatenates patterns stepwise, according to an inferred 'steps per cycle'.",
+    "params": [],
+    "package": "core",
+    "category": "routing",
+    "example": "stepalt([\"bd cp\", \"mt\"], \"bd\").sound()"
+  },
+  "stepcat": {
+    "description": "'Concatenates' patterns like fastcat, but proportional to a number of steps per cycle.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "stepcat([3,\"e3\"],[1, \"g3\"]).note()"
+  },
+  "strans": {
+    "description": "Transposes notes inside the scale by the number of steps. Expected to be called on a Pattern which already has a {@link Pattern#scale}",
+    "params": [
+      "offset"
+    ],
+    "package": "tonal",
+    "category": "harmony",
+    "aliasOf": "scaleTranspose",
+    "example": "\"-8 [2,4,6]\""
+  },
+  "stretch": {
+    "description": "Changes the speed of sample playback, i.e. a cheap way of changing pitch.",
+    "params": [
+      "factor"
+    ],
+    "package": "core",
+    "category": "sample",
+    "example": "s(\"gm_flute\").stretch(\"1 2 .5\")"
+  },
+  "striate": {
+    "description": "Cuts each sample into the given number of parts, triggering progressive portions of each sample at each loop.",
+    "params": [],
+    "package": "core",
+    "category": "sample",
+    "example": "s(\"numbers:0 numbers:1 numbers:2\").striate(6).slow(3)"
+  },
+  "struct": {
+    "description": "Applies the given structure to the pattern:",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "note(\"c,eb,g\")"
+  },
+  "stut": {
+    "description": "Deprecated. Like echo, but the last 2 parameters are flipped.",
+    "params": [
+      "times",
+      "feedback",
+      "time"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "s(\"bd sd\").stut(3, .8, 1/6)"
+  },
+  "stutWith": {
+    "description": "Superimpose and offset multiple times, applying the given function each time.",
+    "params": [
+      "times",
+      "time",
+      "func"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "echoWith",
+    "example": "\"<0 [2 4]>\""
+  },
+  "stutwith": {
+    "description": "Superimpose and offset multiple times, applying the given function each time.",
+    "params": [
+      "times",
+      "time",
+      "func"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "echoWith",
+    "example": "\"<0 [2 4]>\""
+  },
+  "sub": {
+    "description": "Like add, but the given numbers are subtracted.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "n(\"0 2 4\".sub(\"<0 1 2 3>\")).scale(\"C4:minor\")"
+  },
+  "superimpose": {
+    "description": "Superimposes the result of the given function(s) on top of the original pattern:",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "\"<0 2 4 6 ~ 4 ~ 2 0!3 ~!5>*8\""
+  },
+  "sus": {
+    "description": "Amplitude envelope sustain level: The level which is reached after attack / decay, being sustained until the offset.",
+    "params": [
+      "gain"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "sustain",
+    "example": "note(\"c3 e3 f3 g3\").decay(.2).sustain(\"<0 .1 .4 .6 1>\")"
+  },
+  "sustain": {
+    "description": "Amplitude envelope sustain level: The level which is reached after attack / decay, being sustained until the offset.",
+    "params": [
+      "gain"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "example": "note(\"c3 e3 f3 g3\").decay(.2).sustain(\"<0 .1 .4 .6 1>\")"
+  },
+  "swing": {
+    "description": "Shorthand for swingBy with 1/3:",
+    "params": [
+      "subdivision"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "s(\"hh*8\").swing(4)"
+  },
+  "swingBy": {
+    "description": "The function swingBy x n breaks each cycle into n slices, and then delays events in the second half of each slice by the amount x, which is relative to the size of the (half) slice.",
+    "params": [
+      "subdivision",
+      "offset"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "s(\"hh*8\").swingBy(1/3, 4)"
+  },
+  "sysex": {
+    "description": "MIDI sysex: Sends a MIDI sysex message.",
+    "params": [
+      "id",
+      "data"
+    ],
+    "package": "core",
+    "category": "midi",
+    "example": "note(\"c4\").sysex([\"0x77\", \"0x01:0x02:0x03:0x04\"]).midichan(1).midi()"
+  },
+  "sysexdata": {
+    "description": "MIDI sysex data: Sends a MIDI sysex message.",
+    "params": [
+      "data"
+    ],
+    "package": "core",
+    "category": "midi",
+    "example": "note(\"c4\").sysexid(\"0x77\").sysexdata(\"0x01:0x02:0x03:0x04\").midichan(1).midi()"
+  },
+  "sysexid": {
+    "description": "MIDI sysex ID: Sends a MIDI sysex identifier message.",
+    "params": [
+      "id"
+    ],
+    "package": "core",
+    "category": "midi",
+    "example": "note(\"c4\").sysexid(\"0x77\").sysexdata(\"0x01:0x02:0x03:0x04\").midichan(1).midi()"
+  },
+  "sz": {
+    "description": "Sets the room size of the reverb, see room. When this property is changed, the reverb will be recaculated, so only change this sparsely..",
+    "params": [
+      "size"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "roomsize",
+    "example": "s(\"bd sd [~ bd] sd\").room(.8).rsize(1)"
+  },
+  "tag": {
+    "description": "Tags each Hap with an identifier. Good for filtering.",
+    "params": [
+      "tag"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "s(\"saw!16\").note(\"F1\")"
+  },
+  "take": {
+    "description": "*Experimental* Takes the given number of steps from a pattern (dropping the rest).",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "\"bd cp ht mt\".take(\"2\").sound()"
+  },
+  "time": {
+    "description": "A signal representing the cycle time.",
+    "params": [],
+    "package": "core",
+    "category": "signal"
+  },
+  "timeCat": {
+    "description": "'Concatenates' patterns like fastcat, but proportional to a number of steps per cycle.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "aliasOf": "stepcat",
+    "example": "stepcat([3,\"e3\"],[1, \"g3\"]).note()"
+  },
+  "timecat": {
+    "description": "'Concatenates' patterns like fastcat, but proportional to a number of steps per cycle.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "aliasOf": "stepcat",
+    "example": "stepcat([3,\"e3\"],[1, \"g3\"]).note()"
+  },
+  "timeline": {
+    "description": "Allows you to switch a pattern between different 'timelines'.",
+    "params": [
+      "timeline"
+    ],
+    "package": "core",
+    "category": "transport",
+    "example": "n(\"<0 1 2 3>(3,8)\")"
+  },
+  "toBipolar": {
+    "description": "Assumes a numerical pattern, containing unipolar values in the range 0 .. 1.",
+    "params": [],
+    "package": "core",
+    "category": "pattern"
+  },
+  "tour": {
+    "description": "*Experimental* Inserts a pattern into a list of patterns. On the first repetition it will be inserted at the end of the list, then moved backwards through the list on successive repetitions.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "\"[c g]\".tour(\"e f\", \"e f g\", \"g f e c\").note()"
+  },
+  "trans": {
+    "description": "Change the pitch of each value by the given amount. Expects numbers or note strings as values.",
+    "params": [
+      "amount"
+    ],
+    "package": "tonal",
+    "category": "harmony",
+    "aliasOf": "transpose",
+    "example": "\"c2 c3\".fast(2).transpose(\"<0 -2 5 3>\".slow(2)).note()"
+  },
+  "transient": {
+    "description": "Transient shaper. Gives independent control over the emphasis on transients and sustains",
+    "params": [
+      "attack",
+      "sustain"
+    ],
+    "package": "core",
+    "category": "sample",
+    "example": "s(\"bd\").transient(\"<-1 -0.5 0 0.5 1>\")"
+  },
+  "transpose": {
+    "description": "Change the pitch of each value by the given amount. Expects numbers or note strings as values.",
+    "params": [
+      "amount"
+    ],
+    "package": "tonal",
+    "category": "harmony",
+    "example": "\"c2 c3\".fast(2).transpose(\"<0 -2 5 3>\".slow(2)).note()"
+  },
+  "trem": {
+    "description": "Modulate the amplitude of a sound with a continuous waveform",
+    "params": [
+      "speed"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "tremolo",
+    "example": "note(\"d d d# d\".fast(4)).s(\"supersaw\").tremolo(\"<3 2 100> \").tremoloskew(\"<.5>\")"
+  },
+  "tremdepth": {
+    "description": "Depth of amplitude modulation",
+    "params": [
+      "depth"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "tremolodepth",
+    "example": "note(\"a1 a1 a#1 a1\".fast(4)).s(\"pulse\").tremsync(4).tremolodepth(\"<1 2 .7>\")"
+  },
+  "tremolo": {
+    "description": "Modulate the amplitude of a sound with a continuous waveform",
+    "params": [
+      "speed"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "note(\"d d d# d\".fast(4)).s(\"supersaw\").tremolo(\"<3 2 100> \").tremoloskew(\"<.5>\")"
+  },
+  "tremolodepth": {
+    "description": "Depth of amplitude modulation",
+    "params": [
+      "depth"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "note(\"a1 a1 a#1 a1\".fast(4)).s(\"pulse\").tremsync(4).tremolodepth(\"<1 2 .7>\")"
+  },
+  "tremolophase": {
+    "description": "Alter the phase of the modulation waveform",
+    "params": [
+      "offset"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "note(\"{f a c e}%16\").s(\"sawtooth\").tremsync(4).tremolophase(\"<0 .25 .66>\")"
+  },
+  "tremoloshape": {
+    "description": "Shape of amplitude modulation",
+    "params": [
+      "shape"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "note(\"{f g c d}%16\").tremsync(4).tremoloshape(\"<sine tri square>\").s(\"sawtooth\")"
+  },
+  "tremoloskew": {
+    "description": "Alter the shape of the modulation waveform",
+    "params": [
+      "amount"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "note(\"{f a c e}%16\").s(\"sawtooth\").tremsync(4).tremoloskew(\"<.5 0 1>\")"
+  },
+  "tremolosync": {
+    "description": "Modulate the amplitude of a sound with a continuous waveform",
+    "params": [
+      "cycles"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "note(\"d d d# d\".fast(4)).s(\"supersaw\").tremolosync(\"4\").tremoloskew(\"<1 .5 0>\")"
+  },
+  "tremphase": {
+    "description": "Alter the phase of the modulation waveform",
+    "params": [
+      "offset"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "tremolophase",
+    "example": "note(\"{f a c e}%16\").s(\"sawtooth\").tremsync(4).tremolophase(\"<0 .25 .66>\")"
+  },
+  "tremshape": {
+    "description": "Shape of amplitude modulation",
+    "params": [
+      "shape"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "tremoloshape",
+    "example": "note(\"{f g c d}%16\").tremsync(4).tremoloshape(\"<sine tri square>\").s(\"sawtooth\")"
+  },
+  "tremskew": {
+    "description": "Alter the shape of the modulation waveform",
+    "params": [
+      "amount"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "tremoloskew",
+    "example": "note(\"{f a c e}%16\").s(\"sawtooth\").tremsync(4).tremoloskew(\"<.5 0 1>\")"
+  },
+  "tremsync": {
+    "description": "Modulate the amplitude of a sound with a continuous waveform",
+    "params": [
+      "cycles"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "tremolosync",
+    "example": "note(\"d d d# d\".fast(4)).s(\"supersaw\").tremolosync(\"4\").tremoloskew(\"<1 .5 0>\")"
+  },
+  "tri": {
+    "description": "A triangle signal between 0 and 1.",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "n(tri.segment(8).range(0,7)).scale(\"C:minor\")"
+  },
+  "tri2": {
+    "description": "A triangle signal between -1 and 1 (like tri, but bipolar).",
+    "params": [],
+    "package": "core",
+    "category": "signal"
+  },
+  "tscope": {
+    "description": "Renders an oscilloscope for the time domain of the audio signal.",
+    "params": [
+      "config",
+      "align",
+      "color",
+      "thickness",
+      "scale",
+      "pos",
+      "trigger"
+    ],
+    "package": "webaudio",
+    "category": "visual",
+    "aliasOf": "scope",
+    "example": "s(\"sawtooth\")._scope()"
+  },
+  "undegrade": {
+    "description": "Inverse of degrade: Randomly removes 50% of events from the pattern.",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "s(\"hh*8\").undegrade()"
+  },
+  "undegradeBy": {
+    "description": "Inverse of degradeBy: Randomly removes events from the pattern by a given amount. 0 = 100% chance of removal 1 = 0% chance of removal Events that would be removed by degradeBy are let through by undegradeBy and vice versa (see second exa...",
+    "params": [
+      "amount"
+    ],
+    "package": "core",
+    "category": "signal",
+    "example": "s(\"hh*8\").undegradeBy(0.2)"
+  },
+  "unison": {
+    "description": "Set number of stacked voices for supported oscillators",
+    "params": [
+      "numvoices"
+    ],
+    "package": "core",
+    "category": "synth",
+    "example": "note(\"d f a a# a d3\").fast(2).s(\"supersaw\").unison(\"<1 2 7>\")"
+  },
+  "unit": {
+    "description": "Used in conjunction with speed, accepts values of \"r\" (rate, default behavior), \"c\" (cycles), or \"s\" (seconds).",
+    "params": [
+      "unit"
+    ],
+    "package": "core",
+    "category": "sample",
+    "example": "speed(\"1 2 .5 3\").s(\"bd\").unit(\"c\").osc()"
+  },
+  "useRNG": {
+    "description": "Sets which random number generator to use. Historically Strudel would use useRNG('legacy'), which remains the default.",
+    "params": [
+      "mod"
+    ],
+    "package": "core",
+    "category": "signal",
+    "example": "useRNG('legacy')"
+  },
+  "v": {
+    "description": "Applies a vibrato to the frequency of the oscillator.",
+    "params": [
+      "frequency"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "vib",
+    "example": "note(\"a e\")"
+  },
+  "vel": {
+    "description": "Sets the velocity from 0 to 1. Is multiplied together with gain.",
+    "params": [],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "velocity",
+    "example": "s(\"hh*8\")"
+  },
+  "velocity": {
+    "description": "Sets the velocity from 0 to 1. Is multiplied together with gain.",
+    "params": [],
+    "package": "core",
+    "category": "fx",
+    "example": "s(\"hh*8\")"
+  },
+  "vib": {
+    "description": "Applies a vibrato to the frequency of the oscillator.",
+    "params": [
+      "frequency"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "note(\"a e\")"
+  },
+  "vibmod": {
+    "description": "Sets the vibrato depth in semitones. Only has an effect if vibrato | vib | v is is also set",
+    "params": [
+      "depth"
+    ],
+    "package": "core",
+    "category": "fx",
+    "example": "note(\"a e\").vib(4)"
+  },
+  "vibrato": {
+    "description": "Applies a vibrato to the frequency of the oscillator.",
+    "params": [
+      "frequency"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "vib",
+    "example": "note(\"a e\")"
+  },
+  "vmod": {
+    "description": "Sets the vibrato depth in semitones. Only has an effect if vibrato | vib | v is is also set",
+    "params": [
+      "depth"
+    ],
+    "package": "core",
+    "category": "fx",
+    "aliasOf": "vibmod",
+    "example": "note(\"a e\").vib(4)"
+  },
+  "voicing": {
+    "description": "Turns chord symbols into voicings. You can use the following control params: - chord: Note, followed by chord symbol, e.g.",
+    "params": [],
+    "package": "tonal",
+    "category": "harmony",
+    "example": "n(\"0 1 2 3\").chord(\"<C Am F G>\").voicing()"
+  },
+  "voicings": {
+    "description": "DEPRECATED: still works, but it is recommended you use .voicing instead (without s).",
+    "params": [
+      "dictionary"
+    ],
+    "package": "tonal",
+    "category": "harmony",
+    "example": "stack(\"<C^7 A7 Dm7 G7>\".voicings('lefthand'), \"<C3 A2 D3 G2>\").note()"
+  },
+  "vowel": {
+    "description": "Formant filter to make things sound like vowels.",
+    "params": [
+      "vowel"
+    ],
+    "package": "core",
+    "category": "filter",
+    "example": "note(\"[c2 <eb2 <g2 g1>>]*2\").s('sawtooth')"
+  },
+  "warp": {
+    "description": "Amount of warp (alteration of the waveform) to apply to the wavetable oscillator",
+    "params": [
+      "amount"
+    ],
+    "package": "core",
+    "category": "synth",
+    "example": "s(\"basique\").bank(\"wt_digital\").seg(8).note(\"F1\").warp(\"0 0.25 0.5 0.75 1\")"
+  },
+  "warpatt": {
+    "description": "Attack time of the wavetable oscillator's warp envelope",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "warpattack"
+  },
+  "warpattack": {
+    "description": "Attack time of the wavetable oscillator's warp envelope",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope"
+  },
+  "warpdc": {
+    "description": "DC offset of the LFO for the wavetable oscillator's warp",
+    "params": [
+      "dcoffset"
+    ],
+    "package": "core",
+    "category": "synth"
+  },
+  "warpdec": {
+    "description": "Decay time of the wavetable oscillator's warp envelope",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "warpdecay"
+  },
+  "warpdecay": {
+    "description": "Decay time of the wavetable oscillator's warp envelope",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope"
+  },
+  "warpdepth": {
+    "description": "Depth of the LFO for the wavetable oscillator's warp",
+    "params": [
+      "depth"
+    ],
+    "package": "core",
+    "category": "synth"
+  },
+  "warpenv": {
+    "description": "Amount of envelope applied wavetable oscillator's position envelope",
+    "params": [
+      "amount"
+    ],
+    "package": "core",
+    "category": "envelope"
+  },
+  "warpmode": {
+    "description": "Type of warp (alteration of the waveform) to apply to the wavetable oscillator.",
+    "params": [
+      "mode"
+    ],
+    "package": "core",
+    "category": "synth",
+    "example": "s(\"morgana\").bank(\"wt_digital\").seg(8).note(\"F1\").warp(\"0 0.25 0.5 0.75 1\")"
+  },
+  "warprate": {
+    "description": "Rate of the LFO for the wavetable oscillator's warp",
+    "params": [
+      "rate"
+    ],
+    "package": "core",
+    "category": "synth"
+  },
+  "warprel": {
+    "description": "Release time of the wavetable oscillator's warp envelope",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "warprelease"
+  },
+  "warprelease": {
+    "description": "Release time of the wavetable oscillator's warp envelope",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope"
+  },
+  "warpshape": {
+    "description": "Shape of the LFO for the wavetable oscillator's warp",
+    "params": [
+      "shape"
+    ],
+    "package": "core",
+    "category": "synth"
+  },
+  "warpskew": {
+    "description": "Skew of the LFO for the wavetable oscillator's warp",
+    "params": [
+      "skew"
+    ],
+    "package": "core",
+    "category": "synth"
+  },
+  "warpsus": {
+    "description": "Sustain time of the wavetable oscillator's warp envelope",
+    "params": [
+      "gain"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "warpsustain"
+  },
+  "warpsustain": {
+    "description": "Sustain time of the wavetable oscillator's warp envelope",
+    "params": [
+      "gain"
+    ],
+    "package": "core",
+    "category": "envelope"
+  },
+  "warpsync": {
+    "description": "cycle synced rate of the LFO for the wavetable warp position",
+    "params": [
+      "rate"
+    ],
+    "package": "core",
+    "category": "synth"
+  },
+  "wavetablePhaseRand": {
+    "description": "Amount of randomness of the initial phase of the wavetable oscillator.",
+    "params": [
+      "amount"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "wtphaserand",
+    "example": "s(\"basique\").bank(\"wt_digital\").seg(16).wtphaserand(\"<0 1>\")"
+  },
+  "wavetablePosition": {
+    "description": "Position in the wavetable of the wavetable oscillator",
+    "params": [
+      "position"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "wt",
+    "example": "s(\"squelch\").bank(\"wt_digital\").seg(8).note(\"F1\").wt(\"0 0.25 0.5 0.75 1\")"
+  },
+  "wavetableWarp": {
+    "description": "Amount of warp (alteration of the waveform) to apply to the wavetable oscillator",
+    "params": [
+      "amount"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "warp",
+    "example": "s(\"basique\").bank(\"wt_digital\").seg(8).note(\"F1\").warp(\"0 0.25 0.5 0.75 1\")"
+  },
+  "wavetableWarpMode": {
+    "description": "Type of warp (alteration of the waveform) to apply to the wavetable oscillator.",
+    "params": [
+      "mode"
+    ],
+    "package": "core",
+    "category": "synth",
+    "aliasOf": "warpmode",
+    "example": "s(\"morgana\").bank(\"wt_digital\").seg(8).note(\"F1\").warp(\"0 0.25 0.5 0.75 1\")"
+  },
+  "wchoose": {
+    "description": "Chooses randomly from the given list of elements by giving a probability to each element",
+    "params": [
+      "pairs"
+    ],
+    "package": "core",
+    "category": "signal",
+    "example": "note(\"c2 g2!2 d2 f1\").s(wchoose([\"sine\",10], [\"triangle\",1], [\"bd:6\",1]))"
+  },
+  "wchooseCycles": {
+    "description": "Picks one of the elements at random each cycle by giving a probability to each element",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "wchooseCycles([\"bd\",10], [\"hh\",1], [\"sd\",1]).s().fast(8)"
+  },
+  "when": {
+    "description": "Applies the given function whenever the given pattern is in a true state.",
+    "params": [
+      "binary_pat",
+      "func"
+    ],
+    "package": "core",
+    "category": "pattern",
+    "example": "\"c3 eb3 g3\".when(\"<0 1>/2\", x=>x.sub(\"5\")).note()"
+  },
+  "whenKey": {
+    "description": "Do something on a keypress, or array of keypresses Key name reference",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "example": "s(\"bd(5,8)\").whenKey(\"Control:j\", x => x.segment(16).color(\"red\")).whenKey(\"Control:i\", x => x.fast(2).color(\"blue\"))"
+  },
+  "withSeed": {
+    "description": "Modify a pattern by applying a function to the randomSeed control if present",
+    "params": [
+      "func",
+      "pat"
+    ],
+    "package": "core",
+    "category": "signal"
+  },
+  "within": {
+    "description": "Use within to apply a function to only a part of a pattern.",
+    "params": [
+      "start",
+      "end",
+      "func"
+    ],
+    "package": "core",
+    "category": "pattern"
+  },
+  "wordfall": {
+    "description": "Displays a vertical pianoroll with event labels. Supports all the same options as pianoroll.",
+    "params": [],
+    "package": "draw",
+    "category": "visual"
+  },
+  "worklet": {
+    "description": "Creates a worklet effect. Typically derived by writing K(...) in the REPL which will parse Kabelsalat code.",
+    "params": [
+      "src",
+      "inputs"
+    ],
+    "package": "core",
+    "category": "pattern"
+  },
+  "wrandcat": {
+    "description": "Picks one of the elements at random each cycle by giving a probability to each element",
+    "params": [],
+    "package": "core",
+    "category": "signal",
+    "aliasOf": "wchooseCycles",
+    "example": "wchooseCycles([\"bd\",10], [\"hh\",1], [\"sd\",1]).s().fast(8)"
+  },
+  "wt": {
+    "description": "Position in the wavetable of the wavetable oscillator",
+    "params": [
+      "position"
+    ],
+    "package": "core",
+    "category": "synth",
+    "example": "s(\"squelch\").bank(\"wt_digital\").seg(8).note(\"F1\").wt(\"0 0.25 0.5 0.75 1\")"
+  },
+  "wtatt": {
+    "description": "Attack time of the wavetable oscillator's position envelope",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "wtattack"
+  },
+  "wtattack": {
+    "description": "Attack time of the wavetable oscillator's position envelope",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope"
+  },
+  "wtdc": {
+    "description": "DC offset of the LFO for the wavetable oscillator's position",
+    "params": [
+      "dcoffset"
+    ],
+    "package": "core",
+    "category": "synth"
+  },
+  "wtdec": {
+    "description": "Decay time of the wavetable oscillator's position envelope",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "wtdecay"
+  },
+  "wtdecay": {
+    "description": "Decay time of the wavetable oscillator's position envelope",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope"
+  },
+  "wtdepth": {
+    "description": "Depth of the LFO for the wavetable oscillator's position",
+    "params": [
+      "depth"
+    ],
+    "package": "core",
+    "category": "synth"
+  },
+  "wtenv": {
+    "description": "Amount of envelope applied wavetable oscillator's position envelope",
+    "params": [
+      "amount"
+    ],
+    "package": "core",
+    "category": "envelope"
+  },
+  "wtphaserand": {
+    "description": "Amount of randomness of the initial phase of the wavetable oscillator.",
+    "params": [
+      "amount"
+    ],
+    "package": "core",
+    "category": "synth",
+    "example": "s(\"basique\").bank(\"wt_digital\").seg(16).wtphaserand(\"<0 1>\")"
+  },
+  "wtrate": {
+    "description": "Rate of the LFO for the wavetable oscillator's position",
+    "params": [
+      "rate"
+    ],
+    "package": "core",
+    "category": "synth"
+  },
+  "wtrel": {
+    "description": "Release time of the wavetable oscillator's position envelope",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "wtrelease"
+  },
+  "wtrelease": {
+    "description": "Release time of the wavetable oscillator's position envelope",
+    "params": [
+      "time"
+    ],
+    "package": "core",
+    "category": "envelope"
+  },
+  "wtshape": {
+    "description": "Shape of the LFO for the wavetable oscillator's position",
+    "params": [
+      "shape"
+    ],
+    "package": "core",
+    "category": "synth"
+  },
+  "wtskew": {
+    "description": "Skew of the LFO for the wavetable oscillator's position",
+    "params": [
+      "skew"
+    ],
+    "package": "core",
+    "category": "synth"
+  },
+  "wtsus": {
+    "description": "Sustain time of the wavetable oscillator's position envelope",
+    "params": [
+      "gain"
+    ],
+    "package": "core",
+    "category": "envelope",
+    "aliasOf": "wtsustain"
+  },
+  "wtsustain": {
+    "description": "Sustain time of the wavetable oscillator's position envelope",
+    "params": [
+      "gain"
+    ],
+    "package": "core",
+    "category": "envelope"
+  },
+  "wtsync": {
+    "description": "cycle synced rate of the LFO for the wavetable oscillator's position",
+    "params": [
+      "rate"
+    ],
+    "package": "core",
+    "category": "synth"
+  },
+  "xfade": {
+    "description": "Cross-fades between left and right from 0 to 1: - 0 = (full left, no right) - .5 = (both equal) - 1 = (no left, full right)",
+    "params": [],
+    "package": "core",
+    "category": "fx",
+    "example": "xfade(s(\"bd*2\"), \"<0 .25 .5 .75 1>\", s(\"hh*8\"))"
+  },
+  "zip": {
+    "description": "*Experimental* 'zips' together the steps of the provided patterns.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "zip(\"e f\", \"e f g\", \"g [f e] a f4 c\").note()"
+  },
+  "zoom": {
+    "description": "Plays a portion of a pattern, specified by the beginning and end of a time span.",
+    "params": [],
+    "package": "core",
+    "category": "pattern",
+    "example": "s(\"bd*2 hh*3 [sd bd]*2 perc\").zoom(0.25, 0.75)"
+  }
+}

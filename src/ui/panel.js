@@ -1,14 +1,24 @@
-import { addEntry, removeEntry } from '../library.js';
-import { exportJson, importJson, saveLibrary, seedLibrary } from '../storage.js';
+import { addEntry, CATEGORIES, groupByCategory as groupEntries, removeEntry, UNCATEGORIZED } from '../library.js';
+import { exportJson, importJson, migrateToDegrees, saveLibrary, seedLibrary } from '../storage.js';
 import { getSoundEntries } from '../engine.js';
+import { allFunctionNames, describe, groupByCategory, signatureOf } from '../explain.js';
 
-const TABS = ['snippets', 'songs', 'sounds'];
+const TABS = ['snippets', 'songs', 'sounds', 'funcs'];
 
 export function createLibraryPanel(container, { onInsert, getSongCode, getSongName }) {
-  let lib = seedLibrary(localStorage);
+  // Seed first, migrate second: the seeds are already degree-based, so seeding
+  // ahead of the migration leaves it nothing to do but the user's own older
+  // entries. The other order would have it re-scan every starter snippet.
+  seedLibrary(localStorage);
+  let lib = migrateToDegrees(localStorage);
   let kind = 'snippets';
   let selectedId = null;
   let soundFilter = '';
+  let funcFilter = '';
+  let openFunc = null;
+  // Category sections the user has collapsed. Open is the default: a closed-by-
+  // default list of twelve headings hides every function behind a second click.
+  const closedCategories = new Set();
 
   function persist() {
     try {
@@ -17,6 +27,33 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
       window.alert('Save failed (storage may be full). Use EXPORT now to preserve your work.');
     }
     refresh();
+  }
+
+  /**
+   * The one path into the library. Both the SAVE buttons and the rip-to-library
+   * hotkey go through here, so a ripped block is stored exactly the way a
+   * hand-saved one is - same naming prompt, same persistence, same failure
+   * alert. Returns the name it saved under, or null if the prompt was
+   * dismissed.
+   */
+  function saveEntry(target, suggested, code) {
+    const name = window.prompt('Name:', suggested)?.trim();
+    if (!name) return null;
+    // Songs have no block role - they ARE the arrangement - so only a snippet
+    // is worth asking about. An empty or unrecognised answer means "leave it
+    // uncategorised" rather than "cancel the save": having typed the name
+    // already, losing the snippet to a typo here would be the wrong trade.
+    let category = UNCATEGORIZED;
+    if (target === 'snippets') {
+      const answer = window
+        .prompt(`Category (${CATEGORIES.join(' / ')}), or blank:`, '')
+        ?.trim()
+        .toLowerCase();
+      if (answer && CATEGORIES.includes(answer)) category = answer;
+    }
+    lib = addEntry(lib, target, name, code, category);
+    persist();
+    return name;
   }
 
   function refresh() {
@@ -41,9 +78,15 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
       return;
     }
 
+    if (kind === 'funcs') {
+      container.append(tabs, renderFuncsTab());
+      return;
+    }
+
     const list = document.createElement('ul');
     list.className = 'lib-list';
-    for (const entry of lib[kind]) {
+
+    const renderEntry = (entry) => {
       const item = document.createElement('li');
       item.className = entry.id === selectedId ? 'lib-item selected' : 'lib-item';
 
@@ -62,7 +105,10 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
       promote.hidden = kind !== 'songs';
       promote.title = 'Copy this song into Snippets';
       promote.addEventListener('click', () => {
-        lib = addEntry(lib, 'snippets', entry.name, entry.code);
+        // A promoted song keeps no category: it was never one of the four
+        // block roles, and guessing one would be worse than leaving it in
+        // `other` where the user can see it and move it.
+        lib = addEntry(lib, 'snippets', entry.name, entry.code, UNCATEGORIZED);
         persist();
       });
 
@@ -77,6 +123,40 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
 
       item.append(name, promote, del);
       list.append(item);
+    };
+
+    // Songs are whole arrangements and have no block role, so they stay a flat
+    // list; only snippets are grouped. Grouping a list of four songs under one
+    // heading is pure overhead.
+    if (kind === 'songs') {
+      for (const entry of lib[kind]) renderEntry(entry);
+    } else {
+      for (const [category, group] of groupEntries(lib[kind])) {
+        const heading = document.createElement('li');
+        heading.className = 'lib-func-cat';
+        const collapsed = closedCategories.has(`snippets:${category}`);
+        heading.classList.toggle('collapsed', collapsed);
+
+        const toggle = document.createElement('button');
+        toggle.className = 'lib-func-cat-btn';
+        toggle.textContent = `${collapsed ? '▸' : '▾'} ${category}`;
+        toggle.title = collapsed ? `show ${group.length} ${category} snippets` : `hide ${category}`;
+        toggle.addEventListener('click', () => {
+          const key = `snippets:${category}`;
+          if (closedCategories.has(key)) closedCategories.delete(key);
+          else closedCategories.add(key);
+          refresh();
+        });
+
+        const count = document.createElement('span');
+        count.className = 'lib-func-cat-n';
+        count.textContent = String(group.length);
+
+        heading.append(toggle, count);
+        list.append(heading);
+        if (collapsed) continue;
+        for (const entry of group) renderEntry(entry);
+      }
     }
 
     const actions = document.createElement('div');
@@ -86,10 +166,7 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
     save.textContent = kind === 'songs' ? 'SAVE SONG' : 'SAVE AS SNIPPET';
     save.addEventListener('click', () => {
       const suggested = kind === 'songs' ? getSongName() : `${getSongName()}-block`;
-      const name = window.prompt('Name:', suggested)?.trim();
-      if (!name) return;
-      lib = addEntry(lib, kind, name, getSongCode());
-      persist();
+      saveEntry(kind, suggested, getSongCode());
     });
 
     const exportBtn = document.createElement('button');
@@ -190,10 +267,147 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
     return wrap;
   }
 
+  /**
+   * The FUNCS tab is the same shape as SOUNDS - a read-only, filterable index
+   * with nothing user-owned to save or delete. Its contents come from
+   * src/strudel-docs.json, extracted from the installed @strudel packages'
+   * own JSDoc by scripts/build-docs.mjs.
+   *
+   * Names and descriptions are both searchable, because the useful question
+   * here is usually "what is the one that does X", not "spell `sometimesBy`".
+   */
+  function renderFuncsTab() {
+    const wrap = document.createElement('div');
+    wrap.className = 'lib-funcs';
+
+    const filterInput = document.createElement('input');
+    filterInput.type = 'text';
+    filterInput.className = 'lib-sound-filter';
+    filterInput.placeholder = 'search functions…';
+    filterInput.value = funcFilter;
+    filterInput.addEventListener('input', () => {
+      funcFilter = filterInput.value;
+      renderFuncList();
+    });
+
+    const list = document.createElement('ul');
+    list.className = 'lib-list';
+
+    function renderFuncList() {
+      list.innerHTML = '';
+      const needle = funcFilter.trim().toLowerCase();
+      const entries = allFunctionNames()
+        .map((name) => describe(name))
+        .filter(
+          (info) =>
+            !needle ||
+            info.name.toLowerCase().includes(needle) ||
+            info.description.toLowerCase().includes(needle),
+        );
+
+      if (entries.length === 0) {
+        const empty = document.createElement('li');
+        empty.className = 'lib-sound-empty';
+        empty.textContent = 'no functions match filter';
+        list.append(empty);
+        return;
+      }
+
+      // One <li> per function, but emitted under a category heading. The
+      // heading is a real row rather than a CSS ::before so it can be clicked
+      // to collapse its section - twelve headings is a table of contents, and
+      // a table of contents you cannot fold is just a longer list.
+      const searching = needle.length > 0;
+      const renderOne = (info) => {
+        const item = document.createElement('li');
+        item.className = info.name === openFunc ? 'lib-item lib-func selected' : 'lib-item lib-func';
+
+        const name = document.createElement('button');
+        name.className = 'lib-name';
+        name.textContent = info.name;
+        name.title = info.description;
+        name.addEventListener('click', () => {
+          openFunc = openFunc === info.name ? null : info.name;
+          renderFuncList();
+        });
+
+        const insert = document.createElement('button');
+        insert.className = 'lib-mini';
+        insert.textContent = '→';
+        insert.title = `Insert .${info.name}()`;
+        insert.addEventListener('click', () => onInsert(`.${info.name}()`, 'funcs', info.name));
+
+        item.append(name, insert);
+        list.append(item);
+
+        if (info.name !== openFunc) return;
+
+        const detail = document.createElement('li');
+        detail.className = 'lib-func-detail';
+        const sig = document.createElement('div');
+        sig.className = 'lib-func-sig';
+        sig.textContent = signatureOf(info);
+        const desc = document.createElement('p');
+        desc.textContent = info.description;
+        detail.append(sig);
+        if (info.isAlias) {
+          const alias = document.createElement('div');
+          alias.className = 'lib-func-alias';
+          alias.textContent = `alias of ${info.canonical}`;
+          detail.append(alias);
+        }
+        detail.append(desc);
+        if (info.example) {
+          const example = document.createElement('pre');
+          example.textContent = info.example;
+          detail.append(example);
+        }
+        list.append(detail);
+      };
+
+      for (const [category, group] of groupByCategory(entries)) {
+        const heading = document.createElement('li');
+        heading.className = 'lib-func-cat';
+        // While searching, every section is forced open: a hit hidden inside a
+        // collapsed section reads as "no results", which is worse than a long
+        // list. The user's own collapse state is remembered, not discarded.
+        const collapsed = !searching && closedCategories.has(category);
+        heading.classList.toggle('collapsed', collapsed);
+
+        const toggle = document.createElement('button');
+        toggle.className = 'lib-func-cat-btn';
+        toggle.textContent = `${collapsed ? '▸' : '▾'} ${category}`;
+        toggle.title = searching
+          ? 'sections stay open while searching'
+          : collapsed
+            ? `show ${group.length} ${category} functions`
+            : `hide ${category}`;
+        const count = document.createElement('span');
+        count.className = 'lib-func-cat-n';
+        count.textContent = String(group.length);
+        toggle.addEventListener('click', () => {
+          if (closedCategories.has(category)) closedCategories.delete(category);
+          else closedCategories.add(category);
+          renderFuncList();
+        });
+
+        heading.append(toggle, count);
+        list.append(heading);
+        if (collapsed) continue;
+        for (const info of group) renderOne(info);
+      }
+    }
+
+    renderFuncList();
+    wrap.append(filterInput, list);
+    return wrap;
+  }
+
   refresh();
 
   return {
     refresh,
+    saveEntry,
     getSelectedSnippetCode() {
       const entry = lib.snippets.find((e) => e.id === selectedId);
       return entry ? entry.code : null;
