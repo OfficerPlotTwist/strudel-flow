@@ -8,6 +8,7 @@ import { createLibraryPanel } from './ui/panel.js';
 import { createStatus } from './ui/status.js';
 import { createSettings } from './ui/settings.js';
 import { createMidiMonitor } from './ui/midi-monitor.js';
+import { createDeviceMap } from './device-map.js';
 import { createExplainerWindow } from './ui/explainer-window.js';
 import { createActions } from './actions.js';
 import {
@@ -71,6 +72,27 @@ let tabHoldOverrides = {};
 // The MIDI input that drives the APP (tabs, holds, actions), as opposed to the
 // ports carrying pattern signal in and out. Never both.
 let controlPort = null;
+
+// Names the controls of a mapped surface, so a binding can say
+// `apc40.track3.clip1` instead of `note:55` - which on this surface is the
+// same message as clip 1 on seven other tracks. See device-map.js.
+const device = createDeviceMap();
+
+/**
+ * A REBIND button in settings waits here for the next control the user
+ * touches, which is the only way to bind one without knowing its number.
+ *
+ * Presses only, and only buttons: a fader has no press, and an action bound to
+ * one would fire on every message of a sweep.
+ */
+let pendingControlCapture = null;
+function captureControl(control) {
+  if (!pendingControlCapture || control.isDown !== true) return false;
+  const capture = pendingControlCapture;
+  pendingControlCapture = null;
+  capture(control.name);
+  return true;
+}
 const currentTabHolds = () => tabHoldBindings(pane.getTabs(), tabHoldOverrides);
 const actions = createActions({ pane, panel, status, live, explainer });
 
@@ -163,21 +185,45 @@ showBootScreen(
     // sees EVERY input. Which port the controller is actually on is one of the
     // things it exists to answer, and a monitor that only listens to the port
     // you already guessed cannot tell you that you guessed wrong.
-    const monitor = createMidiMonitor(document.getElementById('settings-pane'));
+    const monitor = createMidiMonitor(document.getElementById('settings-pane'), {
+      describe: device.describe,
+    });
     for (const input of inputs) {
       onMidiMessage(input, (data) => {
         monitor.feed(data, input);
         if (input !== controlPort) return;
+
+        // Named control first, raw note:/cc: second. A name is the more
+        // specific statement of intent - `apc40.track3.clip1` means one
+        // physical button, where `note:55` means that button on any of eight
+        // tracks - and resolving it first is what lets the two live together:
+        // every existing note:/cc: binding still works, and still catches
+        // surfaces this app has no map for.
+        const control = device.resolve(data);
+        if (control && captureControl(control)) return;
+
+        // Holds first within each vocabulary: a pad bound to a hold must not
+        // also fire a one-shot action on the same note-on.
+        if (control?.isDown !== null && control && applyHold(control.name, control.isDown)) return;
         const hold = midiDataToHold(data);
-        // Holds first: a pad bound to a hold must not also fire a one-shot
-        // action on the same note-on.
         if (hold && applyHold(hold.trigger, hold.isDown)) return;
+
+        if (control?.isDown === true && dispatch(control.name)) return;
         const trigger = midiDataToTrigger(data);
         if (trigger) dispatch(trigger);
       });
     }
     createSettings(document.getElementById('settings-pane'), {
       triggerMap,
+      controlNames: device.names(),
+      // Hands settings a one-shot subscription to the next control press, so
+      // REBIND can capture a pad the same way it captures a key.
+      onCaptureControl: (capture) => {
+        pendingControlCapture = capture;
+        return () => {
+          if (pendingControlCapture === capture) pendingControlCapture = null;
+        };
+      },
       getHoldSlots: () => holdSlots,
       onHoldSlotsChange: (next) => {
         holdSlots = next;

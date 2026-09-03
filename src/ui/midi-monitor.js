@@ -15,8 +15,13 @@ const REDRAW_MS = 100;
  * Sits inside the settings pane and costs nothing while collapsed: messages
  * are still folded into the probe (so a sweep done before opening the panel is
  * not lost), but nothing is drawn.
+ *
+ * `describe(type, number, channel)` is optional and names the row when the
+ * surface is one the app has a map for - `apc40.track3.clip2` rather than
+ * `note:55 ch3`. It stays optional because the probe's whole job is unknown
+ * hardware: without a map every row still fills in, just unnamed.
  */
-export function createMidiMonitor(container) {
+export function createMidiMonitor(container, { describe = null } = {}) {
   let probe = emptyProbe();
   let dirty = false;
   let timer = null;
@@ -66,11 +71,21 @@ export function createMidiMonitor(container) {
   });
   buttons.append(resetBtn, copyBtn);
 
+  /** `cc:74` + channel -> the mapped control name, or null. */
+  function nameFor(row) {
+    if (!describe) return null;
+    const [type, number] = row.key.split(':');
+    return describe(type, Number(number), row.channel)?.name ?? null;
+  }
+
   function draw() {
     dirty = false;
     table.replaceChildren();
+    const columns = describe
+      ? ['name', 'control', 'port', 'ch', 'n', 'range', 'last', 'rate', 'looks like']
+      : ['control', 'port', 'ch', 'n', 'range', 'last', 'rate', 'looks like'];
     const header = document.createElement('tr');
-    for (const text of ['control', 'port', 'ch', 'n', 'range', 'last', 'rate', 'looks like']) {
+    for (const text of columns) {
       const cell = document.createElement('th');
       cell.textContent = text;
       header.append(cell);
@@ -81,7 +96,7 @@ export function createMidiMonitor(container) {
     if (rows.length === 0) {
       const empty = document.createElement('tr');
       const cell = document.createElement('td');
-      cell.colSpan = 8;
+      cell.colSpan = columns.length;
       cell.textContent = 'nothing seen yet — move a control';
       empty.append(cell);
       table.append(empty);
@@ -90,6 +105,7 @@ export function createMidiMonitor(container) {
     for (const row of rows) {
       const tr = document.createElement('tr');
       const cells = [
+        ...(describe ? [nameFor(row) ?? '—'] : []),
         row.key,
         row.port ?? '?',
         String(row.channel + 1),
@@ -111,6 +127,18 @@ export function createMidiMonitor(container) {
   // Redraw on a timer rather than per message. A knob sweep delivers hundreds
   // of messages a second, and rebuilding the table on each one would spend
   // more time in layout than the audio thread can spare.
+  function monitorText() {
+    const base = reportText(probe);
+    if (!describe) return base;
+    const rows = report(probe);
+    if (rows.length === 0) return base;
+    const width = Math.max(...rows.map((r) => (nameFor(r) ?? '?').length));
+    return base
+      .split('\n')
+      .map((line, i) => `${(nameFor(rows[i]) ?? '?').padEnd(width)}  ${line}`)
+      .join('\n');
+  }
+
   function schedule() {
     if (!panel.open || timer) return;
     timer = setTimeout(() => {
@@ -138,7 +166,11 @@ export function createMidiMonitor(container) {
       dirty = true;
       schedule();
     },
-    /** The map as text, for logging it somewhere durable. */
-    text: () => reportText(probe),
+    /**
+     * The map as text, for logging it somewhere durable. Named rows carry the
+     * name: the text is what gets pasted into a binding table, and a table of
+     * `note:55 ch3` lines is the problem the device map exists to solve.
+     */
+    text: () => monitorText(),
   };
 }

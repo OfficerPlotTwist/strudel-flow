@@ -8,18 +8,27 @@ import {
 } from '../triggers.js';
 
 /**
- * Turns the next keypress into a trigger string. Used by every REBIND button:
- * capturing the actual event is the only way to get a binding that is
- * guaranteed to match at dispatch time, since `keyEventToTrigger` is also what
- * reads the live keypress. Escape cancels; Backspace clears the binding.
+ * Turns the next keypress - or the next press on a mapped control surface -
+ * into a trigger string. Used by every REBIND button: capturing the actual
+ * event is the only way to get a binding that is guaranteed to match at
+ * dispatch time, since `keyEventToTrigger` is also what reads the live
+ * keypress. Escape cancels; Backspace clears the binding.
+ *
+ * `onCaptureControl` is optional, and absent whenever no mapped surface is
+ * connected; without it this captures keys exactly as it always did. With it,
+ * touching a pad binds that pad BY NAME (`apc40.track3.clip1`), which is the
+ * only way to bind one of eighty per-track buttons without knowing that it is
+ * note 55 on channel 2.
  */
-function captureTrigger(button, onCaptured) {
+function captureTrigger(button, onCaptured, onCaptureControl) {
   const original = button.textContent;
-  button.textContent = 'press a key…';
+  button.textContent = onCaptureControl ? 'press a key or pad…' : 'press a key…';
   button.classList.add('capturing');
+  const releaseControl = onCaptureControl?.((name) => finish(name)) ?? null;
 
   function finish(trigger) {
     window.removeEventListener('keydown', onKey, true);
+    releaseControl?.();
     button.textContent = original;
     button.classList.remove('capturing');
     if (trigger !== undefined) onCaptured(trigger);
@@ -40,6 +49,9 @@ function captureTrigger(button, onCaptured) {
   window.addEventListener('keydown', onKey, true);
 }
 
+// `key:` is noise on a keyboard binding - the label sits on a key button. A
+// device name is left whole: `apc40.track3.clip1` IS the readable form, and
+// trimming it to `track3.clip1` would lose which surface it belongs to.
 const triggerLabel = (trigger) => (trigger ? trigger.replace(/^key:/, '') : '(unbound)');
 
 /**
@@ -60,8 +72,13 @@ export function createSettings(
     getBlockLabels,
     getControlPort,
     onControlPortChange,
+    onCaptureControl,
   },
 ) {
+  const holdHint = onCaptureControl
+    ? 'Click, then press the key or pad to hold. Esc cancels, Backspace unbinds.'
+    : 'Click, then press the key to hold. Esc cancels, Backspace unbinds.';
+
   const panel = document.createElement('details');
   panel.className = 'settings';
   const summary = document.createElement('summary');
@@ -160,12 +177,16 @@ export function createSettings(
       const keyBtn = document.createElement('button');
       keyBtn.className = 'hold-key';
       keyBtn.textContent = triggerLabel(entry.trigger);
-      keyBtn.title = 'Click, then press the key to hold. Esc cancels, Backspace unbinds.';
+      keyBtn.title = holdHint;
       keyBtn.addEventListener('click', () => {
-        captureTrigger(keyBtn, (trigger) => {
-          onHoldSlotsChange(setHoldTrigger(getHoldSlots(), slot, trigger));
-          rebuild();
-        });
+        captureTrigger(
+          keyBtn,
+          (trigger) => {
+            onHoldSlotsChange(setHoldTrigger(getHoldSlots(), slot, trigger));
+            rebuild();
+          },
+          onCaptureControl,
+        );
       });
       keyCell.append(keyBtn);
 
@@ -220,12 +241,16 @@ export function createSettings(
         const button = document.createElement('button');
         button.className = 'hold-key';
         button.textContent = triggerLabel(binding[mode]);
-        button.title = 'Click, then press the key to hold. Esc cancels, Backspace unbinds.';
+        button.title = holdHint;
         button.addEventListener('click', () => {
-          captureTrigger(button, (trigger) => {
-            onTabHoldsChange(setTabHoldTrigger({}, getTabHolds(), binding.tabId, mode, trigger));
-            rebuild();
-          });
+          captureTrigger(
+            button,
+            (trigger) => {
+              onTabHoldsChange(setTabHoldTrigger({}, getTabHolds(), binding.tabId, mode, trigger));
+              rebuild();
+            },
+            onCaptureControl,
+          );
         });
         cell.append(button);
         row.append(cell);

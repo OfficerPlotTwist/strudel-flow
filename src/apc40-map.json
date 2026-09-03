@@ -1,0 +1,1875 @@
+{
+  "device": "Akai APC40",
+  "sysex_id": {
+    "manufacturer": "0x47",
+    "product": "0x73",
+    "firmware": "0.1.0"
+  },
+  "in_port": "Akai APC40 0",
+  "out_port": "Akai APC40 1",
+  "mode": "0x40 generic",
+  "channel_map": {
+    "0": "track1",
+    "1": "track2",
+    "2": "track3",
+    "3": "track4",
+    "4": "track5",
+    "5": "track6",
+    "6": "track7",
+    "7": "track8",
+    "8": "master"
+  },
+  "channel_note": "MIDI channel index is 0-based. Index 8 is the NINTH channel = master, NOT track 8.",
+  "classes": {
+    "global": "always MIDI channel 0",
+    "per_track": "MIDI channel fixed to the control's own track",
+    "track_scoped": "MIDI channel = currently selected track (0-8)"
+  },
+  "selection": {
+    "mechanism": "channel-of-burst",
+    "buttons": "8 track select + master select (9 total, the row directly below clip stop)",
+    "sends_note": false,
+    "note": "These 9 buttons transmit NO note message. Notes 51 and 80 were seed guesses and never appeared in a 1000-second capture. Pressing one makes the APC40 re-transmit its stored device-knob values as a burst of CC 16-23 on the newly selected track's channel. Detect the selected track by reading the channel of any incoming CC 16-23.",
+    "observed_sweep_seconds": {
+      "track1": 449.32,
+      "track2": 449.57,
+      "track3": 449.88,
+      "track4": 450.19,
+      "track5": 450.47,
+      "track6": 450.78,
+      "track7": 451.09,
+      "track8": 451.41,
+      "master": 452.83
+    }
+  },
+  "leds": {
+    "button_leds": "Overridden by local control in mode 0x40. Host note-on writes are accepted but the hardware relights from its own state. Full host control needs mode 0x41/0x42, which also stops the hardware lighting buttons at all.",
+    "knob_rings": "Host CC writes to the ring DO work in mode 0x40 (verified by flashing the CC 48-55 bank). Ring style on CC 24-31 (device bank) and CC 56-63 (track control bank); position on the knob's own CC. Local movement overwrites a host-written ring value immediately - turning the knob down de-lights a ring the host had filled.",
+    "ring_styles": {
+      "0": "off",
+      "1": "single",
+      "2": "volume",
+      "3": "pan"
+    }
+  },
+  "faults": [
+    {
+      "name": "apc40.global.master_fader",
+      "type": "cc",
+      "number": 14,
+      "label": "Master volume fader",
+      "status": "BROKEN",
+      "note": "Physically present, transmits nothing. Zero messages across a 1000-second capture. Hardware fault on this unit."
+    },
+    {
+      "name": "apc40.global.down",
+      "type": "note",
+      "number": 95,
+      "label": "Bank down arrow",
+      "status": "BROKEN",
+      "note": "Physically present, transmits nothing across two full arrow sweeps plus three isolated presses. Note number 95 is INFERRED, never observed: the other three arrows are 94/96/97 and 95 is the only unused value in that block."
+    }
+  ],
+  "absent": [
+    {
+      "name": "apc40.global.tempo",
+      "type": "cc",
+      "number": 13,
+      "label": "Tempo encoder",
+      "status": "NOT PRESENT",
+      "note": "No such knob on this unit. Was a seed guess; deleted."
+    }
+  ],
+  "verified_on": "2026-09-03",
+  "evidence": "capture.jsonl - ~1000s live capture of every physical control",
+  "controls": [
+    {
+      "name": "apc40.track1.fader",
+      "type": "cc",
+      "class": "per_track",
+      "number": 7,
+      "label": "track1 volume fader",
+      "verified": true,
+      "channels": {
+        "track1": 0
+      },
+      "mode": "absolute",
+      "value_range": [
+        0,
+        127
+      ]
+    },
+    {
+      "name": "apc40.track1.record_arm",
+      "type": "note",
+      "class": "per_track",
+      "number": 48,
+      "label": "track1 record arm",
+      "verified": true,
+      "channels": {
+        "track1": 0
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.track1.solo_cue",
+      "type": "note",
+      "class": "per_track",
+      "number": 49,
+      "label": "track1 solo / cue",
+      "verified": true,
+      "channels": {
+        "track1": 0
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.track1.activator",
+      "type": "note",
+      "class": "per_track",
+      "number": 50,
+      "label": "track1 activator",
+      "verified": true,
+      "channels": {
+        "track1": 0
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.track1.clip_stop",
+      "type": "note",
+      "class": "per_track",
+      "number": 52,
+      "label": "track1 clip stop",
+      "verified": true,
+      "channels": {
+        "track1": 0
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track1.clip1",
+      "type": "note",
+      "class": "per_track",
+      "number": 53,
+      "label": "track1 clip launch 1",
+      "verified": true,
+      "channels": {
+        "track1": 0
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track1.clip2",
+      "type": "note",
+      "class": "per_track",
+      "number": 54,
+      "label": "track1 clip launch 2",
+      "verified": true,
+      "channels": {
+        "track1": 0
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track1.clip3",
+      "type": "note",
+      "class": "per_track",
+      "number": 55,
+      "label": "track1 clip launch 3",
+      "verified": true,
+      "channels": {
+        "track1": 0
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track1.clip4",
+      "type": "note",
+      "class": "per_track",
+      "number": 56,
+      "label": "track1 clip launch 4",
+      "verified": true,
+      "channels": {
+        "track1": 0
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track1.clip5",
+      "type": "note",
+      "class": "per_track",
+      "number": 57,
+      "label": "track1 clip launch 5",
+      "verified": true,
+      "channels": {
+        "track1": 0
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track2.fader",
+      "type": "cc",
+      "class": "per_track",
+      "number": 7,
+      "label": "track2 volume fader",
+      "verified": true,
+      "channels": {
+        "track2": 1
+      },
+      "mode": "absolute",
+      "value_range": [
+        0,
+        127
+      ]
+    },
+    {
+      "name": "apc40.track2.record_arm",
+      "type": "note",
+      "class": "per_track",
+      "number": 48,
+      "label": "track2 record arm",
+      "verified": true,
+      "channels": {
+        "track2": 1
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.track2.solo_cue",
+      "type": "note",
+      "class": "per_track",
+      "number": 49,
+      "label": "track2 solo / cue",
+      "verified": true,
+      "channels": {
+        "track2": 1
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.track2.activator",
+      "type": "note",
+      "class": "per_track",
+      "number": 50,
+      "label": "track2 activator",
+      "verified": true,
+      "channels": {
+        "track2": 1
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.track2.clip_stop",
+      "type": "note",
+      "class": "per_track",
+      "number": 52,
+      "label": "track2 clip stop",
+      "verified": true,
+      "channels": {
+        "track2": 1
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track2.clip1",
+      "type": "note",
+      "class": "per_track",
+      "number": 53,
+      "label": "track2 clip launch 1",
+      "verified": true,
+      "channels": {
+        "track2": 1
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track2.clip2",
+      "type": "note",
+      "class": "per_track",
+      "number": 54,
+      "label": "track2 clip launch 2",
+      "verified": true,
+      "channels": {
+        "track2": 1
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track2.clip3",
+      "type": "note",
+      "class": "per_track",
+      "number": 55,
+      "label": "track2 clip launch 3",
+      "verified": true,
+      "channels": {
+        "track2": 1
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track2.clip4",
+      "type": "note",
+      "class": "per_track",
+      "number": 56,
+      "label": "track2 clip launch 4",
+      "verified": true,
+      "channels": {
+        "track2": 1
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track2.clip5",
+      "type": "note",
+      "class": "per_track",
+      "number": 57,
+      "label": "track2 clip launch 5",
+      "verified": true,
+      "channels": {
+        "track2": 1
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track3.fader",
+      "type": "cc",
+      "class": "per_track",
+      "number": 7,
+      "label": "track3 volume fader",
+      "verified": true,
+      "channels": {
+        "track3": 2
+      },
+      "mode": "absolute",
+      "value_range": [
+        0,
+        127
+      ]
+    },
+    {
+      "name": "apc40.track3.record_arm",
+      "type": "note",
+      "class": "per_track",
+      "number": 48,
+      "label": "track3 record arm",
+      "verified": true,
+      "channels": {
+        "track3": 2
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.track3.solo_cue",
+      "type": "note",
+      "class": "per_track",
+      "number": 49,
+      "label": "track3 solo / cue",
+      "verified": true,
+      "channels": {
+        "track3": 2
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.track3.activator",
+      "type": "note",
+      "class": "per_track",
+      "number": 50,
+      "label": "track3 activator",
+      "verified": true,
+      "channels": {
+        "track3": 2
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.track3.clip_stop",
+      "type": "note",
+      "class": "per_track",
+      "number": 52,
+      "label": "track3 clip stop",
+      "verified": true,
+      "channels": {
+        "track3": 2
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track3.clip1",
+      "type": "note",
+      "class": "per_track",
+      "number": 53,
+      "label": "track3 clip launch 1",
+      "verified": true,
+      "channels": {
+        "track3": 2
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track3.clip2",
+      "type": "note",
+      "class": "per_track",
+      "number": 54,
+      "label": "track3 clip launch 2",
+      "verified": true,
+      "channels": {
+        "track3": 2
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track3.clip3",
+      "type": "note",
+      "class": "per_track",
+      "number": 55,
+      "label": "track3 clip launch 3",
+      "verified": true,
+      "channels": {
+        "track3": 2
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track3.clip4",
+      "type": "note",
+      "class": "per_track",
+      "number": 56,
+      "label": "track3 clip launch 4",
+      "verified": true,
+      "channels": {
+        "track3": 2
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track3.clip5",
+      "type": "note",
+      "class": "per_track",
+      "number": 57,
+      "label": "track3 clip launch 5",
+      "verified": true,
+      "channels": {
+        "track3": 2
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track4.fader",
+      "type": "cc",
+      "class": "per_track",
+      "number": 7,
+      "label": "track4 volume fader",
+      "verified": true,
+      "channels": {
+        "track4": 3
+      },
+      "mode": "absolute",
+      "value_range": [
+        0,
+        127
+      ]
+    },
+    {
+      "name": "apc40.track4.record_arm",
+      "type": "note",
+      "class": "per_track",
+      "number": 48,
+      "label": "track4 record arm",
+      "verified": true,
+      "channels": {
+        "track4": 3
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.track4.solo_cue",
+      "type": "note",
+      "class": "per_track",
+      "number": 49,
+      "label": "track4 solo / cue",
+      "verified": true,
+      "channels": {
+        "track4": 3
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.track4.activator",
+      "type": "note",
+      "class": "per_track",
+      "number": 50,
+      "label": "track4 activator",
+      "verified": true,
+      "channels": {
+        "track4": 3
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.track4.clip_stop",
+      "type": "note",
+      "class": "per_track",
+      "number": 52,
+      "label": "track4 clip stop",
+      "verified": true,
+      "channels": {
+        "track4": 3
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track4.clip1",
+      "type": "note",
+      "class": "per_track",
+      "number": 53,
+      "label": "track4 clip launch 1",
+      "verified": true,
+      "channels": {
+        "track4": 3
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track4.clip2",
+      "type": "note",
+      "class": "per_track",
+      "number": 54,
+      "label": "track4 clip launch 2",
+      "verified": true,
+      "channels": {
+        "track4": 3
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track4.clip3",
+      "type": "note",
+      "class": "per_track",
+      "number": 55,
+      "label": "track4 clip launch 3",
+      "verified": true,
+      "channels": {
+        "track4": 3
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track4.clip4",
+      "type": "note",
+      "class": "per_track",
+      "number": 56,
+      "label": "track4 clip launch 4",
+      "verified": true,
+      "channels": {
+        "track4": 3
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track4.clip5",
+      "type": "note",
+      "class": "per_track",
+      "number": 57,
+      "label": "track4 clip launch 5",
+      "verified": true,
+      "channels": {
+        "track4": 3
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track5.fader",
+      "type": "cc",
+      "class": "per_track",
+      "number": 7,
+      "label": "track5 volume fader",
+      "verified": true,
+      "channels": {
+        "track5": 4
+      },
+      "mode": "absolute",
+      "value_range": [
+        0,
+        127
+      ]
+    },
+    {
+      "name": "apc40.track5.record_arm",
+      "type": "note",
+      "class": "per_track",
+      "number": 48,
+      "label": "track5 record arm",
+      "verified": true,
+      "channels": {
+        "track5": 4
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.track5.solo_cue",
+      "type": "note",
+      "class": "per_track",
+      "number": 49,
+      "label": "track5 solo / cue",
+      "verified": true,
+      "channels": {
+        "track5": 4
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.track5.activator",
+      "type": "note",
+      "class": "per_track",
+      "number": 50,
+      "label": "track5 activator",
+      "verified": true,
+      "channels": {
+        "track5": 4
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.track5.clip_stop",
+      "type": "note",
+      "class": "per_track",
+      "number": 52,
+      "label": "track5 clip stop",
+      "verified": true,
+      "channels": {
+        "track5": 4
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track5.clip1",
+      "type": "note",
+      "class": "per_track",
+      "number": 53,
+      "label": "track5 clip launch 1",
+      "verified": true,
+      "channels": {
+        "track5": 4
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track5.clip2",
+      "type": "note",
+      "class": "per_track",
+      "number": 54,
+      "label": "track5 clip launch 2",
+      "verified": true,
+      "channels": {
+        "track5": 4
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track5.clip3",
+      "type": "note",
+      "class": "per_track",
+      "number": 55,
+      "label": "track5 clip launch 3",
+      "verified": true,
+      "channels": {
+        "track5": 4
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track5.clip4",
+      "type": "note",
+      "class": "per_track",
+      "number": 56,
+      "label": "track5 clip launch 4",
+      "verified": true,
+      "channels": {
+        "track5": 4
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track5.clip5",
+      "type": "note",
+      "class": "per_track",
+      "number": 57,
+      "label": "track5 clip launch 5",
+      "verified": true,
+      "channels": {
+        "track5": 4
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track6.fader",
+      "type": "cc",
+      "class": "per_track",
+      "number": 7,
+      "label": "track6 volume fader",
+      "verified": true,
+      "channels": {
+        "track6": 5
+      },
+      "mode": "absolute",
+      "value_range": [
+        0,
+        127
+      ]
+    },
+    {
+      "name": "apc40.track6.record_arm",
+      "type": "note",
+      "class": "per_track",
+      "number": 48,
+      "label": "track6 record arm",
+      "verified": true,
+      "channels": {
+        "track6": 5
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.track6.solo_cue",
+      "type": "note",
+      "class": "per_track",
+      "number": 49,
+      "label": "track6 solo / cue",
+      "verified": true,
+      "channels": {
+        "track6": 5
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.track6.activator",
+      "type": "note",
+      "class": "per_track",
+      "number": 50,
+      "label": "track6 activator",
+      "verified": true,
+      "channels": {
+        "track6": 5
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.track6.clip_stop",
+      "type": "note",
+      "class": "per_track",
+      "number": 52,
+      "label": "track6 clip stop",
+      "verified": true,
+      "channels": {
+        "track6": 5
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track6.clip1",
+      "type": "note",
+      "class": "per_track",
+      "number": 53,
+      "label": "track6 clip launch 1",
+      "verified": true,
+      "channels": {
+        "track6": 5
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track6.clip2",
+      "type": "note",
+      "class": "per_track",
+      "number": 54,
+      "label": "track6 clip launch 2",
+      "verified": true,
+      "channels": {
+        "track6": 5
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track6.clip3",
+      "type": "note",
+      "class": "per_track",
+      "number": 55,
+      "label": "track6 clip launch 3",
+      "verified": true,
+      "channels": {
+        "track6": 5
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track6.clip4",
+      "type": "note",
+      "class": "per_track",
+      "number": 56,
+      "label": "track6 clip launch 4",
+      "verified": true,
+      "channels": {
+        "track6": 5
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track6.clip5",
+      "type": "note",
+      "class": "per_track",
+      "number": 57,
+      "label": "track6 clip launch 5",
+      "verified": true,
+      "channels": {
+        "track6": 5
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track7.fader",
+      "type": "cc",
+      "class": "per_track",
+      "number": 7,
+      "label": "track7 volume fader",
+      "verified": true,
+      "channels": {
+        "track7": 6
+      },
+      "mode": "absolute",
+      "value_range": [
+        0,
+        127
+      ]
+    },
+    {
+      "name": "apc40.track7.record_arm",
+      "type": "note",
+      "class": "per_track",
+      "number": 48,
+      "label": "track7 record arm",
+      "verified": true,
+      "channels": {
+        "track7": 6
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.track7.solo_cue",
+      "type": "note",
+      "class": "per_track",
+      "number": 49,
+      "label": "track7 solo / cue",
+      "verified": true,
+      "channels": {
+        "track7": 6
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.track7.activator",
+      "type": "note",
+      "class": "per_track",
+      "number": 50,
+      "label": "track7 activator",
+      "verified": true,
+      "channels": {
+        "track7": 6
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.track7.clip_stop",
+      "type": "note",
+      "class": "per_track",
+      "number": 52,
+      "label": "track7 clip stop",
+      "verified": true,
+      "channels": {
+        "track7": 6
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track7.clip1",
+      "type": "note",
+      "class": "per_track",
+      "number": 53,
+      "label": "track7 clip launch 1",
+      "verified": true,
+      "channels": {
+        "track7": 6
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track7.clip2",
+      "type": "note",
+      "class": "per_track",
+      "number": 54,
+      "label": "track7 clip launch 2",
+      "verified": true,
+      "channels": {
+        "track7": 6
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track7.clip3",
+      "type": "note",
+      "class": "per_track",
+      "number": 55,
+      "label": "track7 clip launch 3",
+      "verified": true,
+      "channels": {
+        "track7": 6
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track7.clip4",
+      "type": "note",
+      "class": "per_track",
+      "number": 56,
+      "label": "track7 clip launch 4",
+      "verified": true,
+      "channels": {
+        "track7": 6
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track7.clip5",
+      "type": "note",
+      "class": "per_track",
+      "number": 57,
+      "label": "track7 clip launch 5",
+      "verified": true,
+      "channels": {
+        "track7": 6
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track8.fader",
+      "type": "cc",
+      "class": "per_track",
+      "number": 7,
+      "label": "track8 volume fader",
+      "verified": true,
+      "channels": {
+        "track8": 7
+      },
+      "mode": "absolute",
+      "value_range": [
+        0,
+        127
+      ]
+    },
+    {
+      "name": "apc40.track8.record_arm",
+      "type": "note",
+      "class": "per_track",
+      "number": 48,
+      "label": "track8 record arm",
+      "verified": true,
+      "channels": {
+        "track8": 7
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.track8.solo_cue",
+      "type": "note",
+      "class": "per_track",
+      "number": 49,
+      "label": "track8 solo / cue",
+      "verified": true,
+      "channels": {
+        "track8": 7
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.track8.activator",
+      "type": "note",
+      "class": "per_track",
+      "number": 50,
+      "label": "track8 activator",
+      "verified": true,
+      "channels": {
+        "track8": 7
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.track8.clip_stop",
+      "type": "note",
+      "class": "per_track",
+      "number": 52,
+      "label": "track8 clip stop",
+      "verified": true,
+      "channels": {
+        "track8": 7
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track8.clip1",
+      "type": "note",
+      "class": "per_track",
+      "number": 53,
+      "label": "track8 clip launch 1",
+      "verified": true,
+      "channels": {
+        "track8": 7
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track8.clip2",
+      "type": "note",
+      "class": "per_track",
+      "number": 54,
+      "label": "track8 clip launch 2",
+      "verified": true,
+      "channels": {
+        "track8": 7
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track8.clip3",
+      "type": "note",
+      "class": "per_track",
+      "number": 55,
+      "label": "track8 clip launch 3",
+      "verified": true,
+      "channels": {
+        "track8": 7
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track8.clip4",
+      "type": "note",
+      "class": "per_track",
+      "number": 56,
+      "label": "track8 clip launch 4",
+      "verified": true,
+      "channels": {
+        "track8": 7
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.track8.clip5",
+      "type": "note",
+      "class": "per_track",
+      "number": 57,
+      "label": "track8 clip launch 5",
+      "verified": true,
+      "channels": {
+        "track8": 7
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.device.knob1",
+      "type": "cc",
+      "class": "track_scoped",
+      "number": 16,
+      "label": "Device control knob 1 (right bank)",
+      "verified": true,
+      "channels": {
+        "track1": 0,
+        "track2": 1,
+        "track3": 2,
+        "track4": 3,
+        "track5": 4,
+        "track6": 5,
+        "track7": 6,
+        "track8": 7,
+        "master": 8
+      },
+      "mode": "absolute",
+      "value_range": [
+        0,
+        127
+      ],
+      "led_ring_cc": 24
+    },
+    {
+      "name": "apc40.device.knob2",
+      "type": "cc",
+      "class": "track_scoped",
+      "number": 17,
+      "label": "Device control knob 2 (right bank)",
+      "verified": true,
+      "channels": {
+        "track1": 0,
+        "track2": 1,
+        "track3": 2,
+        "track4": 3,
+        "track5": 4,
+        "track6": 5,
+        "track7": 6,
+        "track8": 7,
+        "master": 8
+      },
+      "mode": "absolute",
+      "value_range": [
+        0,
+        127
+      ],
+      "led_ring_cc": 25
+    },
+    {
+      "name": "apc40.device.knob3",
+      "type": "cc",
+      "class": "track_scoped",
+      "number": 18,
+      "label": "Device control knob 3 (right bank)",
+      "verified": true,
+      "channels": {
+        "track1": 0,
+        "track2": 1,
+        "track3": 2,
+        "track4": 3,
+        "track5": 4,
+        "track6": 5,
+        "track7": 6,
+        "track8": 7,
+        "master": 8
+      },
+      "mode": "absolute",
+      "value_range": [
+        0,
+        127
+      ],
+      "led_ring_cc": 26
+    },
+    {
+      "name": "apc40.device.knob4",
+      "type": "cc",
+      "class": "track_scoped",
+      "number": 19,
+      "label": "Device control knob 4 (right bank)",
+      "verified": true,
+      "channels": {
+        "track1": 0,
+        "track2": 1,
+        "track3": 2,
+        "track4": 3,
+        "track5": 4,
+        "track6": 5,
+        "track7": 6,
+        "track8": 7,
+        "master": 8
+      },
+      "mode": "absolute",
+      "value_range": [
+        0,
+        127
+      ],
+      "led_ring_cc": 27
+    },
+    {
+      "name": "apc40.device.knob5",
+      "type": "cc",
+      "class": "track_scoped",
+      "number": 20,
+      "label": "Device control knob 5 (right bank)",
+      "verified": true,
+      "channels": {
+        "track1": 0,
+        "track2": 1,
+        "track3": 2,
+        "track4": 3,
+        "track5": 4,
+        "track6": 5,
+        "track7": 6,
+        "track8": 7,
+        "master": 8
+      },
+      "mode": "absolute",
+      "value_range": [
+        0,
+        127
+      ],
+      "led_ring_cc": 28
+    },
+    {
+      "name": "apc40.device.knob6",
+      "type": "cc",
+      "class": "track_scoped",
+      "number": 21,
+      "label": "Device control knob 6 (right bank)",
+      "verified": true,
+      "channels": {
+        "track1": 0,
+        "track2": 1,
+        "track3": 2,
+        "track4": 3,
+        "track5": 4,
+        "track6": 5,
+        "track7": 6,
+        "track8": 7,
+        "master": 8
+      },
+      "mode": "absolute",
+      "value_range": [
+        0,
+        127
+      ],
+      "led_ring_cc": 29
+    },
+    {
+      "name": "apc40.device.knob7",
+      "type": "cc",
+      "class": "track_scoped",
+      "number": 22,
+      "label": "Device control knob 7 (right bank)",
+      "verified": true,
+      "channels": {
+        "track1": 0,
+        "track2": 1,
+        "track3": 2,
+        "track4": 3,
+        "track5": 4,
+        "track6": 5,
+        "track7": 6,
+        "track8": 7,
+        "master": 8
+      },
+      "mode": "absolute",
+      "value_range": [
+        0,
+        127
+      ],
+      "led_ring_cc": 30
+    },
+    {
+      "name": "apc40.device.knob8",
+      "type": "cc",
+      "class": "track_scoped",
+      "number": 23,
+      "label": "Device control knob 8 (right bank)",
+      "verified": true,
+      "channels": {
+        "track1": 0,
+        "track2": 1,
+        "track3": 2,
+        "track4": 3,
+        "track5": 4,
+        "track6": 5,
+        "track7": 6,
+        "track8": 7,
+        "master": 8
+      },
+      "mode": "absolute",
+      "value_range": [
+        0,
+        127
+      ],
+      "led_ring_cc": 31
+    },
+    {
+      "name": "apc40.device.clip_track",
+      "type": "note",
+      "class": "track_scoped",
+      "number": 58,
+      "label": "Device section: Clip / Track",
+      "verified": true,
+      "channels": {
+        "track1": 0,
+        "track2": 1,
+        "track3": 2,
+        "track4": 3,
+        "track5": 4,
+        "track6": 5,
+        "track7": 6,
+        "track8": 7,
+        "master": 8
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.device.device_toggle",
+      "type": "note",
+      "class": "track_scoped",
+      "number": 59,
+      "label": "Device section: Device on/off",
+      "verified": true,
+      "channels": {
+        "track1": 0,
+        "track2": 1,
+        "track3": 2,
+        "track4": 3,
+        "track5": 4,
+        "track6": 5,
+        "track7": 6,
+        "track8": 7,
+        "master": 8
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.device.device_left",
+      "type": "note",
+      "class": "track_scoped",
+      "number": 60,
+      "label": "Device section: Device left",
+      "verified": true,
+      "channels": {
+        "track1": 0,
+        "track2": 1,
+        "track3": 2,
+        "track4": 3,
+        "track5": 4,
+        "track6": 5,
+        "track7": 6,
+        "track8": 7,
+        "master": 8
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.device.device_right",
+      "type": "note",
+      "class": "track_scoped",
+      "number": 61,
+      "label": "Device section: Device right",
+      "verified": true,
+      "channels": {
+        "track1": 0,
+        "track2": 1,
+        "track3": 2,
+        "track4": 3,
+        "track5": 4,
+        "track6": 5,
+        "track7": 6,
+        "track8": 7,
+        "master": 8
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.device.detail_view",
+      "type": "note",
+      "class": "track_scoped",
+      "number": 62,
+      "label": "Device section: Detail view",
+      "verified": true,
+      "channels": {
+        "track1": 0,
+        "track2": 1,
+        "track3": 2,
+        "track4": 3,
+        "track5": 4,
+        "track6": 5,
+        "track7": 6,
+        "track8": 7,
+        "master": 8
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.device.rec_quantize",
+      "type": "note",
+      "class": "track_scoped",
+      "number": 63,
+      "label": "Device section: Rec / quantize",
+      "verified": true,
+      "channels": {
+        "track1": 0,
+        "track2": 1,
+        "track3": 2,
+        "track4": 3,
+        "track5": 4,
+        "track6": 5,
+        "track7": 6,
+        "track8": 7,
+        "master": 8
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.device.midi_overdub",
+      "type": "note",
+      "class": "track_scoped",
+      "number": 64,
+      "label": "Device section: Midi overdub",
+      "verified": true,
+      "channels": {
+        "track1": 0,
+        "track2": 1,
+        "track3": 2,
+        "track4": 3,
+        "track5": 4,
+        "track6": 5,
+        "track7": 6,
+        "track8": 7,
+        "master": 8
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.device.metronome",
+      "type": "note",
+      "class": "track_scoped",
+      "number": 65,
+      "label": "Device section: Metronome",
+      "verified": true,
+      "channels": {
+        "track1": 0,
+        "track2": 1,
+        "track3": 2,
+        "track4": 3,
+        "track5": 4,
+        "track6": 5,
+        "track7": 6,
+        "track8": 7,
+        "master": 8
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.trackctl.knob1",
+      "type": "cc",
+      "class": "global",
+      "number": 48,
+      "label": "Track control knob 1 (left bank)",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "mode": "absolute",
+      "value_range": [
+        0,
+        127
+      ],
+      "led_ring_cc": 56,
+      "note": "Does NOT bank by selection. Verified with track5 selected: still arrived on channel 0."
+    },
+    {
+      "name": "apc40.trackctl.knob2",
+      "type": "cc",
+      "class": "global",
+      "number": 49,
+      "label": "Track control knob 2 (left bank)",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "mode": "absolute",
+      "value_range": [
+        0,
+        127
+      ],
+      "led_ring_cc": 57,
+      "note": "Does NOT bank by selection. Verified with track5 selected: still arrived on channel 0."
+    },
+    {
+      "name": "apc40.trackctl.knob3",
+      "type": "cc",
+      "class": "global",
+      "number": 50,
+      "label": "Track control knob 3 (left bank)",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "mode": "absolute",
+      "value_range": [
+        0,
+        127
+      ],
+      "led_ring_cc": 58,
+      "note": "Does NOT bank by selection. Verified with track5 selected: still arrived on channel 0."
+    },
+    {
+      "name": "apc40.trackctl.knob4",
+      "type": "cc",
+      "class": "global",
+      "number": 51,
+      "label": "Track control knob 4 (left bank)",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "mode": "absolute",
+      "value_range": [
+        0,
+        127
+      ],
+      "led_ring_cc": 59,
+      "note": "Does NOT bank by selection. Verified with track5 selected: still arrived on channel 0."
+    },
+    {
+      "name": "apc40.trackctl.knob5",
+      "type": "cc",
+      "class": "global",
+      "number": 52,
+      "label": "Track control knob 5 (left bank)",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "mode": "absolute",
+      "value_range": [
+        0,
+        127
+      ],
+      "led_ring_cc": 60,
+      "note": "Does NOT bank by selection. Verified with track5 selected: still arrived on channel 0."
+    },
+    {
+      "name": "apc40.trackctl.knob6",
+      "type": "cc",
+      "class": "global",
+      "number": 53,
+      "label": "Track control knob 6 (left bank)",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "mode": "absolute",
+      "value_range": [
+        0,
+        127
+      ],
+      "led_ring_cc": 61,
+      "note": "Does NOT bank by selection. Verified with track5 selected: still arrived on channel 0."
+    },
+    {
+      "name": "apc40.trackctl.knob7",
+      "type": "cc",
+      "class": "global",
+      "number": 54,
+      "label": "Track control knob 7 (left bank)",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "mode": "absolute",
+      "value_range": [
+        0,
+        127
+      ],
+      "led_ring_cc": 62,
+      "note": "Does NOT bank by selection. Verified with track5 selected: still arrived on channel 0."
+    },
+    {
+      "name": "apc40.trackctl.knob8",
+      "type": "cc",
+      "class": "global",
+      "number": 55,
+      "label": "Track control knob 8 (left bank)",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "mode": "absolute",
+      "value_range": [
+        0,
+        127
+      ],
+      "led_ring_cc": 63,
+      "note": "Does NOT bank by selection. Verified with track5 selected: still arrived on channel 0."
+    },
+    {
+      "name": "apc40.global.crossfader",
+      "type": "cc",
+      "class": "global",
+      "number": 15,
+      "label": "Crossfader",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "mode": "absolute",
+      "value_range": [
+        0,
+        127
+      ]
+    },
+    {
+      "name": "apc40.global.cue_level",
+      "type": "cc",
+      "class": "global",
+      "number": 47,
+      "label": "Cue level encoder",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "mode": "relative",
+      "encoding": "signed",
+      "decode": "delta = value - 128 if value > 64 else value",
+      "observed_values": "1..24 clockwise, 112..127 counter-clockwise",
+      "min_gap_ms": 5.0,
+      "max_rate_hz": 200,
+      "note": "Magnitude encodes turn speed. See ENCODERS.md."
+    },
+    {
+      "name": "apc40.scene1",
+      "type": "note",
+      "class": "global",
+      "number": 82,
+      "label": "Scene launch 1",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.scene2",
+      "type": "note",
+      "class": "global",
+      "number": 83,
+      "label": "Scene launch 2",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.scene3",
+      "type": "note",
+      "class": "global",
+      "number": 84,
+      "label": "Scene launch 3",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.scene4",
+      "type": "note",
+      "class": "global",
+      "number": 85,
+      "label": "Scene launch 4",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.scene5",
+      "type": "note",
+      "class": "global",
+      "number": 86,
+      "label": "Scene launch 5",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.global.stop_all",
+      "type": "note",
+      "class": "global",
+      "number": 81,
+      "label": "Stop all clips",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.trackctl.pan",
+      "type": "note",
+      "class": "global",
+      "number": 87,
+      "label": "Track control mode: Pan",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.trackctl.send_a",
+      "type": "note",
+      "class": "global",
+      "number": 88,
+      "label": "Track control mode: Send A",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.trackctl.send_b",
+      "type": "note",
+      "class": "global",
+      "number": 89,
+      "label": "Track control mode: Send B",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.trackctl.send_c",
+      "type": "note",
+      "class": "global",
+      "number": 90,
+      "label": "Track control mode: Send C",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "behavior": "toggle"
+    },
+    {
+      "name": "apc40.global.play",
+      "type": "note",
+      "class": "global",
+      "number": 91,
+      "label": "Play",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.global.stop",
+      "type": "note",
+      "class": "global",
+      "number": 92,
+      "label": "Stop",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.global.rec",
+      "type": "note",
+      "class": "global",
+      "number": 93,
+      "label": "Record",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.global.up",
+      "type": "note",
+      "class": "global",
+      "number": 94,
+      "label": "Bank up",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.global.right",
+      "type": "note",
+      "class": "global",
+      "number": 96,
+      "label": "Bank right",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.global.left",
+      "type": "note",
+      "class": "global",
+      "number": 97,
+      "label": "Bank left",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.global.shift",
+      "type": "note",
+      "class": "global",
+      "number": 98,
+      "label": "Shift",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.global.tap_tempo",
+      "type": "note",
+      "class": "global",
+      "number": 99,
+      "label": "Tap tempo",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.global.nudge_plus",
+      "type": "note",
+      "class": "global",
+      "number": 100,
+      "label": "Nudge +",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "behavior": "momentary"
+    },
+    {
+      "name": "apc40.global.nudge_minus",
+      "type": "note",
+      "class": "global",
+      "number": 101,
+      "label": "Nudge -",
+      "verified": true,
+      "channels": {
+        "global": 0
+      },
+      "behavior": "momentary"
+    }
+  ],
+  "writeback": {
+    "supported": true,
+    "verified_on": "2026-09-03",
+    "note": "Writing a CC value to a knob's own CC sets the APC40's STORED value for that knob, not just the LED ring. Confirmed twice: [5,20,35,50,65,80,95,110] written to CC 16-23 on channel 0 and 63 written to CC 16-23 on channel 4 were both dumped back verbatim by the device on the next track selection.",
+    "settable": {
+      "apc40.device.knob1-8": "CC 16-23, per track - address the channel of the track you want to set, including master (channel index 8). Works on tracks that are not currently selected.",
+      "apc40.trackctl.knob1-8": "CC 48-55, channel 0",
+      "led_rings": "style on CC 24-31 (device bank) / CC 56-63 (track control bank); position on the knob's own CC"
+    },
+    "not_settable": {
+      "faders": "CC 7 per track, CC 15 crossfader - physical potentiometers, not motorised. Host writes do nothing.",
+      "button_leds": "Accepted but overridden by local control in mode 0x40."
+    },
+    "caveats": [
+      "No soft takeover. The next physical turn continues from the host-written value, so the knob's physical position and its value are permanently decoupled - which is expected for an endless encoder.",
+      "Reading a value back requires a track selection to trigger the dump; there is no query message."
+    ]
+  }
+}
