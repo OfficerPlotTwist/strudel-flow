@@ -128,6 +128,25 @@ window.addEventListener('blur', () => {
 
 showBootScreen(
   async () => {
+    // FIRST, before any await: raise the explainer alongside the app.
+    //
+    // window.open is only permitted while the boot click's user activation is
+    // still there, and activation is spent by more than the passage of time -
+    // a gated API that has to prompt consumes it. enableMidi() is exactly
+    // that: on a profile's first run, requestMIDIAccess({ sysex: true }) puts
+    // up a permission prompt, and by the time the user answers it the click
+    // that opened this app has been used up. Opening from further down the
+    // sequence therefore worked on every subsequent launch and failed on the
+    // one launch that mattered - the first one, where the app reported
+    // "explainer blocked" for something the user did nothing to cause.
+    //
+    // Nothing here needs audio or MIDI: the explainer is a renderer over
+    // editor state, which already exists. Focus stays on the editor - it is
+    // something to glance at on a second screen, never the window the next
+    // keystroke lands in.
+    const explainerStatus = explainer.open({ focusIt: false });
+    window.focus();
+
     await unlockAudio();
     const midiOk = await enableMidi();
     const outputs = listOutputs();
@@ -192,12 +211,9 @@ showBootScreen(
     // Ctrl+Enter plays exactly what is on screen.
     pane.setActiveTab(first);
 
-    // Raise the explainer alongside the app, from inside the boot gesture -
-    // the only moment window.open is permitted (see explainer-window.js).
-    // Focus stays on the editor: the explainer is something to glance at on a
-    // second screen, never the window the next keystroke lands in.
-    const explainerStatus = explainer.open({ focusIt: false });
-    window.focus();
+    // The explainer was opened at the top of this handler; it has been
+    // rendering the empty editor since. Now that the tab is active, tell it.
+    explainer.refresh();
 
     status.info(
       explainerStatus.startsWith('explainer blocked')
