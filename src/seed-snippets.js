@@ -109,270 +109,156 @@ $: s("bd ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ rim ~")
   .room(0.6)`,
   },
   {
-    name: 'space_adventure',
-    kind: 'songs',
-    code: `// ============================================================
-//  GET GOT  —  Death Grips (The Money Store, 2012)
-//  Strudel interpretation: LEAD / MELODY / BASS
-//  Paste into https://strudel.cc  ->  Ctrl+Enter to play
-//  Ctrl+. to stop.  Comment out any const in the stack() at
-//  the bottom to solo/mute parts.
-// ============================================================
-
-setcpm(132 / 4)              // ~132 BPM, 4/4  (1 cycle = 1 bar)
-
-// Key: F minor  (F  G  Ab  Bb  C  Db  Eb)
-// Parts are written as scale degrees, not letters: n(0) is the root
-// named in .scale(), each step of the scale is +1, and 7 is an octave.
-// Strudel pitch convention: c5 = middle C. So f3 ~= 87 Hz.
-// Transpose the whole track: change .add(note(0)) on the stack.
-
-
-// ------------------------------------------------------------
-// 1. SUB  — the floor. Pure sine, no character, just weight.
-// ------------------------------------------------------------
-const sub = n("<[0 ~ ~ 0 ~ ~ 0 ~] [0 ~ ~ 0 ~ ~ [-2 -1] ~]>")
-  .scale("f2:minor")
-  .s("sine")
-  .attack(.004).decay(.18).sustain(.4).release(.12)
-  .gain(.9)
-
-
-// ------------------------------------------------------------
-// 2. BASS — machine-gun saw riff, filtered, distorted.
-//    Two-bar phrase: bar 1 nails the root, bar 2 walks up.
-// ------------------------------------------------------------
-const bass = n("<[0 ~ 0 ~ ~ 0 ~ 0] [0 ~ 0 ~ ~ 0 ~ [2 3]]>")
-  .scale("f3:minor")
-  .s("sawtooth")
-  .lpf(perlin.range(240, 820).slow(6))
-  .lpq(9)
-  .attack(.002).decay(.10).sustain(.22).release(.06)
-  .shape(.4)                 // waveshaper grit
-  .gain(.85)
-
-// Optional: octave-up ghost note layer for bite (adds mid presence)
-const bassGhost = bass
-  .add(note(12))
-  .lpf(1600).gain(.28).degradeBy(.35)
-
-
-// ------------------------------------------------------------
-// 3. LEAD — the abrasive detuned stab. 16ths, angular, dry.
-//    This is the "shove" of the track. Keep it ugly.
-// ------------------------------------------------------------
-const lead = n("[4 ~ 2 ~] [4 5 4 ~] [2 ~ 0 ~] [~ -1 0 ~]")
-  .scale("f5:minor")
-  .s("sawtooth")
-  .superimpose(x => x.add(note(.14)).gain(.6))   // detune twin
-  .superimpose(x => x.add(note(-.11)).gain(.55)) // detune twin 2
-  .lpf(sine.range(900, 4200).slow(4))
-  .lpq(11)
-  .attack(.001).decay(.09).sustain(0).release(.05)
-  .crush(9)                  // bitcrush = 2012 Money Store nastiness
-  .shape(.25)
-  .pan(sine.range(.35, .65).slow(3))
-  .gain(.55)
-
-
-// ------------------------------------------------------------
-// 4. MELODY / HOOK — the pitched-up vocal-ish motif.
-//    Sparse, high, drenched. 4-bar phrase, sits ON TOP of lead.
-// ------------------------------------------------------------
-const melody = n("<[0 ~ ~ 2] [4 ~ 3 2] [0 ~ ~ -1] [0 ~ ~ ~]>")
-  .scale("f5:minor")
-  .s("triangle")
-  .superimpose(x => x.add(note(12)).s("square").gain(.18))
-  .vib(5.5).vibmod(.12)      // warble
-  .attack(.01).decay(.3).sustain(.3).release(.4)
-  .lpf(3800)
-  .delay(.45).delaytime(.1875).delayfeedback(.42)  // dotted-8th at 132
-  .room(.35).roomsize(3)
-  .gain(.5)
-
-
-// ------------------------------------------------------------
-// 5. STAB CHORDS — optional harmonic glue under the hook
-// ------------------------------------------------------------
-const stabs = n("<[~ ~ [0,2,4] ~] [~ ~ ~ [2,4,6]] [~ ~ [-2,0,2] ~] [~ [-1,1,3] ~ ~]>")
-  .scale("f4:minor")
-  .s("square")
-  .attack(.002).decay(.14).sustain(0).release(.1)
-  .lpf(2200).crush(8).gain(.3)
-
-
-// ------------------------------------------------------------
-// 6. DRUMS — minimal skeleton so the riffs sit in a groove.
-//    Delete this block if you only wanted the tonal parts.
-// ------------------------------------------------------------
-const drums = stack(
-  s("bd ~ ~ bd ~ bd ~ ~").gain(1.1).shape(.3),
-  s("~ ~ sd ~ ~ ~ sd ~").gain(.9).room(.18),
-  s("hh*16").gain(.28).degradeBy(.18).pan(rand.range(.4, .6)),
-  s("~ ~ ~ ~ ~ ~ ~ oh").gain(.35)
-)
-
-
-// ------------------------------------------------------------
-//  MIX — comment a line out to mute that part
-// ------------------------------------------------------------
-stack(
-  sub,
-  bass,
-  bassGhost,
-  lead,
-  melody,
-  // stabs,
-  drums
-)
-  .add(note(0))              // <- global transpose in SEMITONES (note(2) = G minor)
-  .postgain(.9)
-
-
-// ============================================================
-//  VARIATIONS — paste over the const above to swap a part
-// ============================================================
-//
-// -- Bass, half-time / dub version:
-// const bass = n("<[0 ~ ~ ~ ~ ~ 0 ~] [-2 ~ ~ ~ -1 ~ ~ ~]>").scale("f3:minor")
-//   .s("sawtooth").lpf(500).lpq(8).shape(.5).gain(.9)
-//
-// -- Lead, faster + reversed every other bar:
-// const lead = ...(as above)... .jux(rev).fast("<1 1 2 1>")
-//
-// -- Melody, call-and-response ("get got / get got"):
-// const melody = n("<[0 0 ~ ~] [~ ~ 4 4] [2 2 ~ ~] [~ ~ 0 ~]>").scale("f5:minor")
-//   .s("triangle").vib(6).vibmod(.2)
-//   .delay(.5).delaytime(.1875).delayfeedback(.5).gain(.5)
-//
-// -- Drop everything but sub + hook for 4 bars:
-//   add .mask("<1 1 1 0>") to lead and drums
-//
-// ============================================================`,
-  },
-  {
     name: 'get_got',
     kind: 'songs',
     code: `// ==============================================================
 //  GET GOT  --  Death Grips (The Money Store, 2012)
-//  Strudel arrangement, broken out layer by layer.
-//  Paste into https://strudel.cc and hit Ctrl+Enter.
-//  ~129 BPM  |  1 cycle = 1 bar of 4/4
+//  Transcribed from source, not from ear:
+//    drums/bass/gtr : songsterr.com tab s1334391 rev 1779377
+//    key + hook     : hooktheory theorytab death-grips/get-got
+//  Both sources agree on tempo: 175 BPM (the half-time feel is
+//  87.5) in 4/4.  Key: D minor for the hook; the intro riff is
+//  notated C mixolydian (C against Bb).
+//  1 cycle = 1 bar.  Ctrl+Enter to play, Ctrl+. to stop.
 // ==============================================================
-//  Uncomment on a self-hosted Strudel; strudel.cc preloads these.
-//  await samples('github:tidalcycles/dirt-samples')
 
-setcps(129/60/4)
+setcpm(175 / 4)
 
 // --------------------------------------------------------------
-// LAYER 1 - KICK
-// Blown-out 909 kick with a lurching, off-grid push. The record is
-// deliberately clipped, so shape() is doing the damage on purpose.
+// TOMS - the intro figure (tab m1-2, m17-18, m32, m41-42).
+// Hi-mid tom (48) and low-mid tom (47) on a 32nd grid. No kick,
+// no snare: this is the bare stutter that opens the record.
 // --------------------------------------------------------------
-const kick = s("bd ~ ~ bd ~ bd ~ ~")
+const toms = s("ht ~ ht mt ht ~ mt ~ ht mt ht ~ mt ~ ~ ~ ht ~ ht mt ht ~ mt ~ ht mt ht ~ mt ~ ~ ~")
   .bank("RolandTR909")
-  .gain(1.25)
-  .shape(0.55)          // hard clip = the crushed Money Store kick
-  .lpf(240)
-  .distort("1.4:0.7")
+  .gain(0.9)
+  .shape(0.35)
 
 // --------------------------------------------------------------
-// LAYER 2 - SNARE
-// Flat, dry, front-of-face backbeat. Tiny room only, no long tail.
+// MAIN GROOVE - the verse beat (tab m3-9).
+// Kick is the busy part: 16ths at 0 3 5 6 7 8 11 13 14 15.
+// Open hat rides straight 8ths, snare is a plain 2-and-4.
 // --------------------------------------------------------------
+const kick = s("bd ~ ~ bd ~ bd bd bd bd ~ ~ bd ~ bd bd bd")
+  .bank("RolandTR909")
+  .gain(1.2)
+  .shape(0.55)          // the record is clipped on purpose
+  .lpf(260)
+
+const openHats = s("oh*8")
+  .bank("RolandTR909")
+  .gain(0.45)
+  .hpf(4000)
+  .pan(sine.range(0.4, 0.6).slow(3))
+
 const snare = s("~ sd ~ sd")
   .bank("RolandTR909")
-  .gain(1.1)
+  .gain(1.05)
   .shape(0.4)
   .hpf(180)
   .room(0.12)
-  .sometimesBy(0.2, x => x.stut(2, 0.6, 1/32))   // occasional flam/roll
 
 // --------------------------------------------------------------
-// LAYER 3 - HATS
-// Machine 8ths, velocity swung by a sine so it breathes instead of
-// sitting like a metronome.
+// TOM GROOVE - the chorus beat (tab m11-12, m21-24, m30-31).
+// Same tom figure as the intro, with the kick and a displaced
+// snare (12.5 and 14 in 16ths) underneath.
 // --------------------------------------------------------------
-const hats = s("hh*8")
+const tomKick = s("bd ~ ~ ~ ~ ~ bd ~ ~ ~ bd ~ ~ ~ ~ ~ bd ~ ~ ~ ~ ~ bd ~ ~ ~ bd ~ ~ ~ bd ~")
   .bank("RolandTR909")
-  .gain(sine.range(0.3, 0.65).fast(2))
-  .pan(sine.range(0.35, 0.65).slow(3))
-  .sometimesBy(0.12, x => x.speed(2).gain(0.8))
-  .hpf(6000)
+  .gain(1.15)
+  .shape(0.5)
+  .lpf(260)
+
+const tomSnare = s("~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ sd ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ sd ~ ~ sd ~ ~ ~")
+  .bank("RolandTR909")
+  .gain(1.0)
+  .shape(0.4)
+  .hpf(180)
 
 // --------------------------------------------------------------
-// LAYER 4 - SUB BASS
-// The menace. Descending minor figure, sine sub only, no mids -
-// everything above 130 Hz is the guitar/siren layer's job.
+// BASS - literal pitches from the bass tab, 16ths throughout.
+// One bar per angle bracket:
+//   G2 | G2 | D2/C2 | Eb3 D3 D3 C3 | C3 -> D3 | Bb2 | Bb2
+// Written in D phrygian so bar 4's Eb is a scale degree, not an
+// accidental: 0=D2  3=G2  5=Bb2  6=C3  7=D3  8=Eb3.
 // --------------------------------------------------------------
-const sub = n("0 ~ 0 0 ~ 2 ~ -1")
-  .scale("e1:minor")
-  .s("sine")
-  .attack(0.005).decay(0.12).sustain(0.5).release(0.15)
-  .lpf(130)
-  .gain(0.95)
-  .shape(0.25)
-
-// --------------------------------------------------------------
-// LAYER 5 - HOOK / VOCAL CHOP
-// Stand-in for the chopped, pitched-up vocal loop that carries the
-// hook. \`numbers\` is a spoken-word bank, so pitched up it reads as
-// a vocal stab. Swap s("numbers") for your own sample bank later.
-// --------------------------------------------------------------
-const hook = n("0 0 ~ 0 0 ~ 3 ~")
-  .s("numbers")
-  .speed(1.7)           // pitch it up into that shrill register
-  .gain(0.85)
-  .crush(6)             // bit-crush = the tape-damaged texture
-  .pan(0.45)
-  .room(0.1)
-
-// --------------------------------------------------------------
-// LAYER 6 - SIREN / LEAD STAB
-// The squealing sawtooth that answers the hook. Filter is swept by
-// a slow sine so each stab opens differently.
-// --------------------------------------------------------------
-const siren = n("<0 ~ 2 ~ 0 -1 ~ ~>")
-  .scale("e5:minor")
+const bass = n("<3*16 3*16 [0*4 -1*4 0*4 -1*4] [8 7 7 6]*4 [6*8 7*8] 5*16 5*16>")
+  .scale("d2:phrygian")
   .s("sawtooth")
-  .lpf(sine.range(500, 4500).slow(4))
-  .lpq(12)
-  .attack(0.01).release(0.25)
-  .gain(0.5)
-  .delay(0.3).delaytime(1/8).delayfeedback(0.35)
+  .lpf(perlin.range(220, 780).slow(6))
+  .lpq(9)
+  .attack(0.002).decay(0.09).sustain(0.2).release(0.05)
+  .shape(0.4)
+  .gain(0.85)
+
+// Sub underneath, same notes an octave down, no character at all.
+const sub = bass
+  .add(note(-12))
+  .s("sine")
+  .lpf(140).lpq(1).shape(0.15).gain(0.9)
+
+// Chorus bass (tab m27-29): D3/C3 alternating 16ths.
+const bassChorus = n("[0 -1]*8")
+  .scale("d3:minor")
+  .s("sawtooth")
+  .lpf(700).lpq(9)
+  .attack(0.002).decay(0.09).sustain(0.2).release(0.05)
+  .shape(0.4).gain(0.85)
 
 // --------------------------------------------------------------
-// LAYER 7 - NOISE / DEBRIS
-// Industrial grit: filtered white noise bursts plus scrap metal.
-// Keep it low - it is texture, not an instrument.
+// SIREN - the distortion-guitar riff from the tab (m3-5).
+// C#5 D5 C#5 B4, each hammered as four 32nds. The semitone
+// wobble against a D-minor centre is what makes it scream.
 // --------------------------------------------------------------
-const debris = stack(
-  s("white*4").gain("0.25 0.1 0.2 0.1").hpf(2500).decay(0.05).sustain(0),
-  s("~ ~ metal ~").gain(0.3).speed(rand.range(0.8, 1.6)).crush(5)
-).degradeBy(0.35)
+const siren = n("[1*4 2*4 1*4 0*4]*2")
+  .scale("b4:minor")          // 0=B4 1=C#5 2=D5
+  .s("sawtooth")
+  .superimpose(x => x.add(note(0.13)).gain(0.6))   // detune twin
+  .lpf(sine.range(900, 4200).slow(4))
+  .lpq(12)
+  .attack(0.001).decay(0.07).sustain(0).release(0.04)
+  .crush(9)
+  .gain(0.5)
+
+// --------------------------------------------------------------
+// HOOK - the theorytab chorus melody, D minor, range D4-A4.
+// A | G D | A G D (triplet) | A F D
+// --------------------------------------------------------------
+const hook = n("4 [3 0] [4 3 0] [4 2 0 ~]")
+  .scale("d4:minor")         // 0=D4 2=F4 3=G4 4=A4
+  .s("square")
+  .attack(0.005).decay(0.2).sustain(0.25).release(0.2)
+  .lpf(3200)
+  .crush(7)
+  .delay(0.35).delaytime(0.1029).delayfeedback(0.35)  // dotted 8th at 175
+  .room(0.25)
+  .gain(0.45)
 
 // ==============================================================
-//  FULL MIX - comment a line out to solo/strip a layer
+//  FULL MIX - comment a line out to strip a layer
 // ==============================================================
 stack(
   kick,
   snare,
-  hats,
+  openHats,
   sub,
-  hook,
+  bass,
   siren,
-  debris
-).postgain(0.9)
+  hook
+).postgain(0.4)          // seven loud layers - this is the headroom
 
 // ==============================================================
-//  OPTIONAL ARRANGEMENT
-//  Replace the stack() above with this for an intro/verse/hook form.
+//  ARRANGEMENT - follows the tab's section order.
+//  Replace the stack() above with this.
 // ==============================================================
 // arrange(
-//   [4, stack(hook, debris)],                       // intro: loop alone
-//   [8, stack(kick, snare, hats, sub, hook)],       // verse
-//   [8, stack(kick, snare, hats, sub, hook, siren, debris)], // hook
-//   [4, stack(sub, hook).degradeBy(0.4)]            // breakdown
+//   [2, toms],                                                // intro m1-2
+//   [7, stack(kick, snare, openHats, sub, bass, siren)],       // verse m3-9
+//   [2, stack(tomKick, tomSnare, toms, sub, bass)],            // m11-12
+//   [4, stack(kick, snare, openHats, sub, bass, hook)],        // m13-16
+//   [2, toms],                                                // m17-18
+//   [4, stack(tomKick, tomSnare, toms, bassChorus, hook)],     // chorus
+//   [2, stack(sub, bassChorus).degradeBy(0.4)]                 // breakdown
 // ).postgain(0.9)`,
   },
 ];
