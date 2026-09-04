@@ -117,3 +117,20 @@ describe('setupLine', () => {
     expect(setupLine(['setcpm(120/4)', 'samples("a")', '', '$: s("bd")'])).toBe(2);
   });
 });
+
+describe('a fragment with nothing to chain onto', () => {
+  it('is refused rather than appended inside a comment', () => {
+    // It used to land after the `//`, where it parsed, never ran, and was gone
+    // with no error and no change in sound.
+    expect(chainOnto('// just a header', '.gain(0.5)')).toBeNull();
+    expect(addToBlock('// just a header', '.gain(0.5)')).toEqual({
+      text: '// just a header',
+      separate: false,
+      refused: true,
+    });
+  });
+
+  it('still chains past a TRAILING comment onto real code above it', () => {
+    expect(chainOnto('s("bd")\n// note', '.gain(0.5)')).toBe('s("bd").gain(0.5)\n// note');
+  });
+});

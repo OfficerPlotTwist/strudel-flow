@@ -19,6 +19,8 @@ const CPM_CALL_G = new RegExp(CPM_CALL.source, 'g');
 /** What a knob may sweep. Below 40 nothing reads as a pulse; above 220 nothing plays. */
 export const BPM_RANGE = { min: 40, max: 220 };
 
+import { maskCode, replaceInCode } from './args.js';
+
 /**
  * The song's tempo in BPM, or null when it declares none.
  *
@@ -26,7 +28,11 @@ export const BPM_RANGE = { min: 40, max: 220 };
  * is at 120" are different facts and only one of them is safe to write back.
  */
 export function songBpm(code) {
-  const match = CPM_CALL.exec(code ?? '');
+  // Read through the mask: a `setcpm` inside a comment or a string is not the
+  // song's tempo, and taking it as one would report a number nothing plays at.
+  const masked = maskCode(code ?? '');
+  const found = CPM_CALL.exec(masked);
+  const match = found && CPM_CALL.exec((code ?? '').slice(found.index, found.index + found[0].length));
   if (!match) return null;
   const value = Number(match[1]);
   if (!Number.isFinite(value)) return null;
@@ -49,7 +55,7 @@ export function clampBpm(bpm) {
  */
 export function setSongBpm(code, bpm) {
   const value = clampBpm(bpm);
-  return (code ?? '').replace(CPM_CALL_G, (whole, num, den) =>
+  return replaceInCode(code, CPM_CALL_G, (whole, num, den) =>
     den === undefined
       ? whole.replace(num, String(value / 4))
       : whole.replace(num, String(value)),
@@ -58,7 +64,7 @@ export function setSongBpm(code, bpm) {
 
 /** Whether the song declares a tempo at all. */
 export function hasTempo(code) {
-  return CPM_CALL.test(code ?? '');
+  return CPM_CALL.test(maskCode(code ?? ''));
 }
 
 /**

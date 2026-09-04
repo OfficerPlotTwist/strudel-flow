@@ -178,6 +178,53 @@ function chainParses(lines, block) {
  * passed over too - `setcpm(120).mul(gain(...))` is a syntax error, not a
  * countdown.
  */
+/**
+ * The names a block DEFINES for the rest of the song to use.
+ *
+ * `const kick = s("bd")` is not a part that can be silenced on its own - it is
+ * a definition, and other blocks call it by name.
+ */
+function definedNames(lines, block) {
+  const names = [];
+  for (let i = block.start; i <= block.end; i += 1) {
+    const match = /^\s*(?:\/\/\s*)?(?:const|let|var|function)\s+([A-Za-z_$][\w$]*)/.exec(lines[i]);
+    if (match) names.push(match[1]);
+  }
+  return names;
+}
+
+/**
+ * Would stopping these blocks leave a name behind that something still live
+ * calls?
+ *
+ * Commenting out `const kick = ...` while `stack(kick, snare)` stays live does
+ * not mute the kick - it throws a ReferenceError and takes the WHOLE song with
+ * it. Stopping everything at once is safe, because the callers go too; it is
+ * stopping ONE definition that breaks, and that is the common gesture.
+ */
+function danglesReference(lines, block, blocks) {
+  const names = definedNames(lines, block);
+  if (names.length === 0) return false;
+  const going = new Set(blocks.map((b) => b.start));
+  const survives = [];
+  let at = 0;
+  // Every line that is NOT part of a block being armed, and is not commented.
+  const spans = blocks.map((b) => [b.start, b.end]);
+  for (let i = 0; i < lines.length; i += 1) {
+    const inside = spans.some(([s2, e]) => i >= s2 && i <= e && going.has(s2));
+    if (inside) continue;
+    const line = lines[i];
+    if (line.trimStart().startsWith('//')) continue;
+    survives.push(line);
+  }
+  at = survives.join(String.fromCharCode(10));
+  // Compared as WORDS rather than by a built regex: `backslash-b` inside a template
+  // literal is the backspace character, not a word boundary, so the obvious
+  // construction silently matches nothing.
+  const words = new Set(at.split(/[^A-Za-z0-9_$]+/));
+  return names.some((name) => words.has(name));
+}
+
 export function armable(lines, blocks, action) {
   return blocks.filter((block) => {
     const stopped = isBlockCommented(lines, block.start, block.end);
@@ -187,6 +234,8 @@ export function armable(lines, blocks, action) {
     // asked about the text that will actually be rendered, which is the block
     // with its markers removed. Judging the commented form instead would
     // reject every block the play button exists to start.
+    // Refuse to silence a definition something still playing calls by name.
+    if (action === 'stop' && danglesReference(lines, block, blocks)) return false;
     const rendered = stopped ? uncommentForPlayback(lines, [block]) : lines;
     return (
       looksLikeCode(rendered, block) &&

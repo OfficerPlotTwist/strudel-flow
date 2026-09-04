@@ -34,6 +34,8 @@ const LABEL = /^\s*(?:\$|[a-z]\w*)\s*:\s*/;
 /** The call a block opens with, and its whole argument. */
 const HEAD_CALL = /^([A-Za-z_$][\w$]*)\(\s*("(?:[^"\\]|\\.)*"|[^()]*)\)/;
 
+import { replaceInCode } from './args.js';
+
 /** Eight columns of eighth-notes, each splittable into two sixteenths. */
 export const COLUMNS = 8;
 export const STEPS = COLUMNS * 2;
@@ -191,7 +193,9 @@ export function patternBlock(pattern) {
  * in which a song has one.
  */
 export function songKey(code) {
-  const found = [...(code ?? '').matchAll(SCALE_CALL_G)];
+  // Through the mask: a `.scale()` written in a comment is documentation, and
+  // counting it would let a note about the key outvote the key.
+  const found = [...maskComments(code ?? '').matchAll(SCALE_CALL_G)];
   if (found.length === 0) return null;
   const tally = new Map();
   for (const [, key, , mode] of found) {
@@ -236,8 +240,14 @@ export function nextKey(key, steps) {
  * flattened them would silently rewrite the arrangement.
  */
 export function setSongKey(code, key) {
-  return (code ?? '').replace(SCALE_CALL_G, (whole, tonic, octave, mode) =>
-    whole.replace(`"${tonic}${octave ?? ''}:${mode}"`, `"${key}${octave ?? ''}:${mode}"`),
+  // Comments only. A scale's argument IS a string, so a string-blanking mask
+  // would hide every call there is.
+  return replaceInCode(
+    code,
+    SCALE_CALL_G,
+    (whole, tonic, octave, mode) =>
+      whole.replace(`"${tonic}${octave ?? ''}:${mode}"`, `"${key}${octave ?? ''}:${mode}"`),
+    maskComments,
   );
 }
 
@@ -268,6 +278,15 @@ export function blockSuffix(text) {
   const kept = head[1] === 'n' ? rest : '.' + head[1] + '(' + head[2] + ')' + rest;
   return kept.replace(SCALE_CALL_G, '').replace(/\s+/g, ' ').trim();
 }
+
+/**
+ * The complete vocabulary this grid can write: a degree, optionally sharpened,
+ * a hold, or a rest.
+ *
+ * Anything else - a note name, a sample word, a mini-notation operator - is
+ * music this mode cannot express, and a block containing one is not ours.
+ */
+const STEP_WORD = /^(?:\d+#?|_|~)$/;
 
 /** `0`, `1#`, `~`, `_` -> the step it represents. */
 function parseStep(word) {
@@ -311,6 +330,16 @@ export function parsePattern(text) {
     : [{ words: body.split(/\s+/), repeats: 1 }];
   if (chunks.length === 0) return null;
 
+  // REFUSE anything this grid cannot write back. Reading `n("e4 g4 c5")` as
+  // sixteen rests, or a twenty-step bar as its first sixteen, is worse than
+  // not reading it: the mode edits in place, so the first pad press would make
+  // the loss permanent and silent. A block it cannot round-trip is not one of
+  // ours, and the caller steps into a new block instead.
+  for (const { words } of chunks) {
+    if (words.length > STEPS) return null;
+    if (!words.every((word) => STEP_WORD.test(word))) return null;
+  }
+
   pattern.segments = chunks.map(({ words, repeats }) => {
     const segment = createSegment(Math.min(Math.max(repeats, 1), COLUMNS));
     for (let i = 0; i < STEPS; i += 1) {
@@ -320,6 +349,41 @@ export function parsePattern(text) {
   });
   pattern.active = pattern.segments.length - 1;
   return pattern;
+}
+
+/**
+ * Whether a pattern can be stepped into `text` without losing what is there.
+ *
+ * True when the block round-trips (it is one this mode wrote) or when it holds
+ * no melodic line at all - the `s("piano")` a SEND B pick leaves behind is a
+ * voice waiting for notes, and stepping into it is the point. False when the
+ * block has an `n(...)` this grid cannot express, because editing in place
+ * would destroy a melody somebody wrote by hand.
+ */
+export function canStepInto(text) {
+  const body = text ?? '';
+  if (!body.trim()) return true;
+  if (parsePattern(body)) return true;
+  return !/\bn\s*\(/.test(maskComments(body));
+}
+
+/**
+ * Comments blanked to spaces, LENGTH PRESERVED.
+ *
+ * The length is the whole point: replaceInCode finds matches in the masked
+ * copy and applies them to the real source by offset. Stripping the comment
+ * instead of blanking it shortens the line, and every match after it then
+ * lands somewhere else - which reads as "the knob did nothing".
+ */
+function maskComments(text) {
+  const NEWLINE = String.fromCharCode(10);
+  return text
+    .split(NEWLINE)
+    .map((line) => {
+      const at = line.indexOf('//');
+      return at === -1 ? line : line.slice(0, at) + ' '.repeat(line.length - at);
+    })
+    .join(NEWLINE);
 }
 
 /** Clamp an octave into the range TC 1 sweeps. */

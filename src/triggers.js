@@ -207,5 +207,16 @@ export function createTapGate({ taps = 3, windowMs = 600 } = {}) {
     },
     /** How far into the gesture we are - for showing progress. */
     pending: () => count,
+    /**
+     * Abandon a half-finished gesture.
+     *
+     * A gate shared between sessions carries the count across them: one press
+     * in the first, and the first press of the next is read as the second tap
+     * of a gesture nobody is still making.
+     */
+    reset() {
+      count = 0;
+      last = -Infinity;
+    },
   };
 }

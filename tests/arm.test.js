@@ -281,3 +281,39 @@ describe('a block labelled with a comment is still code', () => {
     expect(armable(mix, [{ start: 0, end: 1, index: 0 }], 'stop')).toHaveLength(1);
   });
 });
+
+describe('stopping a definition other blocks call', () => {
+  const song = [
+    'const kick = s("bd*4")',
+    '',
+    '$: stack(kick, s("hh*8"))',
+  ];
+  const kickBlock = { start: 0, end: 0, index: 0 };
+  const mixBlock = { start: 2, end: 2, index: 1 };
+
+  it('refuses to stop a const something live still calls', () => {
+    // Commenting it out does not mute the kick - it throws a ReferenceError
+    // and takes the whole song with it.
+    expect(armable(song, [kickBlock], 'stop')).toHaveLength(0);
+  });
+
+  it('allows it when the callers are going too', () => {
+    // Whole-page stop is safe: nothing survives to reference the name.
+    expect(armable(song, [kickBlock, mixBlock], 'stop')).toHaveLength(2);
+  });
+
+  it('allows a block that defines nothing', () => {
+    expect(armable(song, [mixBlock], 'stop')).toHaveLength(1);
+  });
+
+  it('ignores a reference that only appears in a comment', () => {
+    const withNote = ['const kick = s("bd*4")', '', '// kick is used later', '$: s("hh*8")'];
+    expect(armable(withNote, [{ start: 0, end: 0, index: 0 }], 'stop')).toHaveLength(1);
+  });
+
+  it('matches whole words, not substrings', () => {
+    // `kick` must not be found inside `kickback`.
+    const other = ['const kick = s("bd*4")', '', '$: s("hh*8").label("kickback")'];
+    expect(armable(other, [{ start: 0, end: 0, index: 0 }], 'stop')).toHaveLength(1);
+  });
+});

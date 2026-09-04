@@ -49,6 +49,7 @@ import {
   accidentalDegrees,
   addSegment,
   blockSuffix,
+  canStepInto,
   createPattern,
   nextKey,
   describeKey,
@@ -439,7 +440,13 @@ function addPickToBlock() {
 
   const block = pane.getSoleSelectedBlock(id);
   const current = block?.text ?? '';
-  const { text, separate } = addToBlock(current, pick.code);
+  const { text, separate, refused } = addToBlock(current, pick.code);
+  if (refused) {
+    // A `.method()` pick with no code to hang it on. Saying so beats appending
+    // it into a comment, where it would vanish without a sound or an error.
+    status.info(`build: nothing for ${pick.name} to chain onto`);
+    return;
+  }
   if (separate) {
     // Not a rejection - a melody and a drum part are two parts however they
     // were picked, and the new one becomes the block now being built.
@@ -631,11 +638,19 @@ function enterPatternMode() {
   let target = index;
   let text = pane.getBlockAt(id, target)?.text ?? '';
 
-  // The reverb bus is not a part and must never be stepped over. On an empty
-  // sheet it is the ONLY block, so it is also what the cursor lands on - and
-  // editing in place would have made the first pattern of every new song
-  // delete that song's reverb.
-  if (hasBus(text)) {
+  // Two things must never be stepped over, and both would be destroyed
+  // silently because this mode edits in place:
+  //
+  //   the reverb bus - not a part, and on an empty sheet it is the ONLY block
+  //   so it is also what the cursor lands on;
+  //
+  //   a melody this grid cannot write back - `n("e4 g4 c5")` read as sixteen
+  //   rests, or a twenty-step bar read as its first sixteen. The block gets
+  //   rewritten on the FIRST pad press, so a hand-written line would be gone
+  //   before anyone saw it happen.
+  //
+  // Either way the pattern goes into a new block of its own instead.
+  if (hasBus(text) || !canStepInto(text)) {
     target = pane.appendBlock(id, PATTERN_SEED);
     focusNewBlock(id, target);
     text = '';
@@ -651,6 +666,10 @@ function enterPatternMode() {
 
   patternMode = { pattern, blockIndex: target, tabId: id };
   paintPatternLeds(true);
+  // A half-finished SCENE 3 gesture belongs to the session it was made in.
+  // Carried over, the first press of the next session counts as the second
+  // tap of the last one and blanks a segment instead of duplicating it.
+  segmentGate.reset();
   // The key is stated on entry rather than assumed. "Pre-determined" has to
   // mean determined by something, and every degree stepped from here means
   // nothing without it.
@@ -681,8 +700,20 @@ function patternControl(control) {
     if (row === 5) {
       // Both edges: the step is a modifier, and dropping its release would
       // leave every later degree press writing into a step nobody is holding.
-      if (down) { heldLower.add(column); activeColumn = column; }
-      else { heldLower.delete(column); if (activeColumn === column) activeColumn = null; }
+      if (down) {
+        // Delete before adding so a re-press moves the column to the END of
+        // the set - insertion order is what "most recent" means here.
+        heldLower.delete(column);
+        heldLower.add(column);
+        activeColumn = column;
+      } else {
+        heldLower.delete(column);
+        // Fall back to whatever is STILL held rather than to nothing. Letting
+        // go of the newer of two held steps used to leave no target at all,
+        // so a degree pressed afterwards went nowhere while a pad was still
+        // visibly down.
+        if (activeColumn === column) activeColumn = [...heldLower].at(-1) ?? null;
+      }
       return true;
     }
     if (row === 4) {
@@ -761,6 +792,11 @@ pane.onCursorMove(() => {
 // and the same numbers in a different arrangement are different music.
 pane.onViewTab(() => {
   blockCursor.clear();
+  // Pattern build addresses a block by index in ONE tab. Carrying it to
+  // another song would keep every grid press rewriting a block that is no
+  // longer on screen - invisible, with the pads still lit as though they were
+  // editing what you are looking at.
+  if (patternMode) exitPatternMode();
   refreshArgMap();
 });
 

@@ -143,3 +143,36 @@ describe('tempo ramp', () => {
     expect(bpmToCps(87)).toBeCloseTo(87 / 240, 6);
   });
 });
+
+describe('song-global rewrites touch code only', () => {
+  const NEWLINE = String.fromCharCode(10);
+
+  it('does not rewrite a setcpm inside a comment or a string', () => {
+    const song = ['// setcpm(120/4)', 'setcpm(90/4)', 's("bd").label("setcpm(999)")'].join(NEWLINE);
+    const out = setSongBpm(song, 160);
+    expect(out).toContain('// setcpm(120/4)');
+    expect(out).toContain('setcpm(160 / 4)'.replace(' / ', '/'));
+    expect(out).toContain('"setcpm(999)"');
+  });
+
+  it('reads the tempo the song plays at, not one mentioned in a comment', () => {
+    expect(songBpm(['// setcpm(120/4)', 'setcpm(90/4)'].join(NEWLINE))).toBe(90);
+  });
+
+  it('does not rewrite a scale inside a comment', () => {
+    const song = ['// n("0").scale("d:minor")', 'n("0").scale("c:major")'].join(NEWLINE);
+    const out = setSongKey(song, 'g');
+    expect(out).toContain('// n("0").scale("d:minor")');
+    expect(out).toContain('.scale("g:major")');
+  });
+
+  it('does not count a scale in a comment towards the song key', () => {
+    // Two comments must not outvote the one call the song actually plays.
+    const song = [
+      '// .scale("d:minor")',
+      '// .scale("d:minor")',
+      'n("0").scale("c:major")',
+    ].join(NEWLINE);
+    expect(songKey(song)).toMatchObject({ key: 'c', mode: 'major' });
+  });
+});

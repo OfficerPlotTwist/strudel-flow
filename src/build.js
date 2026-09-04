@@ -116,13 +116,21 @@ export function alternateWith(existing, added) {
 
 /** Hangs a `.method()` fragment off the last real line of a block. */
 export function chainOnto(blockText, fragment) {
-  const lines = blockText.replace(/\r/g, '').split('\n');
+  const NEWLINE = String.fromCharCode(10);
+  const CARRIAGE = String.fromCharCode(13);
+  const lines = blockText
+    .split(NEWLINE)
+    .map((line) => (line.endsWith(CARRIAGE) ? line.slice(0, -1) : line));
   let target = lines.length - 1;
   while (target > 0 && (lines[target].trim() === '' || lines[target].trim().startsWith('//'))) {
     target -= 1;
   }
+  // Nothing to chain onto. Appending anyway put the pick INSIDE a comment,
+  // where it parsed, never ran, and was gone with no error and no sound.
+  const last = lines[target].trim();
+  if (!last || last.startsWith('//')) return null;
   lines[target] = lines[target].trimEnd() + fragment.trim();
-  return lines.join('\n');
+  return lines.join(NEWLINE);
 }
 
 /**
@@ -136,7 +144,14 @@ export function chainOnto(blockText, fragment) {
 export function addToBlock(blockText, added) {
   const kind = classifyItem(added);
   if (kind === 'empty') return { text: blockText, separate: false };
-  if (kind === 'fragment') return { text: chainOnto(blockText, added), separate: false };
+  if (kind === 'fragment') {
+    const chained = chainOnto(blockText, added);
+    // A fragment cannot stand on its own, so a block with no code to hang it
+    // on refuses the pick rather than losing it.
+    return chained === null
+      ? { text: blockText, separate: false, refused: true }
+      : { text: chained, separate: false };
+  }
   const merged = alternateWith(blockText, added);
   if (merged) return { text: merged, separate: false };
   return { text: added.trim(), separate: true };

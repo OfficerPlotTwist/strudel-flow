@@ -6,6 +6,7 @@ import {
   accidentalDegrees,
   addSegment,
   blockSuffix,
+  canStepInto,
   describeKey,
   createPattern,
   makeActiveEmpty,
@@ -252,5 +253,41 @@ describe('describeKey', () => {
     expect(describeKey(createPattern({ key: 'd', mode: 'minor', octave: 3 }))).toBe(
       'D minor, octave 3',
     );
+  });
+});
+
+describe('refusing blocks this grid cannot write back', () => {
+  it('will not read a hand-written melody as rests', () => {
+    // It edits in place, so a block it "reads" wrong is destroyed on the
+    // first pad press. Note names are not grid vocabulary.
+    const hand = '$: n("e4 g4 c5 a3").scale("c4:major")';
+    expect(parsePattern(hand)).toBeNull();
+    expect(canStepInto(hand)).toBe(false);
+  });
+
+  it('will not read a pattern longer than the grid as its first sixteen', () => {
+    const long = `$: n("${Array.from({ length: 20 }, (_, i) => i).join(' ')}").scale("c4:major")`;
+    expect(parsePattern(long)).toBeNull();
+    expect(canStepInto(long)).toBe(false);
+  });
+
+  it('still reads back everything it wrote itself', () => {
+    const p = createPattern({ key: 'd', mode: 'minor', octave: 3 });
+    setStep(p, 0, { degree: 0 });
+    setStep(p, 3, { degree: 4, sharp: true });
+    setRest(p, 5);
+    setRepeats(p, 3);
+    addSegment(p);
+    expect(patternBlock(parsePattern(patternBlock(p)))).toBe(patternBlock(p));
+  });
+
+  it('steps into a voice that has no melody to lose', () => {
+    // What SEND B leaves behind: a sound waiting for notes.
+    expect(canStepInto('$: s("piano").gain(0.8)')).toBe(true);
+    expect(canStepInto('')).toBe(true);
+  });
+
+  it('is not fooled by a note call mentioned in a comment', () => {
+    expect(canStepInto('// the n( in this label\n$: s("piano")')).toBe(true);
   });
 });

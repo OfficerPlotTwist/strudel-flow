@@ -208,7 +208,12 @@ export const MASTER_CONTROLS = [
  */
 export const REVERB_CONTROLS = [
   { fn: 'room', position: 0, label: 'room', default: 0.2 },
-  { fn: 'roomsize', position: 0, label: 'size', default: 2, shared: true, integer: true },
+  // Continuous, and spanning what the app's own FX chains declare for this
+  // same parameter (seed-fx/space.js uses 0.5..6, 4..10 and 0.5..10). A
+  // stepped 1..8 knob could not reach either end of the presets it shares a
+  // name with, which is two parts of one codebase describing one control
+  // differently.
+  { fn: 'roomsize', position: 0, label: 'size', default: 2, shared: true, min: 0.5, max: 10 },
 ];
 
 /** Defaults written the first time a master knob is touched on a block. */
@@ -250,9 +255,13 @@ export function bindFixedControls(args, controls, track) {
       label: control.label,
       shared: Boolean(control.shared),
       value,
-      range: control.integer
-        ? { min: 1, max: 8, log: false, integer: true }
-        : rangeFor(control.fn, value, control.position),
+      // A control that declares its own range owns it; anything else falls to
+      // the table. Hardcoding a range here is how the reverb size ended up
+      // disagreeing with every other declaration of the same parameter.
+      range:
+        control.min !== undefined
+          ? { min: control.min, max: control.max, log: false, integer: Boolean(control.integer) }
+          : rangeFor(control.fn, value, control.position),
       // Absent from the source: no offsets, and writing it appends the call.
       virtual: !found,
       from: found?.from ?? null,
@@ -325,6 +334,44 @@ export function maskCode(code) {
     }
   }
   return out.join('');
+}
+
+/**
+ * Replace matches of `pattern` that occur in real CODE, leaving comments and
+ * string literals alone.
+ *
+ * The song-global controls rewrite every declaration of a thing at once - the
+ * key knob every `.scale()`, the tempo knob every `setcpm()`. Scanning the raw
+ * text also rewrote the ones inside comments and inside strings, so turning a
+ * knob mid-set silently edited documentation and any `.label("...")` that
+ * happened to mention the call.
+ *
+ * Matching happens against the MASKED copy, which is the same length, so every
+ * offset found there indexes the real source directly.
+ *
+ * `mask` chooses WHAT to hide, and the choice is not free: the default blanks
+ * comments and string literals, which is right for `setcpm(87 / 4)` but wrong
+ * for `.scale("c:major")` - there the argument IS a string, so blanking
+ * strings hides the very thing being matched. Pass a comment-only mask for a
+ * call whose argument is legitimately quoted.
+ */
+export function replaceInCode(code, pattern, replacer, mask = maskCode) {
+  const text = code ?? '';
+  const masked = mask(text);
+  const scan = new RegExp(pattern.source, pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`);
+  let out = '';
+  let at = 0;
+  let match;
+  while ((match = scan.exec(masked))) {
+    // The masked match tells us WHERE; the replacement is computed from the
+    // real text, so captures carry their true contents.
+    const real = text.slice(match.index, match.index + match[0].length);
+    const groups = new RegExp(pattern.source, pattern.flags.replace('g', '')).exec(real);
+    out += text.slice(at, match.index) + replacer(...(groups ?? [real]));
+    at = match.index + match[0].length;
+    if (match[0].length === 0) scan.lastIndex += 1;
+  }
+  return out + text.slice(at);
 }
 
 /**
