@@ -33,6 +33,24 @@ export const EXCLUDED = new Set([
 ]);
 
 /**
+ * Controls that are perfectly good parameters and still must never reach a
+ * knob, because CHANGING them is expensive rather than because the value is
+ * wrong.
+ *
+ * Every one of these rebuilds the reverb's impulse response when it moves -
+ * Strudel's own docs say so, and say to change them sparingly. A knob emits up
+ * to two hundred values a second, so binding one would recalculate the reverb
+ * two hundred times a second on the audio thread. That is the same failure as
+ * re-rendering the whole set per MIDI message (see scheduleArgRefresh in
+ * main.js), one layer down, where there is no trailing edge to coalesce onto.
+ *
+ * `room` itself is not here: it is a send level, and moving it costs nothing.
+ */
+export const RECALCULATING = new Set([
+  'roomsize', 'size', 'roomdim', 'rdim', 'roomfade', 'rfade', 'roomlp',
+]);
+
+/**
  * The musically reasonable travel of each parameter - what "full knob" should
  * mean, which is never "the full domain of the function". `.lpf` accepts any
  * frequency and is useful between roughly 20 Hz and 8 kHz; `.gain` accepts
@@ -72,8 +90,6 @@ export const ARG_RANGES = {
   hold: { min: 0, max: 4 },
 
   room: { min: 0, max: 1 },
-  size: { min: 0.2, max: 8 },
-  roomsize: { min: 0.2, max: 8 },
   dry: { min: 0, max: 1 },
   orbit: { min: 0, max: 7, integer: true },
 
@@ -124,6 +140,143 @@ export const ARG_RANGES = {
  * they read as the button under the user's finger rather than an array index.
  */
 export const ARG_TRACKS = ['1', '2', '3', '4', '5', '6', '7', '8', 'master'];
+/**
+ * The eight tracks a PART is dealt across.
+ *
+ * Master is deliberately not among them: it is reserved for the song's master
+ * block, so those eight knobs mean the same thing no matter which part is
+ * selected - which is the whole of what a master section is. Dealing a part
+ * into it would make the master filter become somebody's decay time as soon as
+ * a block with more than 64 arguments came along.
+ */
+export const PART_TRACKS = ARG_TRACKS.slice(0, 7);
+/**
+ * Track 8 is the reverb pair, and master is the block's output stage. Both are
+ * RESERVED: a part is dealt across tracks 1-7 only, so these two keep meaning
+ * the same thing whichever block is under the cursor.
+ *
+ * That constancy is the entire point. A knob whose meaning depends on how many
+ * numbers the selected block happens to contain cannot be reached for without
+ * looking, and looking is the thing a control surface exists to avoid.
+ */
+export const REVERB_TRACK = '8';
+export const MASTER_TRACK = 'master';
+
+/**
+ * The block's output stage, in knob order, on the master track.
+ *
+ * Per BLOCK, not per song. A song-wide `all(x => x.adsr(...))` would not shape
+ * each part's envelope, it would overwrite it - including the envelope the
+ * block builder writes - and the per-block attack knob would silently stop
+ * doing anything. An envelope is a per-event control and belongs to the part
+ * that sounds it.
+ *
+ * `postgain` rather than `gain` for a reason that is not about the curve:
+ * blocks routinely carry their own `.gain()`, and binding that here would give
+ * one number two addresses - a part knob and the master knob, each overwriting
+ * the other. `.postgain()` is rare in hand-written blocks, so master owns it.
+ */
+export const MASTER_CONTROLS = [
+  { fn: 'adsr', position: 0, label: 'attack' },
+  { fn: 'adsr', position: 1, label: 'decay' },
+  { fn: 'adsr', position: 2, label: 'sustain' },
+  { fn: 'adsr', position: 3, label: 'release' },
+  { fn: 'lpf', position: 0, label: 'lpf' },
+  { fn: 'hpf', position: 0, label: 'hpf' },
+  { fn: 'postgain', position: 0, label: 'postgain' },
+];
+
+/** The reverb pair on track 8, appended to a block that has none. */
+/**
+ * Track 8: the reverb pair - and the two knobs are deliberately at DIFFERENT
+ * scopes, because that is what the two controls are.
+ *
+ * `room` is a per-event send amount (superdough calls `sendReverb(node,
+ * amount)` per voice), so it is cheap and belongs to the block. `roomsize` is
+ * a property of the orbit's single reverb node, and superdough's own source
+ * annotates the failure of getting this wrong:
+ *
+ *     // avoids endless regeneration on things like
+ *     //   stack(s("a"), s("b").rsize(8)).room(.5)
+ *
+ * Two blocks on one orbit carrying different sizes regenerate the impulse
+ * response PER EVENT. So there is exactly one roomsize per song, and it is
+ * `shared` - written to the reverb bus statement, not to the block.
+ *
+ * This is also how a mixing desk works: the send is on the channel, the
+ * reverb's size is on the bus.
+ */
+export const REVERB_CONTROLS = [
+  { fn: 'room', position: 0, label: 'room', default: 0.2 },
+  { fn: 'roomsize', position: 0, label: 'size', default: 2, shared: true, integer: true },
+];
+
+/** Defaults written the first time a master knob is touched on a block. */
+export const MASTER_DEFAULTS = { adsr: [0.01, 0.1, 0.6, 0.2], lpf: 20000, hpf: 20, postgain: 1 };
+
+/**
+ * Binds a fixed set of controls to one track, whether or not the block already
+ * calls them.
+ *
+ * A control the block does not have yet becomes a VIRTUAL slot: it has an
+ * address and a value but no offsets, and the first turn of its knob writes
+ * the call into the source. That is what keeps the master track meaning the
+ * same thing on every block - waiting for the block to happen to contain a
+ * `.postgain()` would make the master volume work on some parts and not
+ * others, which is worse than not having it.
+ *
+ * Returns `{ slots, claimed }`; `claimed` is the set of block arguments now
+ * spoken for, so the positional dealer can skip them and no number ends up
+ * with two knobs fighting over it.
+ */
+export function bindFixedControls(args, controls, track) {
+  const claimed = new Set();
+  const slots = controls.map((control, i) => {
+    const found = args.find(
+      (arg) =>
+        !claimed.has(arg) && arg.fn === control.fn && (arg.position ?? 0) === control.position,
+    );
+    if (found) claimed.add(found);
+    const value = found
+      ? found.value
+      : (control.default ??
+        (Array.isArray(MASTER_DEFAULTS[control.fn])
+          ? MASTER_DEFAULTS[control.fn][control.position]
+          : MASTER_DEFAULTS[control.fn]) ??
+        0);
+    return {
+      fn: control.fn,
+      position: control.position,
+      label: control.label,
+      shared: Boolean(control.shared),
+      value,
+      range: control.integer
+        ? { min: 1, max: 8, log: false, integer: true }
+        : rangeFor(control.fn, value, control.position),
+      // Absent from the source: no offsets, and writing it appends the call.
+      virtual: !found,
+      from: found?.from ?? null,
+      to: found?.to ?? null,
+      line: found?.line ?? null,
+      col: found?.col ?? null,
+      track,
+      knob: i + 1,
+      cc: KNOB_CC_BASE + i,
+      channel: ARG_TRACKS.indexOf(track),
+    };
+  });
+  return { slots, claimed };
+}
+
+/** The source text for a call this block does not have yet. */
+export function callText(slot, text) {
+  if (slot.fn !== 'adsr') return `.${slot.fn}(${text})`;
+  // adsr is one call with four numbers; writing `.adsr(0.2)` would silently
+  // mean an attack of 0.2 and defaults for the rest.
+  const values = [...MASTER_DEFAULTS.adsr];
+  values[slot.position] = text;
+  return `.adsr(${values.join(', ')})`;
+}
 export const KNOBS_PER_TRACK = 8;
 /** The device knob bank is CC 16..23, track-scoped. See apc40-map.json. */
 export const KNOB_CC_BASE = 16;
@@ -206,7 +359,7 @@ export function findNumericArgs(code, offset = 0) {
   let match;
   while ((match = CALL.exec(masked))) {
     const [, fn, argList] = match;
-    if (EXCLUDED.has(fn)) continue;
+    if (EXCLUDED.has(fn) || RECALCULATING.has(fn)) continue;
     // A name preceded by a word character is the tail of a longer identifier
     // (`myGain(2)` is not `gain`), which the pattern alone cannot see.
     const before = masked[match.index - 1];
@@ -304,17 +457,21 @@ export function formatArgValue(range, value) {
  * order. Anything past the 72nd gets no address rather than wrapping onto a
  * knob that already has one - two arguments on one knob is not a control.
  */
-export function assignArgSlots(args) {
-  return args.slice(0, ARG_TRACKS.length * KNOBS_PER_TRACK).map((arg, i) => ({
-    ...arg,
-    range: rangeFor(arg.fn, arg.value, arg.position ?? 0),
-    track: ARG_TRACKS[Math.floor(i / KNOBS_PER_TRACK)],
-    knob: (i % KNOBS_PER_TRACK) + 1,
-    // The wire address the (track, knob) pair means: CC 16..23 on the
-    // channel of the selected track. See device-map.js.
-    cc: KNOB_CC_BASE + (i % KNOBS_PER_TRACK),
-    channel: Math.floor(i / KNOBS_PER_TRACK),
-  }));
+export function assignArgSlots(args, tracks = ARG_TRACKS) {
+  return args.slice(0, tracks.length * KNOBS_PER_TRACK).map((arg, i) => {
+    const track = tracks[Math.floor(i / KNOBS_PER_TRACK)];
+    return {
+      ...arg,
+      range: rangeFor(arg.fn, arg.value, arg.position ?? 0),
+      track,
+      knob: (i % KNOBS_PER_TRACK) + 1,
+      // The wire address the (track, knob) pair means: CC 16..23 on the
+      // channel of that track. Taken from the FULL track list, not from
+      // `tracks` - a slot dealt only to master still arrives on channel 8.
+      cc: KNOB_CC_BASE + (i % KNOBS_PER_TRACK),
+      channel: ARG_TRACKS.indexOf(track),
+    };
+  });
 }
 
 /** What the annotation prints under an argument: track, then device knob. */

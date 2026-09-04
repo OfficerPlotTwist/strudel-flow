@@ -85,6 +85,13 @@ describe('findNumericArgs', () => {
     expect(findNumericArgs('// .gain(0.9)\ns("bd*16")')).toEqual([]);
   });
 
+  it('never binds a control that rebuilds the reverb when it moves', () => {
+    // Not a taste call: Strudel's docs say these recalculate the impulse
+    // response on change, and a knob sends ~200 values a second.
+    const code = '.room(0.4).roomsize(4).size(2).roomdim(800).roomfade(1.2).roomlp(6000)';
+    expect(findNumericArgs(code).map((a) => a.fn)).toEqual(['room']);
+  });
+
   it('reads a whole identifier rather than its tail', () => {
     // `myGain` is the function, not `gain` - so it must not inherit gain's
     // 0..2 range. An undocumented call is still knobbable, on a fallback

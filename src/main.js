@@ -11,7 +11,19 @@ import { createMidiMonitor } from './ui/midi-monitor.js';
 import { createDeviceMap } from './device-map.js';
 import { createRelativeBank } from './relative.js';
 import { createBlockCursor, createStepper } from './browse.js';
-import { argRows, assignArgSlots, findNumericArgs } from './args.js';
+import {
+  MASTER_CONTROLS,
+  MASTER_TRACK,
+  PART_TRACKS,
+  REVERB_CONTROLS,
+  REVERB_TRACK,
+  argRows,
+  assignArgSlots,
+  bindFixedControls,
+  callText,
+  findNumericArgs,
+} from './args.js';
+import { busSizeSpan, ensureBus } from './bus.js';
 import { createArgKnobs, deviceKnobIndex } from './arg-knobs.js';
 import { addToBlock, classifyItem, setupLine } from './build.js';
 import { DEFAULT_MONITOR_CHANNELS, splitStatus, toMonitor } from './monitor.js';
@@ -140,14 +152,50 @@ const argKnobs = createArgKnobs({
   apply: (slot, value, text) => {
     const id = pane.getViewedId();
     if (!id) return;
-    // The document is written on every message - the number under the knob
-    // has to move with the hand. The PARSER is told on the trailing edge, by
-    // scheduleArgRefresh below.
-    pane.replaceRange(id, slot.from, slot.to, text, { notify: false });
+    // Three kinds of write, and they differ in WHERE the number lives rather
+    // than in what turning the knob means.
+    if (slot.shared) {
+      // The reverb bus: one size for the whole song, because there is one
+      // reverb per orbit. Written to the bus statement, never to a block.
+      const span = busSizeSpan(pane.getCode(id));
+      if (!span) return;
+      pane.replaceRange(id, span.from, span.to, text, { notify: false });
+    } else if (slot.virtual) {
+      // The block does not call this yet. Writing it is what creates it, so
+      // the master knobs mean the same thing on a block that never asked for
+      // an envelope as on one that did.
+      const block = pane.getBlockAt(id, cursorBlockIndex());
+      if (!block) return;
+      pane.replaceRange(id, block.to, block.to, callText(slot, text), { notify: false });
+    } else {
+      pane.replaceRange(id, slot.from, slot.to, text, { notify: false });
+    }
+    // The document is written on every message - the number under the knob has
+    // to move with the hand. The PARSER is told on the trailing edge.
     scheduleArgRefresh();
-    status.info(`${slot.track}/${slot.knob} ${slot.fn}(${text})`);
+    status.info(`${slot.track}/${slot.knob} ${slot.label ?? slot.fn} ${text}`);
   },
 });
+
+/**
+ * Which block the knobs are on.
+ *
+ * The selection can hold several blocks; the knobs can only edit one, and it
+ * is the one under the browse cursor. With no surface selection at all - a
+ * plain mouse click - the sole selected block is the cursor block, because
+ * there is nothing else it could be.
+ */
+function cursorBlockIndex() {
+  const id = pane.getViewedId();
+  if (!id) return null;
+  const selected = pane.getSelectedBlocks(id);
+  if (selected.length === 0) return null;
+  if (selected.length === 1) return selected[0].index;
+  const cursor = selected.find((block) => block.index === blockCursor.cursor);
+  // The cursor can sit outside the selection after an edit shortened the song;
+  // fall back to the first selected block rather than addressing nothing.
+  return (cursor ?? selected[0]).index;
+}
 
 /** How long a knob has to stop moving before the set is re-rendered. */
 const ARG_REFRESH_MS = 120;
@@ -186,26 +234,65 @@ let argSignature = null;
  */
 function refreshArgMap() {
   const id = pane.getViewedId();
-  const block = id ? pane.getSoleSelectedBlock(id) : null;
+  const index = id ? cursorBlockIndex() : null;
+  const block = index === null ? null : pane.getBlockAt(id, index);
   if (!block) {
     argSignature = null;
     argKnobs.clear();
-    if (id) pane.setArgMap(id, null);
+    if (id) {
+      pane.setArgMap(id, null);
+      pane.setCursorBlock(id, null);
+    }
     return;
   }
 
-  const slots = assignArgSlots(findNumericArgs(block.text, block.from));
-  const signature = `${block.index}:${slots.map((s) => `${s.fn}@${s.line}`).join(',')}`;
+  const args = findNumericArgs(block.text, block.from);
+
+  // Reserved tracks first, so they can CLAIM the arguments they bind to and
+  // the positional dealer never gives one number a second address.
+  const master = bindFixedControls(args, MASTER_CONTROLS, MASTER_TRACK);
+  const reverb = bindFixedControls(
+    args.filter((arg) => !master.claimed.has(arg)),
+    REVERB_CONTROLS,
+    REVERB_TRACK,
+  );
+  // The bus owns the one roomsize there is, so its slot reads from there
+  // rather than from the block - the block has no size and must not grow one.
+  const size = busSizeSpan(pane.getCode(id));
+  const reverbSlots = reverb.slots.map((slot) =>
+    slot.shared && size ? { ...slot, value: Number(size.text), virtual: false } : slot,
+  );
+
+  const rest = args.filter((arg) => !master.claimed.has(arg) && !reverb.claimed.has(arg));
+  const partSlots = assignArgSlots(rest, PART_TRACKS);
+  const slots = [...partSlots, ...master.slots, ...reverbSlots];
+
+  const signature = [
+    block.index,
+    ...slots.map((slot) => `${slot.track}/${slot.knob}:${slot.fn}@${slot.position ?? 0}`),
+  ].join(',');
   if (signature === argSignature) argKnobs.adopt(slots);
   else {
     argSignature = signature;
     argKnobs.prime(slots);
   }
-  pane.setArgMap(id, {
-    from: block.start,
-    to: block.end,
-    rows: argRows(slots, block.end - block.start + 1),
-  });
+
+  // Only the slots that actually sit in this block get an annotation row; a
+  // virtual control has no column to point at, and the shared size lives in
+  // the bus statement further down.
+  const inBlock = [...partSlots, ...master.slots, ...reverbSlots].filter((slot) => !slot.virtual);
+  const ranges = [
+    {
+      from: block.start,
+      to: block.end,
+      rows: argRows(
+        inBlock.filter((slot) => slot.line !== null),
+        block.end - block.start + 1,
+      ),
+    },
+  ];
+  pane.setArgMap(id, ranges);
+  pane.setCursorBlock(id, block.index);
 }
 
 // ---- building a block from the library ------------------------------------

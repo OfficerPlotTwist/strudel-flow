@@ -18,7 +18,12 @@ import { RangeSetBuilder, StateEffect, StateField } from '@codemirror/state';
  * knobs write into source that never grew a single character of annotation.
  */
 
-/** Dispatch with `{ from, to, rows }` to annotate, or `null` to clear. */
+/**
+ * Dispatch with a LIST of `{ from, to, rows }` to annotate, or `null` to
+ * clear. More than one because two things are addressed at once - the cursor
+ * block on tracks 1-7 and master, and the reverb bus on track 8 - and they sit
+ * nowhere near each other in the document.
+ */
 export const setArgMap = StateEffect.define();
 
 const argMap = StateField.define({
@@ -63,14 +68,18 @@ class ArgRow extends WidgetType {
 const rows = EditorView.decorations.compute([argMap, 'doc'], (state) => {
   const builder = new RangeSetBuilder();
   const map = state.field(argMap);
-  if (!map) return builder.finish();
-  for (let line = map.from; line <= map.to && line < state.doc.lines; line += 1) {
-    const at = state.doc.line(line + 1).to;
-    builder.add(
-      at,
-      at,
-      Decoration.widget({ widget: new ArgRow(map.rows[line - map.from] ?? ''), block: true, side: 1 }),
-    );
+  if (!map || map.length === 0) return builder.finish();
+  // RangeSetBuilder demands ascending positions and the ranges can arrive in
+  // any order, so collect first and sort.
+  const rows = [];
+  for (const range of map) {
+    for (let line = range.from; line <= range.to && line < state.doc.lines; line += 1) {
+      rows.push({ at: state.doc.line(line + 1).to, text: range.rows[line - range.from] ?? '' });
+    }
+  }
+  rows.sort((a, b) => a.at - b.at);
+  for (const row of rows) {
+    builder.add(row.at, row.at, Decoration.widget({ widget: new ArgRow(row.text), block: true, side: 1 }));
   }
   return builder.finish();
 });

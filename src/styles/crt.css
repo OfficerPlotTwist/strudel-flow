@@ -392,3 +392,14 @@ main {
 .cm-arg-row-blank {
   height: 0.85em;
 }
+
+/*
+ * The block the knobs are on, among however many are selected. Displacement
+ * plus a rule at the left margin, rather than a third colour competing with
+ * "selected" and "playing" for a two-colour screen.
+ */
+.cm-cursor-block {
+  padding-left: 0.9ch;
+  box-shadow: inset 2px 0 0 0 var(--phosphor);
+  transition: padding-left 90ms linear;
+}
