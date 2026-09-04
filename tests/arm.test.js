@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { listBlocks } from '../src/blocks.js';
-import { ARM_MAX_CYCLES, applyArm, armChain, armable, crossfaderCycles } from '../src/arm.js';
+import {
+  ARM_MAX_CYCLES,
+  applyArm,
+  armChain,
+  armTarget,
+  armable,
+  crossfaderCycles,
+} from '../src/arm.js';
 
 const lines = (text) => text.split('\n');
 
@@ -27,14 +34,12 @@ describe('crossfaderCycles', () => {
 
   it('rounds to the nearest whole cycle', () => {
     expect(crossfaderCycles(0.5)).toBe(2);
-    expect(crossfaderCycles(0.1)).toBe(0); // 0.4 cycles
-    expect(crossfaderCycles(0.2)).toBe(1); // 0.8 cycles
-    expect(crossfaderCycles(0.125)).toBe(1); // exactly 0.5, rounds up
+    expect(crossfaderCycles(0.1)).toBe(0);
+    expect(crossfaderCycles(0.2)).toBe(1);
+    expect(crossfaderCycles(0.125)).toBe(1);
   });
 
   it('clamps anything outside the fader range', () => {
-    // A control this app has never seen a value from reports nothing, and a
-    // surface with a different range must not arm a negative countdown.
     expect(crossfaderCycles(-1)).toBe(0);
     expect(crossfaderCycles(9)).toBe(ARM_MAX_CYCLES);
     expect(crossfaderCycles(null)).toBe(0);
@@ -42,43 +47,82 @@ describe('crossfaderCycles', () => {
   });
 });
 
+describe('armTarget', () => {
+  it('lands on a whole cycle, never part way through one', () => {
+    // A change that arrives at cycle 5.7 arrives in the middle of a bar. The
+    // countdown is measured to the next bar line, then whole cycles from there.
+    expect(armTarget(3.7, 2)).toBe(6);
+    expect(armTarget(3.1, 2)).toBe(6);
+    expect(armTarget(3.9, 2)).toBe(6);
+  });
+
+  it('goes to the next bar line at zero cycles', () => {
+    // Hard left on the crossfader is "as soon as possible", and the soonest
+    // musical moment is the next downbeat - not this instant.
+    expect(armTarget(3.7, 0)).toBe(4);
+    expect(armTarget(3.01, 0)).toBe(4);
+  });
+
+  it('fires immediately when the press lands exactly on a bar line', () => {
+    expect(armTarget(4, 0)).toBe(4);
+    expect(armTarget(4, 3)).toBe(7);
+  });
+
+  it('survives a transport that reports nothing', () => {
+    expect(armTarget(0, 0)).toBe(0);
+    expect(armTarget(0, 4)).toBe(4);
+  });
+});
+
 describe('armChain', () => {
-  it('is empty at zero cycles - there is nothing to wait for', () => {
-    expect(armChain('play', 0, 5)).toBe('');
-    expect(armChain('stop', 0, 5)).toBe('');
+  it('is empty when the target is already here', () => {
+    expect(armChain('play', 4, 4)).toBe('');
+    expect(armChain('stop', 4, 4)).toBe('');
   });
 
-  it('gates silent-then-loud for play', () => {
-    // Measured in Strudel: mini("0 1").slow(8).late(2) reads
-    // [1,1, 0,0,0,0, 1,1,1] over cycles 0..8 - the zero half starts on the
-    // cycle named by late(), which is why phase is the press cycle.
-    expect(armChain('play', 4, 2)).toBe('.mul(gain("0 1".slow(8).late(2.0000)))');
+  it('holds silent from the press until the target, then opens', () => {
+    // Pressed at 3.7 for two cycles: silent across 3.7 -> 6, sounding at 6.
+    // The half must be long enough to cover the part-cycle before the first
+    // bar line, so it is ceil(6 - 3.7) = 3, not 2.
+    expect(armChain('play', 3.7, 6)).toBe('.mul(gain("0 1".slow(6).late(3.0000)))');
   });
 
-  it('gates loud-then-silent for stop', () => {
-    expect(armChain('stop', 2, 7)).toBe('.mul(gain("1 0".slow(4).late(3.0000)))');
+  it('holds sounding until the target, then closes', () => {
+    expect(armChain('stop', 3.7, 6)).toBe('.mul(gain("1 0".slow(6).late(3.0000)))');
+  });
+
+  it('covers a bare part-cycle at zero cycles', () => {
+    // 3.7 -> 4 is less than a whole cycle, but the half is still two: the
+    // gate repeats, so the half after the flip is the grace period before the
+    // block would be muted again, and one cycle of it is no margin.
+    expect(armChain('play', 3.7, 4)).toBe('.mul(gain("0 1".slow(4).late(2.0000)))');
+  });
+
+  it('gives at least two cycles of grace after the flip', () => {
+    for (const [press, target] of [[3.7, 4], [0, 1], [9.9, 10]]) {
+      const period = Number(armChain('play', press, target).match(/slow\((\d+)\)/)[1]);
+      expect(period).toBeGreaterThanOrEqual(4);
+    }
   });
 
   it('wraps the phase into one period', () => {
-    // The transport clock free-runs; without the wrap a late() larger than the
-    // period would push the gate a whole cycle out of step.
-    expect(armChain('play', 2, 4)).toBe('.mul(gain("0 1".slow(4).late(0.0000)))');
-    expect(armChain('play', 2, 5)).toBe('.mul(gain("0 1".slow(4).late(1.0000)))');
-    expect(armChain('play', 2, -1)).toBe('.mul(gain("0 1".slow(4).late(3.0000)))');
+    expect(armChain('play', 0, 4)).toBe('.mul(gain("0 1".slow(8).late(0.0000)))');
+    // Pressed at 8.5 for a target of 12: the half is 4, so the phase is
+    // (12 - 4) = 8, which wraps to 0 in a period of 8. The closed half then
+    // spans [8, 12) - it still contains the press and still flips at 12.
+    expect(armChain('play', 8.5, 12)).toBe('.mul(gain("0 1".slow(8).late(0.0000)))');
   });
 
   it('scales the block gain rather than replacing it', () => {
-    // `.gain()` at the end of a chain overrides what the block set for itself,
-    // so a quiet part would jump to full volume the moment it was armed.
-    expect(armChain('play', 1, 0)).toContain('.mul(gain(');
-    expect(armChain('play', 1, 0)).not.toMatch(/\)\.gain\(/);
+    expect(armChain('play', 0, 2)).toContain('.mul(gain(');
+    expect(armChain('play', 0, 2)).not.toMatch(/\)\.gain\(/);
   });
 });
 
 describe('armable', () => {
   it('play takes only blocks that are not already playing', () => {
     const targets = armable(SONG, [blockAt(SONG, 0), blockAt(SONG, 1)], 'play');
-    expect(targets.map((b) => b.start)).toEqual([2]); // the commented one
+    expect(targets.map((b) => b.start)).toEqual([2]);
   });
 
   it('stop takes only blocks that are not already stopped', () => {
@@ -87,7 +131,6 @@ describe('armable', () => {
   });
 
   it('passes over statements that cannot carry a gain chain', () => {
-    // `setcpm(120).mul(gain(...))` is a syntax error, not a countdown.
     expect(armable(SONG, [blockAt(SONG, 3)], 'stop')).toEqual([]);
   });
 
@@ -99,27 +142,25 @@ describe('armable', () => {
 
 describe('applyArm', () => {
   it('appends the gate to the last line of each target', () => {
-    const { lines: out } = applyArm(SONG, [blockAt(SONG, 0)], 'stop', 2, 0);
+    const { lines: out } = applyArm(SONG, [blockAt(SONG, 0)], 'stop', 0, 2);
     expect(out[0]).toBe('$: s("bd sd").mul(gain("1 0".slow(4).late(0.0000)))');
-    expect(out[4]).toBe('$: s("hh*8").gain(0.4)'); // untouched
+    expect(out[4]).toBe('$: s("hh*8").gain(0.4)');
   });
 
   it('reports where it inserted, so highlights can be unshifted', () => {
-    const { edits } = applyArm(SONG, [blockAt(SONG, 0)], 'stop', 2, 0);
-    const chain = armChain('stop', 2, 0);
+    const { edits } = applyArm(SONG, [blockAt(SONG, 0)], 'stop', 0, 2);
+    const chain = armChain('stop', 0, 2);
     expect(edits).toEqual([{ at: SONG[0].length, length: chain.length }]);
   });
 
-  it('changes nothing at zero cycles', () => {
-    const { lines: out, edits } = applyArm(SONG, [blockAt(SONG, 0)], 'play', 0, 3);
+  it('changes nothing when the target has arrived', () => {
+    const { lines: out, edits } = applyArm(SONG, [blockAt(SONG, 0)], 'play', 3, 3);
     expect(out).toEqual(SONG);
     expect(edits).toEqual([]);
   });
 
-  it('leaves the buffer length alone for every other line', () => {
-    // Only the armed block's own line grows; a chain landing on the wrong line
-    // would slide every mini-notation highlight after it.
-    const { lines: out } = applyArm(SONG, [blockAt(SONG, 2)], 'stop', 1, 0);
+  it('leaves every other line alone', () => {
+    const { lines: out } = applyArm(SONG, [blockAt(SONG, 2)], 'stop', 0, 1);
     expect(out.length).toBe(SONG.length);
     expect(out.filter((line, i) => line !== SONG[i]).length).toBe(1);
   });

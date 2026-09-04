@@ -32,7 +32,7 @@ export function createLive({ pane }) {
   let ripping = null; // { tabId, blockIndexes: number[], cycle }
   // The armed play/stop countdown, or null. Like a rip it outlives the button
   // press; unlike a rip it ends by editing the buffer rather than emptying it.
-  let armed = null; // { tabId, blockIndexes: number[], action, cycles, cycle }
+  let armed = null; // { tabId, blockIndexes, action, pressCycle, targetCycle }
   // Is the transport running? The app boots into silence and stays there until
   // something is deliberately triggered, so there has to be a difference
   // between "play this" and "the thing that is playing changed". Without it,
@@ -83,7 +83,7 @@ export function createLive({ pane }) {
       // silent and nothing to un-silence when the count runs out. The
       // uncomment is length-preserving, so it contributes no edits of its own.
       const source = armed.action === 'play' ? uncommentForPlayback(lines, targets) : lines;
-      const gated = applyArm(source, targets, armed.action, armed.cycles, armed.cycle);
+      const gated = applyArm(source, targets, armed.action, armed.pressCycle, armed.targetCycle);
       return { text: gated.lines.join('\n'), edits: gated.edits };
     }
     return { text: lines.join('\n'), edits: [] };

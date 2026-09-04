@@ -176,6 +176,14 @@ function navigate(control) {
     return true;
   }
 
+  // Read BEFORE the press-only guard below: a modifier is defined by its
+  // release as much as its press, and dropping the note-off would leave the
+  // whole song armed for good.
+  if (control.name === 'apc40.device.detail_view') {
+    wholePageHeld = control.isDown === true;
+    return true;
+  }
+
   if (control.isDown !== true) return false; // buttons act on press only
 
   switch (control.name) {
@@ -221,6 +229,12 @@ function navigate(control) {
 // though both arm an immediate change.
 let crossfader = null;
 
+// DETAIL VIEW held: play/stop act on the whole song page rather than on the
+// selection. It is note 62, the one MOMENTARY button in the device section -
+// the four above it (58-61) latch and send no note-off, so "held" could not
+// have been read from them at all.
+let wholePageHeld = false;
+
 const actions = createActions({
   pane,
   panel,
@@ -228,6 +242,7 @@ const actions = createActions({
   live,
   explainer,
   getCrossfader: () => crossfader,
+  getSelectAll: () => wholePageHeld,
 });
 
 function dispatch(trigger) {

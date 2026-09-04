@@ -1,12 +1,20 @@
 import { getTransport } from './engine.js';
 import { isStandaloneBlock, listBlocks, toggleBlocksComment } from './blocks.js';
 import { extractBlocks, removeBlocks, RIP_CYCLES } from './rip.js';
-import { armable, crossfaderCycles } from './arm.js';
+import { armTarget, armable, crossfaderCycles } from './arm.js';
 
 /** The bottom-bar tab ripped material is parked in. Created on first use. */
 const RETURN_TAB = 'to return';
 
-export function createActions({ pane, panel, status, live, explainer, getCrossfader }) {
+export function createActions({
+  pane,
+  panel,
+  status,
+  live,
+  explainer,
+  getCrossfader,
+  getSelectAll,
+}) {
   function shiftTab(delta) {
     const tabs = pane.getTabs();
     if (tabs.length < 2) return;
@@ -104,12 +112,17 @@ export function createActions({ pane, panel, status, live, explainer, getCrossfa
       status.info('rip in progress');
       return;
     }
-    const selected = pane.getSelectedBlocks(id);
+    const lines = pane.getCode(id).split('\n');
+    // Holding DETAIL VIEW means "the whole page": play or stop everything in
+    // this song at once, without having to pin every block first.
+    const wholePage = Boolean(getSelectAll?.());
+    const selected = wholePage
+      ? listBlocks(lines).map((block, index) => ({ ...block, index }))
+      : pane.getSelectedBlocks(id);
     if (selected.length === 0) {
-      status.info('no block in selection');
+      status.info(wholePage ? 'song is empty' : 'no block in selection');
       return;
     }
-    const lines = pane.getCode(id).split('\n');
     const targets = armable(lines, selected, action);
     if (targets.length === 0) {
       // Not a failure: pressing play on something already playing is a
@@ -120,20 +133,28 @@ export function createActions({ pane, panel, status, live, explainer, getCrossfa
     const indexes = targets.map((block) => selected.find((s) => s.start === block.start).index);
     const { cycle, cps } = getTransport() ?? { cycle: 0, cps: 1 };
     const cycles = crossfaderCycles(getCrossfader?.());
+    // Whole cycles only: the change lands on a bar line, never part way
+    // through one. See armTarget.
+    const target = armTarget(cycle, cycles);
 
     const generation = (armGeneration += 1);
-    live.setArmed({ tabId: id, blockIndexes: indexes, action, cycles, cycle });
+    live.setArmed({
+      tabId: id,
+      blockIndexes: indexes,
+      action,
+      pressCycle: cycle,
+      targetCycle: target,
+    });
     // Play must be able to start a stopped transport - that is what the button
     // means. Stop only re-renders: it has nothing to start.
     await (action === 'play' ? live.evaluateActive() : live.refresh());
+    const waitCycles = target - cycle;
     status.info(
-      cycles === 0
-        ? `${action} ${indexes.length} block(s)`
-        : `${action} ${indexes.length} block(s) in ${cycles} cycle(s)`,
+      `${action} ${indexes.length} block(s)${wholePage ? ' (whole page)' : ''} at cycle ${target}`,
     );
 
-    if (cycles > 0) {
-      await new Promise((resolve) => setTimeout(resolve, (cycles / cps) * 1000));
+    if (waitCycles > 0) {
+      await new Promise((resolve) => setTimeout(resolve, (waitCycles / cps) * 1000));
       if (generation !== armGeneration) return; // superseded by a later press
     }
 

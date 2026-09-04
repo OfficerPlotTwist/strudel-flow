@@ -33,27 +33,49 @@ export function crossfaderCycles(value) {
 }
 
 /**
- * The gate appended to an armed block.
+ * Which whole cycle the change lands on.
  *
- * `"0 1"` is two equal halves of one cycle; slowed to twice the countdown it
- * becomes `cycles` of silence followed by `cycles` of sound. `.late(phase)`
- * slides that so the silent half begins on the cycle the button was pressed -
- * without it the gate would sit wherever the free-running clock has it, and a
- * press two cycles into the window would flip immediately.
+ * A press arrives wherever the transport happens to be - cycle 3.7, say - and
+ * a countdown measured from there lands at 5.7, half way through a bar. So the
+ * count is measured to the next bar line and runs whole cycles from there.
+ * Hard left on the crossfader is zero cycles, which is not "this instant" but
+ * "the next downbeat": the soonest musical moment, not the soonest moment.
+ */
+export function armTarget(pressCycle, cycles) {
+  return Math.ceil(pressCycle) + cycles;
+}
+
+/**
+ * The gate appended to an armed block, opening or closing exactly on
+ * `targetCycle`.
  *
- * Measured against Strudel rather than assumed: `"0 1".slow(8).late(2)` reads
- * [1,1, 0,0,0,0, 1,1,1] across cycles 0..8. `square` was the other candidate
- * and is wrong - it runs -1..1, so it would invert the block rather than mute
- * it.
+ * `"0 1"` is two equal halves of one cycle; slowed to `2h` it becomes h cycles
+ * of silence followed by h of sound, and `.late(phase)` slides the pair so the
+ * flip lands where it is wanted. Measured against Strudel rather than assumed:
+ * `"0 1".slow(8).late(2)` reads [1,1, 0,0,0,0, 1,1,1] across cycles 0..8, so
+ * the closed half spans [phase, phase + h) and the flip is at phase + h.
+ *
+ * The half has to be long enough to cover the part-cycle between the press and
+ * the first bar line as well as the whole cycles after it - hence
+ * `ceil(target - press)` rather than the crossfader's count. A half of exactly
+ * the count would leave the moments before the first bar line uncovered, and
+ * the block would sound for a fraction of a cycle before going quiet again.
  *
  * `.mul(gain(...))` rather than `.gain(...)`, for the same reason the rip fade
  * does it: a plain `.gain()` at the end of a chain replaces whatever gain the
  * block set for itself, so a quiet part would jump to full volume on arming.
  */
-export function armChain(action, cycles, startCycle) {
-  if (cycles <= 0) return '';
-  const period = cycles * 2;
-  const phase = ((startCycle % period) + period) % period;
+export function armChain(action, pressCycle, targetCycle) {
+  const wait = targetCycle - pressCycle;
+  if (wait <= 0) return '';
+  // At least two cycles, not one. The open half is the grace period: the
+  // gate repeats, so once it has flipped the block only stays flipped for
+  // `half` cycles before the pattern comes round again. The buffer commit
+  // removes the gate at the target and normally lands first, but a one-cycle
+  // half leaves no margin at all if that timer runs late.
+  const half = Math.max(2, Math.ceil(wait));
+  const period = half * 2;
+  const phase = (((targetCycle - half) % period) + period) % period;
   const steps = action === 'stop' ? '1 0' : '0 1';
   return `.mul(gain("${steps}".slow(${period}).late(${phase.toFixed(4)})))`;
 }
@@ -86,8 +108,8 @@ export function armable(lines, blocks, action) {
  * mini-notation offsets can be corrected afterwards - see rip.js's
  * `unshiftLocations`, which consumes these unchanged.
  */
-export function applyArm(lines, blocks, action, cycles, startCycle) {
-  const chain = armChain(action, cycles, startCycle);
+export function applyArm(lines, blocks, action, pressCycle, targetCycle) {
+  const chain = armChain(action, pressCycle, targetCycle);
   if (!chain || blocks.length === 0) return { lines, edits: [] };
 
   const next = [...lines];
