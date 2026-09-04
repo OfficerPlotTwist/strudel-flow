@@ -5,6 +5,8 @@ import {
   STEPS,
   accidentalDegrees,
   addSegment,
+  blockSuffix,
+  describeKey,
   createPattern,
   makeActiveEmpty,
   parsePattern,
@@ -15,6 +17,7 @@ import {
   setRepeats,
   setRest,
   setStep,
+  songKey,
   stepIndex,
 } from '../src/pattern-build.js';
 
@@ -198,5 +201,56 @@ describe('parsePattern', () => {
   it('pads a short pattern out to sixteen steps', () => {
     const back = parsePattern('$: n("0 2").scale("c4:major")');
     expect(renderSegment(back.segments[0]).split(' ')).toHaveLength(16);
+  });
+});
+
+describe('songKey', () => {
+  it('takes the key the song mostly declares, not the first it finds', () => {
+    // One outlying block must not decide the key for everything stepped after.
+    const song = '$: n("0").scale("c4:major")\n$: n("0").scale("d3:minor")\n$: n("2").scale("d4:minor")';
+    expect(songKey(song)).toEqual({ key: 'd', mode: 'minor', octave: 3 });
+  });
+
+  it('takes the octave from the first block in that key, not a tally', () => {
+    // Register is a choice per part; there is no sense in which a song has one.
+    expect(songKey('.scale("f5:lydian") .scale("f2:lydian")')).toMatchObject({ octave: 5 });
+  });
+
+  it('is null when the song declares no key at all', () => {
+    expect(songKey('$: s("bd sd")')).toBeNull();
+    expect(songKey('')).toBeNull();
+  });
+
+  it('defaults the octave when a scale omits it', () => {
+    expect(songKey('.scale("g:dorian")')).toEqual({ key: 'g', mode: 'dorian', octave: 4 });
+  });
+});
+
+describe('blockSuffix', () => {
+  it('keeps a picked sound as the voice of the pattern', () => {
+    // SEND B puts s("piano") in a block; stepping a melody must play THROUGH
+    // it rather than replace it.
+    expect(blockSuffix('$: s("piano").gain(0.8)')).toBe('.s("piano").gain(0.8)');
+  });
+
+  it('drops the head n() this mode is about to rewrite', () => {
+    expect(blockSuffix('$: n("0 2 4").s("piano")')).toBe('.s("piano")');
+  });
+
+  it('drops the scale, which the pattern re-declares itself', () => {
+    expect(blockSuffix('$: n("0").scale("c4:major").s("piano")')).toBe('.s("piano")');
+  });
+
+  it('is empty for a block with no chain to keep', () => {
+    expect(blockSuffix('$: n("0 2 4")')).toBe('');
+    expect(blockSuffix('')).toBe('');
+  });
+});
+
+describe('describeKey', () => {
+  it('reads as something a performer can act on', () => {
+    expect(describeKey(createPattern({ key: 'd', mode: 'minor', octave: 3 }))).toBe(
+      'D minor, octave 3',
+    );
   });
 });

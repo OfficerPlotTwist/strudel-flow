@@ -25,6 +25,15 @@
  *         needs a deliberate press rather than just leaving a step empty
  */
 
+/** `.scale("d3:minor")` - the key, its octave, and its mode. */
+const SCALE_SRC = "\\.scale\\\(\\s*\"([a-gA-G][#b]?)(\\d)?\\s*:\\s*([a-z]+)\"\\s*\\\)";
+const SCALE_CALL = new RegExp(SCALE_SRC);
+const SCALE_CALL_G = new RegExp(SCALE_SRC, 'g');
+/** A leading `$:` or `name:` statement label. */
+const LABEL = /^\s*(?:\$|[a-z]\w*)\s*:\s*/;
+/** The call a block opens with, and its whole argument. */
+const HEAD_CALL = /^([A-Za-z_$][\w$]*)\(\s*("(?:[^"\\]|\\.)*"|[^()]*)\)/;
+
 /** Eight columns of eighth-notes, each splittable into two sixteenths. */
 export const COLUMNS = 8;
 export const STEPS = COLUMNS * 2;
@@ -163,7 +172,64 @@ export function renderPattern(pattern) {
  * melody, it is a melody in whatever key the last person set.
  */
 export function patternBlock(pattern) {
-  return `$: n("${renderPattern(pattern)}")\n  .scale("${pattern.key}${pattern.octave}:${pattern.mode}")`;
+  const scale = '  .scale("' + pattern.key + pattern.octave + ':' + pattern.mode + '")';
+  const suffix = pattern.suffix ? String.fromCharCode(10) + '  ' + pattern.suffix : '';
+  return '$: n("' + renderPattern(pattern) + '")' + String.fromCharCode(10) + scale + suffix;
+}
+
+/**
+ * The key the song is already in, or null.
+ *
+ * "Assume the key is pre-determined" has to mean determined by SOMETHING, and
+ * the only honest source is the song itself: whatever its blocks already
+ * declare. Taking the most common declaration rather than the first means one
+ * outlying block - a bass line written in a different mode - does not decide
+ * the key for everything stepped afterwards.
+ *
+ * The octave comes from the first occurrence of the winning key rather than
+ * being counted, because register is a choice per part and there is no sense
+ * in which a song has one.
+ */
+export function songKey(code) {
+  const found = [...(code ?? '').matchAll(SCALE_CALL_G)];
+  if (found.length === 0) return null;
+  const tally = new Map();
+  for (const [, key, , mode] of found) {
+    const id = key.toLowerCase() + ':' + mode;
+    tally.set(id, (tally.get(id) ?? 0) + 1);
+  }
+  const [winner] = [...tally.entries()].sort((a, b) => b[1] - a[1])[0];
+  const [key, mode] = winner.split(':');
+  const first = found.find((m) => m[1].toLowerCase() === key && m[3] === mode);
+  return { key, mode, octave: Number(first[2] ?? 4) };
+}
+
+/** How the key reads on the status strip: "D minor, octave 3". */
+export function describeKey(pattern) {
+  return pattern.key.toUpperCase() + ' ' + pattern.mode + ', octave ' + pattern.octave;
+}
+
+/**
+ * Everything in a block AFTER its head call, minus the scale.
+ *
+ * This is what lets a pattern be stepped into a block that already chose a
+ * sound: `s("piano").gain(0.8)` keeps its voice and its gain, and the pattern
+ * becomes the `n()` in front of them. Without it, picking a sound and then
+ * stepping a melody would throw the sound away - which is exactly what the two
+ * features are meant to do together.
+ *
+ * A head `s(...)` moves INTO the suffix as `.s(...)`: once `n()` leads the
+ * chain, the sound is no longer what starts it.
+ */
+export function blockSuffix(text) {
+  const body = (text ?? '').replace(LABEL, '').trim();
+  const head = HEAD_CALL.exec(body);
+  if (!head) return '';
+  const rest = body.slice(head[0].length);
+  // `n(...)` is what this mode writes, so it is replaced rather than kept;
+  // any other head is a voice and is preserved.
+  const kept = head[1] === 'n' ? rest : '.' + head[1] + '(' + head[2] + ')' + rest;
+  return kept.replace(SCALE_CALL_G, '').replace(/\s+/g, ' ').trim();
 }
 
 /** `0`, `1#`, `~`, `_` -> the step it represents. */
@@ -193,6 +259,9 @@ export function parsePattern(text) {
     mode: scale[3],
     octave: Number(scale[2]),
   });
+  // The voice and any chain after it survive the round trip; losing them would
+  // silently drop the sound the block was built around.
+  pattern.suffix = blockSuffix(text);
 
   const body = notes[1].trim();
   // `<[...]!3 [...]!2>` is several segments; a bare run of words is one.

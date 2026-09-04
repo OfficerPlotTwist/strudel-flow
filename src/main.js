@@ -30,7 +30,9 @@ import {
   OCTAVE_RANGE,
   accidentalDegrees,
   addSegment,
+  blockSuffix,
   createPattern,
+  describeKey,
   makeActiveEmpty,
   parsePattern,
   patternBlock,
@@ -38,6 +40,7 @@ import {
   setRepeats,
   setRest,
   setStep,
+  songKey,
   stepIndex,
 } from './pattern-build.js';
 import { createArgKnobs, deviceKnobIndex } from './arg-knobs.js';
@@ -580,14 +583,23 @@ function enterPatternMode() {
   const id = pane.getViewedId();
   const index = cursorBlockIndex();
   if (!id || index === null) return;
-  const existing = parsePattern(pane.getBlockAt(id, index)?.text ?? '');
-  patternMode = { pattern: existing ?? createPattern(), blockIndex: index, tabId: id };
+  const text = pane.getBlockAt(id, index)?.text ?? '';
+
+  // A block this mode wrote is read back whole. Anything else - most usefully
+  // the `s("piano")` that SEND B just put there - keeps its voice and its
+  // chain, and the pattern becomes the n() in front of them. Stepping a melody
+  // must not throw away the sound it is meant to be played by.
+  const existing = parsePattern(text);
+  const pattern = existing ?? createPattern(songKey(pane.getCode(id)) ?? undefined);
+  if (!existing) pattern.suffix = blockSuffix(text);
+
+  patternMode = { pattern, blockIndex: index, tabId: id };
   paintPatternLeds(true);
-  status.info(
-    existing
-      ? `pattern build: continuing ${existing.segments.length} segment(s). REC to exit.`
-      : 'pattern build: hold a step, press a degree. REC to exit.',
-  );
+  // The key is stated on entry rather than assumed. "Pre-determined" has to
+  // mean determined by something, and every degree stepped from here means
+  // nothing without it.
+  const voice = pattern.suffix ? ` over ${pattern.suffix.slice(0, 24)}` : '';
+  status.info(`pattern build: ${describeKey(pattern)}${voice}. REC to exit.`);
 }
 
 function exitPatternMode() {
@@ -778,7 +790,7 @@ function navigate(control) {
       const next = patternMode.pattern.octave + steps;
       setOctave(patternMode.pattern, next);
       writePattern();
-      status.info(`octave ${patternMode.pattern.octave} (${OCTAVE_RANGE.min}-${OCTAVE_RANGE.max})`);
+      status.info(`pattern build: ${describeKey(patternMode.pattern)}`);
       return true;
     }
     // knob6 walks the functions of the block under the block cursor; knob7
