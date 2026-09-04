@@ -102,11 +102,23 @@ for (const i of indices) {
   const track = await getJson(`${CDN}/${songId}/${meta.revisionId}/${meta.image}/${i}.json`);
 
   // Drum tracks store the MIDI note in `fret` and carry no tuning; pitched
-  // tracks are tuning[string - 1] + fret.
+  // tracks are tuning[string] + fret.
+  //
+  // STRINGS ARE 0-BASED, and this is the one thing here worth being sure of.
+  // A four-string bass declares `strings: 4` and its notes carry
+  // `string: 0..3`. `tuning[string - 1]` is the intuitive guess - tab staves
+  // are drawn 1..6, and a human reads them that way - and it is wrong: it
+  // reads every note off the neighbouring string and still returns a clean,
+  // confident, entirely plausible answer. Get Got came out of here in B minor
+  // that way; the song is in G minor, and nothing about the output said so.
+  //
+  // The cross-check that catches it is outside this file: the pitches printed
+  // here have to agree with the song's published key. If they do not, this
+  // index is the first place to look.
   const isDrums = !track.tuning;
   const naming = isDrums
     ? (n) => GM_DRUMS[n.fret] ?? `#${n.fret}`
-    : (n) => midiName(track.tuning[n.string - 1] + n.fret);
+    : (n) => midiName(track.tuning[n.string] + n.fret);
 
   const measures = track.measures.map((m, mi) => ({
     index: mi,
