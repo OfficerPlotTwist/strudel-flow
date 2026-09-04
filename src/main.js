@@ -10,7 +10,7 @@ import { createSettings } from './ui/settings.js';
 import { createMidiMonitor } from './ui/midi-monitor.js';
 import { createDeviceMap } from './device-map.js';
 import { createRelativeBank } from './relative.js';
-import { createBlockCursor } from './browse.js';
+import { createBlockCursor, createStepper } from './browse.js';
 import { createAudition } from './audition.js';
 import { createExplainerWindow } from './ui/explainer-window.js';
 import { createActions } from './actions.js';
@@ -149,6 +149,16 @@ const relative = createRelativeBank({
   },
 });
 
+// One list position per MIDI message is faster than anyone can read - these
+// encoders send up to 200 a second. Each scroll control moves one step per two
+// messages instead, with the odd half carried rather than dropped so a slow
+// turn still arrives.
+const steppers = {
+  'apc40.trackctl.knob7': createStepper(2),
+  'apc40.trackctl.knob8': createStepper(2),
+  'apc40.global.cue_level': createStepper(2),
+};
+
 /**
  * Navigation the control surface performs directly, rather than through the
  * action map: these carry a DELTA, and an action is a name with no argument.
@@ -158,11 +168,13 @@ function navigate(control) {
   const turn = relative.feed(control);
   if (turn) {
     if (turn.delta === 0) return true;
+    const steps = steppers[turn.name].feed(Math.sign(turn.delta));
+    if (steps === 0) return true;
     // knob7 walks the category headings, knob8 the rows inside one.
     const label =
       turn.name === 'apc40.trackctl.knob7'
-        ? panel.moveCategory(Math.sign(turn.delta))
-        : panel.moveItem(Math.sign(turn.delta));
+        ? panel.moveCategory(steps)
+        : panel.moveItem(steps);
     if (label) status.info(label);
     return true;
   }
@@ -171,7 +183,9 @@ function navigate(control) {
     // Already relative in firmware - device-map decodes it as a signed delta.
     const id = pane.getViewedId();
     if (!id) return true;
-    blockCursor.move(Math.sign(control.value), pane.getBlockCount(id));
+    const steps = steppers['apc40.global.cue_level'].feed(Math.sign(control.value));
+    if (steps === 0) return true;
+    blockCursor.move(steps, pane.getBlockCount(id));
     showBlockSelection();
     return true;
   }

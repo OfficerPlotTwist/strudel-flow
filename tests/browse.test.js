@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createBlockCursor } from '../src/browse.js';
-import { wrapIndex } from '../src/browse.js';
+import { createStepper, wrapIndex } from '../src/browse.js';
 
 describe('wrapIndex', () => {
   it('walks a list and wraps at both ends', () => {
@@ -100,5 +100,42 @@ describe('createBlockCursor', () => {
   it('selects nothing in an empty document', () => {
     const c = createBlockCursor();
     expect(c.indexes(0)).toEqual([]);
+  });
+});
+
+describe('createStepper', () => {
+  it('passes on one step for every two', () => {
+    const s = createStepper(2);
+    expect(s.feed(1)).toBe(0);
+    expect(s.feed(1)).toBe(1);
+    expect(s.feed(1)).toBe(0);
+    expect(s.feed(1)).toBe(1);
+  });
+
+  it('carries the remainder instead of dropping it', () => {
+    // A slow turn must still arrive somewhere; rounding each message to zero
+    // would make the control dead below a certain speed.
+    const s = createStepper(4);
+    expect([s.feed(1), s.feed(1), s.feed(1), s.feed(1)]).toEqual([0, 0, 0, 1]);
+  });
+
+  it('works the same in reverse', () => {
+    const s = createStepper(2);
+    expect(s.feed(-1)).toBe(0);
+    expect(s.feed(-1)).toBe(-1);
+  });
+
+  it('does not carry a remainder across a change of direction', () => {
+    // Half a step forward then half a step back is where it started, not a
+    // step in either direction.
+    const s = createStepper(2);
+    expect(s.feed(1)).toBe(0);
+    expect(s.feed(-1)).toBe(0);
+    expect(s.feed(-1)).toBe(0);
+    expect(s.feed(-1)).toBe(-1);
+  });
+
+  it('passes a big jump straight through', () => {
+    expect(createStepper(2).feed(9)).toBe(4);
   });
 });

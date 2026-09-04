@@ -73,3 +73,29 @@ export function createBlockCursor() {
     },
   };
 }
+
+/**
+ * Slows a control down by only passing on every `divisor`-th step.
+ *
+ * The encoders emit up to 200 messages a second, and one list position per
+ * message is faster than anyone can read - a flick of the wrist crosses the
+ * whole library. Fractions are carried rather than dropped, so a slow turn
+ * still gets there: two half-steps make a step, they do not both round to
+ * nothing.
+ */
+export function createStepper(divisor = 2) {
+  let carried = 0;
+  return {
+    feed(delta) {
+      carried += delta;
+      // `|| 0` normalises negative zero: Math.trunc(-1 / 2) is -0, which is
+      // not a number any caller should have to think about.
+      const steps = Math.trunc(carried / divisor) || 0;
+      carried -= steps * divisor;
+      return steps;
+    },
+    reset() {
+      carried = 0;
+    },
+  };
+}
