@@ -116,10 +116,10 @@ describe('assignArgSlots', () => {
     // 9 tracks x 8 knobs; the 73rd argument gets no address rather than
     // sharing a knob with the first.
     expect(slots).toHaveLength(72);
-    expect(slotLabel(slots[0])).toBe('"1":"1"');
-    expect(slotLabel(slots[7])).toBe('"1":"8"');
-    expect(slotLabel(slots[8])).toBe('"2":"1"');
-    expect(slotLabel(slots[71])).toBe('"master":"8"');
+    expect(slotLabel(slots[0])).toBe('1:1');
+    expect(slotLabel(slots[7])).toBe('1:8');
+    expect(slotLabel(slots[8])).toBe('2:1');
+    expect(slotLabel(slots[71])).toBe('master:8');
   });
 
   it('gives each slot the CC and channel its address means on the wire', () => {
@@ -186,11 +186,11 @@ describe('argRows', () => {
     const code = '.attack(0.002).decay(0.09)';
     const slots = assignArgSlots(findNumericArgs(code));
     const row = argRows(slots, 1)[0];
-    expect(row).toContain('"1":"1"');
-    expect(row).toContain('"1":"2"');
+    expect(row).toContain('1:1');
+    expect(row).toContain('1:2');
     // The first keeps its true column; the second is only shifted enough to fit.
-    expect(row.indexOf('"1":"1"')).toBe(slots[0].col);
-    expect(row.indexOf('"1":"2"')).toBeGreaterThan(slots[0].col + 6);
+    expect(row.indexOf('1:1')).toBe(slots[0].col);
+    expect(row.indexOf('1:2')).toBeGreaterThan(slots[0].col + 2);
   });
 });
 

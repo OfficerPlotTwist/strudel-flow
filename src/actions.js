@@ -129,14 +129,20 @@ export function createActions({
     // "playing" is what made play on a second tab report "already playing"
     // for a song nobody could hear.
     const silent = !live.contributingIds().includes(id);
-    // Play on a silent tab has work to do even with nothing to uncomment:
-    // making that tab the active one is what starts it.
-    const needsActivating = action === 'play' && silent;
+    // Play has work to do even with nothing to uncomment, in two cases:
+    // the tab is not contributing (making it active is what starts it), or
+    // the transport is stopped. The second is what made DETAIL VIEW + PLAY
+    // report "already playing" over silence - a song whose blocks are all
+    // uncommented has nothing to arm, and "nothing to arm" is not the same
+    // fact as "already sounding".
+    const needsActivating = action === 'play' && (silent || !live.isRunning());
 
     const targets = armable(lines, selected, action);
     if (targets.length === 0 && !needsActivating) {
       // Not a failure: pressing play on something already playing is a
-      // deliberate no-op, and saying so is more use than silence.
+      // deliberate no-op, and saying so is more use than silence. Reached
+      // only when the thing really is in the requested state - `play` on a
+      // stopped transport took the branch above.
       status.info(`already ${action === 'play' ? 'playing' : 'stopped'}`);
       return;
     }

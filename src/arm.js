@@ -102,7 +102,11 @@ export function armChain(action, pressCycle, targetCycle) {
 function looksLikeCode(lines, block) {
   for (let i = block.start; i <= block.end; i += 1) {
     const trimmed = lines[i].trim();
-    if (!trimmed) continue;
+    // Blank lines and COMMENTS are not the block's first statement. Judging a
+    // block by its comment rejected every part that carries a label above it -
+    // which, once each block was given a one-line description, was all of
+    // them: the whole song became unarmable and play did nothing.
+    if (!trimmed || trimmed.startsWith('//')) continue;
     return (
       // `$: pattern` or `name: pattern`
       /^(\$|[A-Za-z_$][\w$]*)\s*:/.test(trimmed) ||

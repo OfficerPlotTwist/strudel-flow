@@ -474,9 +474,16 @@ export function assignArgSlots(args, tracks = ARG_TRACKS) {
   });
 }
 
-/** What the annotation prints under an argument: track, then device knob. */
+/**
+ * What the annotation prints under an argument: track, then device knob.
+ *
+ * Bare rather than quoted. The quotes were noise - nothing here is a string,
+ * and at four characters instead of eight the label is half as likely to
+ * collide with the one beside it, which means more of them keep the true
+ * column of the number they point at.
+ */
 export function slotLabel(slot) {
-  return `"${slot.track}":"${slot.knob}"`;
+  return `${slot.track}:${slot.knob}`;
 }
 
 /**

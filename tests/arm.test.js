@@ -238,3 +238,46 @@ describe('armable rejects blocks the gate cannot attach to', () => {
     expect(armable(song, [blockAt(song, 0)], 'stop')).toHaveLength(1);
   });
 });
+
+describe('a block labelled with a comment is still code', () => {
+  const labelled = [
+    '// verse kick, crashed downbeat',
+    '$: s("bd ~ sd")',
+    '  .gain(0.9)',
+  ];
+  const block = { start: 0, end: 2, index: 0 };
+
+  it('arms a live block that opens with a comment', () => {
+    // Judging a block by its first line rejected every part carrying a label,
+    // which - once each block was given a one-line description - was all of
+    // them. The whole song became unarmable and play did nothing.
+    expect(armable(labelled, [block], 'stop')).toHaveLength(1);
+  });
+
+  it('arms a stopped block that opens with a comment', () => {
+    // A stopped block has its LABEL commented too, so the label is doubled -
+    // uncommenting restores it as a comment rather than as bare prose.
+    const stopped = ['// // verse kick', '// $: s("bd ~ sd")', '//   .gain(0.9)'];
+    expect(armable(stopped, [{ start: 0, end: 2, index: 0 }], 'play')).toHaveLength(1);
+  });
+
+  it('refuses a block whose label would uncomment into prose', () => {
+    // Singly-commented prose above commented code is not a stopped block,
+    // it is a block someone commented by hand and left half-labelled.
+    // Uncommenting it would put `verse kick` in the render.
+    const half = ['// verse kick', '// $: s("bd ~ sd")'];
+    expect(armable(half, [{ start: 0, end: 1, index: 0 }], 'play')).toHaveLength(0);
+  });
+
+  it('still refuses a block that is only prose', () => {
+    // The arrangement notes at the foot of a song uncomment into words, not
+    // code, and must never be armed into the render.
+    const prose = ['// arrangement, tab order', '// arrange(', '//   [2, toms],'];
+    expect(armable(prose, [{ start: 0, end: 2, index: 0 }], 'play')).toHaveLength(0);
+  });
+
+  it('arms a bare call under its label', () => {
+    const mix = ['// full mix', 'stack(kick, snare).postgain(0.5)'];
+    expect(armable(mix, [{ start: 0, end: 1, index: 0 }], 'stop')).toHaveLength(1);
+  });
+});
