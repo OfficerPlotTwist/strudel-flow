@@ -12,7 +12,8 @@
     "docs": "node scripts/build-docs.mjs",
     "smoke": "node scripts/smoke.mjs",
     "verify:snippets": "node scripts/verify-snippets.mjs",
-    "verify:fx": "node scripts/verify-fx.mjs"
+    "verify:fx": "node scripts/verify-fx.mjs",
+    "controls": "node scripts/build-controls.mjs --open"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.0",

@@ -69,6 +69,36 @@ export function sendCC(portName, channel, controller, value) {
   return true;
 }
 
+/**
+ * Light (or extinguish) a pad on a named output port.
+ *
+ * The first thing this app writes that is not a knob position. On the APC40 a
+ * clip pad is lit by sending it its own note-on, and the VELOCITY is the
+ * colour rather than the brightness - see LED_OFF and friends below. A pad is
+ * turned off by velocity 0, which is the MIDI spec's other way of writing a
+ * note-off and is what the pad itself sends on release.
+ *
+ * Silent when the port is missing, like sendCC: an unplugged controller is the
+ * normal case, not an error worth a dialog.
+ */
+export function sendNote(portName, channel, note, velocity) {
+  if (!enabled) return false;
+  const output = WebMidi.outputs.find((o) => o.name === portName);
+  if (!output) return false;
+  // webmidi channels are 1-based; everything else in this app is 0-based
+  // because that is how it arrives off the wire.
+  const target = output.channels[channel + 1];
+  if (velocity > 0) target.sendNoteOn(note, { rawAttack: velocity });
+  else target.sendNoteOff(note);
+  return true;
+}
+
+/**
+ * APC40 pad colours. The unit has one bi-colour LED per clip pad, so these
+ * five values are the whole palette - there is no brightness and no other hue.
+ */
+export const LED = { off: 0, green: 1, greenBlink: 2, red: 3, redBlink: 4, yellow: 5, yellowBlink: 6 };
+
 /** Subscribe to raw MIDI messages from a named input port. */
 export function onMidiMessage(portName, handler) {
   const input = WebMidi.inputs.find((i) => i.name === portName);

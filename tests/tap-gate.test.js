@@ -56,3 +56,25 @@ describe('createTapGate', () => {
     expect(gate.pending()).toBe(2);
   });
 });
+
+describe('reset', () => {
+  it('abandons a half-finished gesture', () => {
+    // The SCENE 3 gate is shared across pattern-build sessions. Without a
+    // reset, one press in the first session made the first press of the next
+    // count as a double-tap - blanking a segment instead of duplicating it.
+    const gate = createTapGate({ taps: 2, windowMs: 400 });
+    expect(gate.tap(1000)).toBe(false);
+    gate.reset();
+    expect(gate.tap(1150)).toBe(false);
+    expect(gate.tap(1250)).toBe(true);
+  });
+
+  it('clears the progress readout too', () => {
+    const gate = createTapGate({ taps: 3, windowMs: 600 });
+    gate.tap(1000);
+    gate.tap(1100);
+    expect(gate.pending()).toBe(2);
+    gate.reset();
+    expect(gate.pending()).toBe(0);
+  });
+});

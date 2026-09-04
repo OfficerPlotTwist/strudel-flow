@@ -111,46 +111,32 @@ $: s("bd ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ rim ~")
   {
     name: 'get_got',
     kind: 'songs',
-    code: `// ==============================================================
-//  GET GOT  --  Death Grips (The Money Store, 2012)
-//  Transcribed from source, not from ear:
-//    drums/bass/gtr : songsterr.com tab s1334391 rev 1779377
-//    key + hook     : hooktheory theorytab death-grips/get-got
-//  Both sources agree on tempo: 175 BPM (the half-time feel is
-//  87.5) in 4/4.  Key: D minor for the hook; the intro riff is
-//  notated C mixolydian (C against Bb).
-//  1 cycle = 1 bar.  Ctrl+Enter to play, Ctrl+. to stop.
-// ==============================================================
+    code: `// Get Got - Death Grips, 87 BPM, g minor
+// songsterr s1334391 r1779377, all 50 bars, 3 tracks
 
-setcpm(175 / 4)
+setcpm(87 / 4)
 
-// --------------------------------------------------------------
-// TOMS - the intro figure (tab m1-2, m17-18, m32, m41-42).
-// Hi-mid tom (48) and low-mid tom (47) on a 32nd grid. No kick,
-// no snare: this is the bare stutter that opens the record.
-// --------------------------------------------------------------
-const toms = s("ht ~ ht mt ht ~ mt ~ ht mt ht ~ mt ~ ~ ~ ht ~ ht mt ht ~ mt ~ ht mt ht ~ mt ~ ~ ~")
+// intro tom stutter
+const toms = s("[ht ~ ht mt ht ~ mt ~ ht mt ht ~ mt ~ ~ ~]*2")
   .bank("RolandTR909")
   .gain(0.9)
   .shape(0.35)
 
-// --------------------------------------------------------------
-// MAIN GROOVE - the verse beat (tab m3-9).
-// Kick is the busy part: 16ths at 0 3 5 6 7 8 11 13 14 15.
-// Open hat rides straight 8ths, snare is a plain 2-and-4.
-// --------------------------------------------------------------
-const kick = s("bd ~ ~ bd ~ bd bd bd bd ~ ~ bd ~ bd bd bd")
+// verse kick, crashed downbeat
+const kick = s("[bd,cr] ~ ~ bd ~ bd bd bd bd ~ ~ bd ~ bd bd bd")
   .bank("RolandTR909")
   .gain(1.2)
-  .shape(0.55)          // the record is clipped on purpose
+  .shape(0.55)
   .lpf(260)
 
-const openHats = s("oh*8")
+// verse open hats
+const openHats = s("~ ~ oh ~ oh ~ oh ~ oh ~ oh ~ oh ~ oh ~")
   .bank("RolandTR909")
   .gain(0.45)
   .hpf(4000)
   .pan(sine.range(0.4, 0.6).slow(3))
 
+// verse backbeat snare
 const snare = s("~ sd ~ sd")
   .bank("RolandTR909")
   .gain(1.05)
@@ -158,32 +144,24 @@ const snare = s("~ sd ~ sd")
   .hpf(180)
   .room(0.12)
 
-// --------------------------------------------------------------
-// TOM GROOVE - the chorus beat (tab m11-12, m21-24, m30-31).
-// Same tom figure as the intro, with the kick and a displaced
-// snare (12.5 and 14 in 16ths) underneath.
-// --------------------------------------------------------------
-const tomKick = s("bd ~ ~ ~ ~ ~ bd ~ ~ ~ bd ~ ~ ~ ~ ~ bd ~ ~ ~ ~ ~ bd ~ ~ ~ bd ~ ~ ~ bd ~")
+// chorus kick
+const tomKick = s("bd ~ ~ bd ~ bd ~ ~ bd ~ ~ bd ~ bd ~ bd")
   .bank("RolandTR909")
   .gain(1.15)
   .shape(0.5)
   .lpf(260)
 
+// chorus displaced snare
 const tomSnare = s("~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ sd ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ sd ~ ~ sd ~ ~ ~")
   .bank("RolandTR909")
   .gain(1.0)
   .shape(0.4)
   .hpf(180)
 
-// --------------------------------------------------------------
-// BASS - literal pitches from the bass tab, 16ths throughout.
-// One bar per angle bracket:
-//   G2 | G2 | D2/C2 | Eb3 D3 D3 C3 | C3 -> D3 | Bb2 | Bb2
-// Written in D phrygian so bar 4's Eb is a scale degree, not an
-// accidental: 0=D2  3=G2  5=Bb2  6=C3  7=D3  8=Eb3.
-// --------------------------------------------------------------
-const bass = n("<3*16 3*16 [0*4 -1*4 0*4 -1*4] [8 7 7 6]*4 [6*8 7*8] 5*16 5*16>")
-  .scale("d2:phrygian")
+// bass voice, g minor
+// 0=G1 1=A1 2=Bb1 4=D2 6=F2 7=G2 8=A2 9=Bb2
+const bassVoice = (p) => p
+  .scale("g1:minor")
   .s("sawtooth")
   .lpf(perlin.range(220, 780).slow(6))
   .lpq(9)
@@ -191,74 +169,84 @@ const bass = n("<3*16 3*16 [0*4 -1*4 0*4 -1*4] [8 7 7 6]*4 [6*8 7*8] 5*16 5*16>"
   .shape(0.4)
   .gain(0.85)
 
-// Sub underneath, same notes an octave down, no character at all.
-const sub = bass
+// verse bass, seven bars
+const bass = bassVoice(n("<4*16 4*16 [1*4 0*4 1*4 0*4] [9 8 8 7]*4 [7*8 8*8] 6*16 6*16>"))
+
+// pedal bass, three sections
+const bassG = bassVoice(n("0*16"))
+const bassBb = bassVoice(n("2*16"))
+const bassF = bassVoice(n("6*16"))
+
+// alternating chorus bass
+const bassAlt = bassVoice(n("[8 7]*8"))
+const bassAB = bassVoice(n("[8 9]*8"))
+
+// late bass figure
+const bassFig = bassVoice(n("[7 ~ ~ 9 9 ~ 9 ~]*2"))
+
+// octave-down sub
+const sub = (b) => b
   .add(note(-12))
   .s("sine")
   .lpf(140).lpq(1).shape(0.15).gain(0.9)
 
-// Chorus bass (tab m27-29): D3/C3 alternating 16ths.
-const bassChorus = n("[0 -1]*8")
-  .scale("d3:minor")
-  .s("sawtooth")
-  .lpf(700).lpq(9)
-  .attack(0.002).decay(0.09).sustain(0.2).release(0.05)
-  .shape(0.4).gain(0.85)
-
-// --------------------------------------------------------------
-// SIREN - the distortion-guitar riff from the tab (m3-5).
-// C#5 D5 C#5 B4, each hammered as four 32nds. The semitone
-// wobble against a D-minor centre is what makes it scream.
-// --------------------------------------------------------------
+// distorted guitar siren
+// g4 minor: 0=G4 1=A4 2=Bb4
 const siren = n("[1*4 2*4 1*4 0*4]*2")
-  .scale("b4:minor")          // 0=B4 1=C#5 2=D5
+  .scale("g4:minor")
   .s("sawtooth")
-  .superimpose(x => x.add(note(0.13)).gain(0.6))   // detune twin
+  .superimpose(x => x.add(note(0.13)).gain(0.6))
   .lpf(sine.range(900, 4200).slow(4))
   .lpq(12)
   .attack(0.001).decay(0.07).sustain(0).release(0.04)
   .crush(9)
   .gain(0.5)
 
-// --------------------------------------------------------------
-// HOOK - the theorytab chorus melody, D minor, range D4-A4.
-// A | G D | A G D (triplet) | A F D
-// --------------------------------------------------------------
+// chorus hook melody
+// hooktheory notates 175 BPM, double songsterr's 87, so
+// its bar is half a cycle here - hence fast(2).
+// d4 minor: 0=D4 2=F4 3=G4 4=A4
 const hook = n("4 [3 0] [4 3 0] [4 2 0 ~]")
-  .scale("d4:minor")         // 0=D4 2=F4 3=G4 4=A4
+  .scale("d4:minor")
+  .fast(2)
   .s("square")
   .attack(0.005).decay(0.2).sustain(0.25).release(0.2)
   .lpf(3200)
   .crush(7)
-  .delay(0.35).delaytime(0.1029).delayfeedback(0.35)  // dotted 8th at 175
+  .delay(0.35).delaytime(0.2586).delayfeedback(0.35)
   .room(0.25)
   .gain(0.45)
 
-// ==============================================================
-//  FULL MIX - comment a line out to strip a layer
-// ==============================================================
-stack(
-  kick,
-  snare,
-  openHats,
-  sub,
-  bass,
-  siren,
-  hook
-).postgain(0.4)          // seven loud layers - this is the headroom
+// verse loop
+const verse = stack(kick, snare, openHats)
+// chorus loop
+const chorus = stack(tomKick, tomSnare, toms)
 
-// ==============================================================
-//  ARRANGEMENT - follows the tab's section order.
-//  Replace the stack() above with this.
-// ==============================================================
+// full mix
+stack(verse, bass, sub(bass), siren).postgain(0.5)
+
+// arrangement, all fifty bars
 // arrange(
-//   [2, toms],                                                // intro m1-2
-//   [7, stack(kick, snare, openHats, sub, bass, siren)],       // verse m3-9
-//   [2, stack(tomKick, tomSnare, toms, sub, bass)],            // m11-12
-//   [4, stack(kick, snare, openHats, sub, bass, hook)],        // m13-16
-//   [2, toms],                                                // m17-18
-//   [4, stack(tomKick, tomSnare, toms, bassChorus, hook)],     // chorus
-//   [2, stack(sub, bassChorus).degradeBy(0.4)]                 // breakdown
-// ).postgain(0.9)`,
+//   [2,  toms],                                  // m01-02
+//   [3,  stack(verse, bass, sub(bass), siren)],  // m03-05
+//   [4,  stack(verse, bass, sub(bass))],         // m06-09
+//   [1,  verse],                                 // m10
+//   [2,  chorus],                                // m11-12
+//   [4,  verse],                                 // m13-16
+//   [2,  stack(toms, bassG)],                    // m17-18
+//   [2,  stack(verse, bassG, sub(bassG))],       // m19-20
+//   [4,  stack(chorus, hook)],                   // m21-24
+//   [2,  stack(verse, bassBb, sub(bassBb))],     // m25-26
+//   [3,  stack(verse, bassAlt, sub(bassAlt))],   // m27-29
+//   [2,  stack(chorus, hook)],                   // m30-31
+//   [1,  stack(toms, bassF)],                    // m32
+//   [3,  verse],                                 // m33-35
+//   [1,  stack(chorus, bassAB)],                 // m36
+//   [4,  verse],                                 // m37-40
+//   [2,  toms],                                  // m41-42
+//   [2,  stack(chorus, bassFig, sub(bassFig))],  // m43-44
+//   [3,  verse],                                 // m45-47
+//   [2,  stack(chorus, hook)]                    // m48-49
+// ).postgain(0.5)`,
   },
 ];

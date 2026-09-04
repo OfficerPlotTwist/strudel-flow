@@ -144,19 +144,6 @@ export function createExplainerWindow(pane) {
   return {
     refresh,
     open,
-    /**
-     * SHIFT: hold the function currently on screen there, ignoring the
-     * rotation, until SHIFT again or its block stops playing.
-     */
-    togglePin() {
-      if (!popout?.isOpen()) return null;
-      const pinned = explainer.togglePin();
-      // A pinned window has nothing to rotate to; resuming is what unpinning
-      // is for.
-      if (pinned) stopRotating();
-      else startRotating();
-      return pinned;
-    },
     isOpen: () => Boolean(popout?.isOpen()),
     /** Opens or closes the window; returns a line for the status strip. */
     toggle() {

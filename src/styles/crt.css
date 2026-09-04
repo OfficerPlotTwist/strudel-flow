@@ -373,3 +373,44 @@ main {
   user-select: none;
   vertical-align: baseline;
 }
+
+/*
+ * The knob-address rows under a selected block. A readout, never text: it
+ * cannot be selected, it cannot take a click, and it is dim enough that the
+ * code above it still reads as the foreground.
+ */
+.cm-arg-row {
+  white-space: pre;
+  color: var(--phosphor-dim);
+  opacity: 0.75;
+  font-size: 0.85em;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* The spacer rows: the whitespace that opens the block up while it is addressed. */
+.cm-arg-row-blank {
+  height: 0.85em;
+}
+
+/*
+ * The block the knobs are on, among however many are selected. Displacement
+ * plus a rule at the left margin, rather than a third colour competing with
+ * "selected" and "playing" for a two-colour screen.
+ */
+.cm-cursor-block {
+  padding-left: 0.9ch;
+  box-shadow: inset 2px 0 0 0 var(--phosphor);
+  transition: padding-left 90ms linear;
+}
+
+/*
+ * The function TC 6 is on. An outline rather than a fill: the function already
+ * carries its own colour (see ui/function-colors.js), and painting over it
+ * would lose the one cue that says what kind of function it is.
+ */
+.cm-browsed-fn {
+  outline: 1px solid var(--phosphor);
+  outline-offset: 1px;
+  border-radius: 2px;
+}

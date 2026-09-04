@@ -20,6 +20,22 @@ page.on('console', (m) => {
   if (m.type() === 'error') errors.push(`console.error: ${m.text()}`);
 });
 
+/**
+ * The editor's TEXT, with the readouts stripped out.
+ *
+ * innerText on .cm-content also returns the block widgets drawn over the
+ * document - the knob-address rows and the armed-cycle badge - so a raw read
+ * reports `all(...)0` and stray blank lines as if they were code. Every one of
+ * those is marked aria-hidden, because none of them is text, and that is
+ * exactly the flag to filter on.
+ */
+const readCode = (page) =>
+  page.evaluate(() => {
+    const clone = document.querySelector('.cm-content').cloneNode(true);
+    for (const node of clone.querySelectorAll('[aria-hidden="true"]')) node.remove();
+    return [...clone.querySelectorAll('.cm-line')].map((l) => l.textContent).join("\n");
+  });
+
 const step = async (name, fn) => {
   try {
     await fn();
@@ -141,20 +157,30 @@ await step('Ctrl+e opens a second window describing the playing song', async () 
 });
 
 console.log('multi-block comment');
+// Captured before the toggle so the restore is checked against the real
+// document rather than against "contains no //" - every song now carries a
+// `// reverb bus` label, and a comment in the buffer is normal.
+let beforeToggle = '';
 await step('Ctrl+m over a full selection comments every block', async () => {
   await page.click('.cm-content');
+  beforeToggle = await readCode(page);
   await page.keyboard.press('Control+a');
   await page.keyboard.press('Control+m');
   await page.waitForTimeout(300);
-  const text = await page.locator('.cm-content').innerText();
+  const text = await readCode(page);
   const live = text.split('\n').filter((l) => l.trim() && !l.trim().startsWith('//'));
   if (live.length) throw new Error(`still live: ${JSON.stringify(live)}`);
 });
 await step('a second Ctrl+m restores every block', async () => {
   await page.keyboard.press('Control+m');
   await page.waitForTimeout(300);
-  const text = await page.locator('.cm-content').innerText();
-  if (text.includes('//')) throw new Error(`still commented: ${text}`);
+  const text = await readCode(page);
+  // A round trip, byte for byte: anything else is a toggle that did not undo
+  // itself, whether it left a block commented or ate a comment marker that
+  // was there to begin with.
+  if (text !== beforeToggle) {
+    throw new Error(`round trip changed the buffer: ${JSON.stringify(text)}`);
+  }
 });
 
 console.log('midi control surface');
@@ -193,6 +219,12 @@ await step('Get Got is seeded as a song, not a snippet', async () => {
 console.log('rip keys');
 await step('F6 fades the selection out and parks it in a bottom-bar tab', async () => {
   await page.click('.cm-content');
+  // The app opens on an empty sheet now, so this brings the material it
+  // intends to rip rather than relying on demo content being there.
+  await page.keyboard.press('Control+Home');
+  await page.keyboard.type('$: s("bd sd")');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(300);
   await page.keyboard.press('Control+a');
   const before = await page.locator('.cm-content:visible').innerText();
   await page.keyboard.press('F6');

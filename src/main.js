@@ -1,5 +1,12 @@
-import { getTransport, initEngine, previewSound, unlockAudio } from './engine.js';
-import { enableMidi, listInputs, listOutputs, onMidiMessage, sendCC } from './midi.js';
+import {
+  audioContext,
+  getTransport,
+  initEngine,
+  previewSound,
+  setTransportCps,
+  unlockAudio,
+} from './engine.js';
+import { LED, enableMidi, listInputs, listOutputs, onMidiMessage, sendCC, sendNote } from './midi.js';
 import { createEditorPane } from './editor.js';
 import { createLive } from './live.js';
 import { isStandaloneBlock } from './blocks.js';
@@ -11,6 +18,55 @@ import { createMidiMonitor } from './ui/midi-monitor.js';
 import { createDeviceMap } from './device-map.js';
 import { createRelativeBank } from './relative.js';
 import { createBlockCursor, createStepper } from './browse.js';
+import {
+  MASTER_CONTROLS,
+  MASTER_TRACK,
+  PART_TRACKS,
+  REVERB_CONTROLS,
+  REVERB_TRACK,
+  argRows,
+  assignArgSlots,
+  bindFixedControls,
+  callText,
+  findNumericArgs,
+} from './args.js';
+import { busSizeSpan, ensureBus, hasBus } from './bus.js';
+import {
+  BPM_RANGE,
+  RAMP_RANGE,
+  bpmToCps,
+  clampBpm,
+  clampRamp,
+  rampBpm,
+  rampProgress,
+  setSongBpm,
+  songBpm,
+} from './tempo.js';
+import { blockFunctions, replacementFor, stepFunction } from './fn-browse.js';
+import {
+  COLUMNS,
+  OCTAVE_RANGE,
+  accidentalDegrees,
+  addSegment,
+  blockSuffix,
+  canStepInto,
+  createPattern,
+  nextKey,
+  describeKey,
+  makeActiveEmpty,
+  parsePattern,
+  patternBlock,
+  setOctave,
+  setRepeats,
+  setRest,
+  setSongKey,
+  setStep,
+  songKey,
+  stepIndex,
+} from './pattern-build.js';
+import { createArgKnobs, deviceKnobIndex } from './arg-knobs.js';
+import { addToBlock, classifyItem, setupLine } from './build.js';
+import { DEFAULT_MONITOR_CHANNELS, splitStatus, toMonitor } from './monitor.js';
 import { createAudition } from './audition.js';
 import { crossfaderCycles } from './arm.js';
 import { createExplainerWindow } from './ui/explainer-window.js';
@@ -38,7 +94,11 @@ initEngine({
   onError: (msg) => status.error(msg),
   onDraw: (haps, time) => pane.highlight(haps, time),
 });
-const first = pane.addTab('song-1', '$: s("bd sd")\n\n$: note("<c a f e>(3,8)")');
+// An empty sheet. The app opens on a song holding nothing but its reverb bus
+// (addTab adds that), because the first thing a performer does is decide what
+// goes there - and demo content is something to delete before you can start,
+// every single launch.
+const first = pane.addTab('song-1', '');
 
 // Everything that reaches the parser goes through `live`: it composes the
 // active tab with whatever blocks and tabs are being held down right now.
@@ -56,7 +116,7 @@ const panel = createLibraryPanel(document.getElementById('library-pane'), {
       // A whole pattern goes in as its own block. Splicing it at the caret is
       // how the library used to produce syntax errors on every insert that
       // did not happen to land on a blank line.
-      pane.insertAsBlock(code);
+      focusNewBlock(pane.getViewedId(), pane.insertAsBlock(code));
     } else {
       // A fragment (.gain(0.5), s("bd")) is meant to chain onto what is
       // already under the caret, so it goes exactly where the caret is.
@@ -69,7 +129,6 @@ const panel = createLibraryPanel(document.getElementById('library-pane'), {
 
 // An edit re-renders what is ALREADY playing; it never starts playback.
 pane.onActiveEdit(() => live.refresh());
-pane.onCursorMove(() => explainer.refresh());
 
 const triggerMap = defaultTriggerMap();
 let holdSlots = defaultHoldSlots();
@@ -109,6 +168,24 @@ const currentTabHolds = () => tabHoldBindings(pane.getTabs(), tabHoldOverrides);
 // keys and Ctrl+M all act on what the knob chose without knowing it exists.
 const blockCursor = createBlockCursor();
 
+/**
+ * Put the block cursor on a block that has just been created.
+ *
+ * The selection and the block cursor are two different things: selecting a
+ * block shows it, but the cue encoder keeps its own position, so without this
+ * the next turn of the encoder jumps back to wherever it was and drags the
+ * eight knobs with it. A block that was just made is where attention is, and
+ * the cursor has to agree.
+ *
+ * Pins are left alone - they were deliberate, and a new block should join the
+ * selection rather than clear it.
+ */
+function focusNewBlock(id, index) {
+  if (index === null || index === undefined || index < 0) return;
+  blockCursor.moveTo(index);
+  showBlockSelection();
+}
+
 /** Push the cursor's choice into the editor, so it is visible and actionable. */
 function showBlockSelection() {
   const id = pane.getViewedId();
@@ -121,9 +198,626 @@ function showBlockSelection() {
   pane.selectBlocks(id, ordered);
 }
 
+// ---- the eight device knobs over one block's numbers ----------------------
+//
+// With exactly ONE block selected, its knobbable numeric arguments are dealt
+// across the nine track selects and the eight device knobs: track 1 knobs 1-8
+// are arguments 1-8, track 2 knobs 1-8 are 9-16, and so on to master. The
+// address of each is printed under the number it drives (see ui/arg-map.js),
+// so the binding is readable at the argument rather than memorised.
+//
+// One block only, on purpose. The addressing is positional, and a second
+// selected block would renumber every argument in the first the moment it was
+// pinned - a control surface whose meaning changes underneath a held knob.
+const argKnobs = createArgKnobs({
+  send: (channel, cc, value) => sendCC(device.outPort, channel, cc, value),
+  apply: (slot, value, text) => {
+    const id = pane.getViewedId();
+    if (!id) return;
+    // Three kinds of write, and they differ in WHERE the number lives rather
+    // than in what turning the knob means.
+    if (slot.shared) {
+      // The reverb bus: one size for the whole song, because there is one
+      // reverb per orbit. Written to the bus statement, never to a block.
+      const span = busSizeSpan(pane.getCode(id));
+      if (!span) return;
+      pane.replaceRange(id, span.from, span.to, text, { notify: false });
+    } else if (slot.virtual) {
+      // The block does not call this yet. Writing it is what creates it, so
+      // the master knobs mean the same thing on a block that never asked for
+      // an envelope as on one that did.
+      const block = pane.getBlockAt(id, cursorBlockIndex());
+      if (!block) return;
+      pane.replaceRange(id, block.to, block.to, callText(slot, text), { notify: false });
+    } else {
+      pane.replaceRange(id, slot.from, slot.to, text, { notify: false });
+    }
+    // The document is written on every message - the number under the knob has
+    // to move with the hand. The PARSER is told on the trailing edge.
+    scheduleArgRefresh();
+    status.info(`${slot.track}/${slot.knob} ${slot.label ?? slot.fn} ${text}`);
+  },
+});
+
+/**
+ * Which block the knobs are on.
+ *
+ * The selection can hold several blocks; the knobs can only edit one, and it
+ * is the one under the browse cursor. With no surface selection at all - a
+ * plain mouse click - the sole selected block is the cursor block, because
+ * there is nothing else it could be.
+ */
+function cursorBlockIndex() {
+  const id = pane.getViewedId();
+  if (!id) return null;
+  const selected = pane.getSelectedBlocks(id);
+  if (selected.length === 0) return null;
+  if (selected.length === 1) return selected[0].index;
+  const cursor = selected.find((block) => block.index === blockCursor.cursor);
+  // The cursor can sit outside the selection after an edit shortened the song;
+  // fall back to the first selected block rather than addressing nothing.
+  return (cursor ?? selected[0]).index;
+}
+
+/** How long a knob has to stop moving before the set is re-rendered. */
+const ARG_REFRESH_MS = 120;
+let argRefreshTimer = null;
+
+/**
+ * Re-render the set after a knob sweep settles, once.
+ *
+ * These pots emit up to two hundred messages a second, and every one of them
+ * edits the document. Re-rendering per message would queue two hundred
+ * transpiles a second behind each other - live.js serialises evaluations, so
+ * they do not overlap, they PILE UP, and the surface goes deaf under the
+ * backlog while MIDI keeps arriving. Coalescing on the trailing edge is what
+ * makes a sweep cost one re-render instead of one per step; the audible
+ * parameter still lands within a frame or two of the hand stopping.
+ */
+function scheduleArgRefresh() {
+  if (argRefreshTimer) return;
+  argRefreshTimer = setTimeout(() => {
+    argRefreshTimer = null;
+    live.refresh();
+  }, ARG_REFRESH_MS);
+}
+
+/** What the current arg map is OF, so an edit to a value is not a new block. */
+let argSignature = null;
+
+/**
+ * Recompute the knob map for whatever single block is selected, and draw it.
+ *
+ * Called on every caret move and every document change, which is also every
+ * knob write. The signature is what keeps that cheap: when the same arguments
+ * of the same block are still on the knobs, the slots are swapped in silently
+ * and the hardware is left alone. Only a genuinely different block re-parks
+ * the eight pots.
+ */
+function refreshArgMap() {
+  const id = pane.getViewedId();
+  const index = id ? cursorBlockIndex() : null;
+  const block = index === null ? null : pane.getBlockAt(id, index);
+  if (!block) {
+    argSignature = null;
+    argKnobs.clear();
+    if (id) {
+      pane.setArgMap(id, null);
+      pane.setCursorBlock(id, null);
+    }
+    return;
+  }
+
+  const args = findNumericArgs(block.text, block.from);
+
+  // Reserved tracks first, so they can CLAIM the arguments they bind to and
+  // the positional dealer never gives one number a second address.
+  const master = bindFixedControls(args, MASTER_CONTROLS, MASTER_TRACK);
+  const reverb = bindFixedControls(
+    args.filter((arg) => !master.claimed.has(arg)),
+    REVERB_CONTROLS,
+    REVERB_TRACK,
+  );
+  // The bus owns the one roomsize there is, so its slot reads from there
+  // rather than from the block - the block has no size and must not grow one.
+  const size = busSizeSpan(pane.getCode(id));
+  const reverbSlots = reverb.slots.map((slot) =>
+    slot.shared && size ? { ...slot, value: Number(size.text), virtual: false } : slot,
+  );
+
+  const rest = args.filter((arg) => !master.claimed.has(arg) && !reverb.claimed.has(arg));
+  const partSlots = assignArgSlots(rest, PART_TRACKS);
+  const slots = [...partSlots, ...master.slots, ...reverbSlots];
+
+  const signature = [
+    block.index,
+    ...slots.map((slot) => `${slot.track}/${slot.knob}:${slot.fn}@${slot.position ?? 0}`),
+  ].join(',');
+  if (signature === argSignature) argKnobs.adopt(slots);
+  else {
+    argSignature = signature;
+    argKnobs.prime(slots);
+  }
+
+  // Only the slots that actually sit in this block get an annotation row; a
+  // virtual control has no column to point at, and the shared size lives in
+  // the bus statement further down.
+  const inBlock = [...partSlots, ...master.slots, ...reverbSlots].filter((slot) => !slot.virtual);
+  const ranges = [
+    {
+      from: block.start,
+      to: block.end,
+      rows: argRows(
+        inBlock.filter((slot) => slot.line !== null),
+        block.end - block.start + 1,
+      ),
+    },
+  ];
+  pane.setArgMap(id, ranges);
+  pane.setCursorBlock(id, block.index);
+
+  // TC 6 holds an INDEX into this block's functions, so moving to a different
+  // block invalidates it - the fourth function of another part is a different
+  // word. Reset rather than carry it over, which would outline something the
+  // knob was never turned to.
+  if (browsedBlock !== `${id}:${block.index}`) {
+    browsedBlock = `${id}:${block.index}`;
+    browsedFn = null;
+    pane.setBrowsedFn(id, null);
+  }
+}
+
+// ---- building a block from the library ------------------------------------
+//
+// SEND B latches build mode. While it is on, TAP TEMPO takes whatever the
+// browse cursor is on in the right-hand panel and adds it to ONE block: the
+// first pick creates it, and every pick after that folds into the same block
+// rather than starting another. That is the whole difference from the
+// library's ordinary insert - picking a kick and then a snare here means one
+// part that alternates between them, not two parts playing at once.
+//
+// The block stays selected the entire time, so the device knobs are bound to
+// its numbers as it is being built rather than after.
+let building = null; // { tabId, blockIndex } while SEND B is on
+// PAN decides what happens when SEND B goes off: latched, the finished block
+// is evaluated and lands on the next cycle boundary; unlatched it stays in the
+// document, silent, like everything else this app writes.
+let panLatched = false;
+// SEND A: the block under construction goes to the cue outputs instead of the
+// mains, so it can be heard while the set plays on without the room hearing it.
+let monitorOn = false;
+let monitorChannels = DEFAULT_MONITOR_CHANNELS;
+
+/**
+ * The envelope every built block carries.
+ *
+ * Appended on creation rather than offered as a pick, because a block with no
+ * envelope has nothing to shape and the four numbers here are the four the
+ * hand reaches for first - which is also why they are worth having already
+ * under the knobs the moment the block exists.
+ */
+const BUILT_ADSR = '.adsr(0.01, 0.1, 0.6, 0.2)';
+
+/** The block a pattern is stepped into when there is nowhere else to put it. */
+const PATTERN_SEED = '$: n("~")';
+
+/** Put the block being built under the knobs and on screen. */
+function selectBuilt() {
+  if (!building || building.blockIndex === null) return;
+  pane.selectBlocks(building.tabId, [building.blockIndex]);
+}
+
+/**
+ * Add whatever the browse cursor is on to the block under construction.
+ *
+ * Setup statements are the exception that has to be handled first: `setcpm`
+ * and `samples` configure the whole song, and appended into a block halfway
+ * down they still run - and then silently change the tempo of everything above
+ * them. They are slotted to the top instead.
+ */
+function addPickToBlock() {
+  const pick = panel.getHighlighted();
+  if (!pick) {
+    status.info('build: nothing under the browse cursor');
+    return;
+  }
+  const id = building.tabId;
+
+  if (classifyItem(pick.code) === 'setup') {
+    const lines = pane.getCode(id).split('\n');
+    pane.insertLine(id, setupLine(lines), pick.code.trim());
+    status.info(`build: ${pick.name} to the top`);
+    return;
+  }
+
+  if (building.blockIndex === null) {
+    building.blockIndex = pane.appendBlock(id, `${pick.code.trim()}${BUILT_ADSR}`);
+    focusNewBlock(id, building.blockIndex);
+    selectBuilt();
+    status.info(`build: ${pick.name}`);
+    return;
+  }
+
+  const block = pane.getSoleSelectedBlock(id);
+  const current = block?.text ?? '';
+  const { text, separate, refused } = addToBlock(current, pick.code);
+  if (refused) {
+    // A `.method()` pick with no code to hang it on. Saying so beats appending
+    // it into a comment, where it would vanish without a sound or an error.
+    status.info(`build: nothing for ${pick.name} to chain onto`);
+    return;
+  }
+  if (separate) {
+    // Not a rejection - a melody and a drum part are two parts however they
+    // were picked, and the new one becomes the block now being built.
+    building.blockIndex = pane.appendBlock(id, `${text}${BUILT_ADSR}`);
+    focusNewBlock(id, building.blockIndex);
+  } else {
+    pane.replaceBlockText(id, building.blockIndex, text);
+  }
+  selectBuilt();
+  status.info(separate ? `build: ${pick.name} (new block)` : `build: + ${pick.name}`);
+}
+
+/** Enter or leave build mode. */
+function setBuilding(on) {
+  if (on) {
+    const id = pane.getViewedId();
+    if (!id) return;
+    building = { tabId: id, blockIndex: null };
+    status.info('build: SEND B on - TAP TEMPO adds the browsed item');
+    return;
+  }
+  const finished = building;
+  building = null;
+  if (!finished || finished.blockIndex === null) {
+    status.info('build: off');
+    return;
+  }
+  if (panLatched) {
+    // Strudel starts a re-evaluated pattern on the next cycle boundary, which
+    // is exactly what PAN is asking for - no countdown of our own is needed.
+    live.evaluateActive();
+    status.info('build: done, playing from the next cycle');
+  } else {
+    status.info('build: done, not playing');
+  }
+}
+
+/**
+ * Send the block under construction to the cue outputs, or stop.
+ *
+ * The suffix goes on the RENDERED source, not into the document: the cue is a
+ * way of listening, not an edit, and a block that had been monitored would
+ * otherwise keep `.channels("3 4")` after the headphones came off.
+ */
+function setMonitor(on) {
+  monitorOn = on;
+  const ctx = audioContext();
+  status.info(on ? `monitor: ${splitStatus(ctx, monitorChannels)}` : 'monitor off');
+  live.refresh();
+}
+
+live.setMonitor(() => {
+  if (!monitorOn || !building || building.blockIndex === null) return null;
+  return { tabId: building.tabId, blockIndex: building.blockIndex, wrap: (text) => toMonitor(text, monitorChannels) };
+});
+
+/**
+ * Which function of the cursor block TC 6 is on, by index, or null.
+ *
+ * Kept as an index rather than a span because the block is being edited
+ * underneath it - a knob write changes offsets on every message - and the
+ * fourth function is still the fourth function afterwards.
+ */
+let browsedFn = null;
+/** Which block that index belongs to, so it is dropped when the block changes. */
+let browsedBlock = null;
+
+/** The functions of the block the knobs are on, in source order. */
+function cursorBlockFunctions() {
+  const id = pane.getViewedId();
+  const index = id ? cursorBlockIndex() : null;
+  const block = index === null ? null : pane.getBlockAt(id, index);
+  return block ? blockFunctions(block.text, block.from) : [];
+}
+
+/**
+ * Move TC 6 through the block's functions.
+ *
+ * Selecting a function also tabs the library to the list that can answer it -
+ * a sample call wants a sound, an effect wants another effect - so the pick
+ * and the thing being replaced cannot get out of step. That is the whole
+ * reason the tab switch lives here and not under the user's thumb.
+ */
+function moveBrowsedFn(steps) {
+  const fns = cursorBlockFunctions();
+  const next = stepFunction(browsedFn ?? -1, steps, fns.length);
+  if (next === null) {
+    status.info('no functions in this block');
+    return;
+  }
+  browsedFn = next;
+  const fn = fns[next];
+  panel.showTab(fn.tab);
+  pane.setBrowsedFn(pane.getViewedId(), { from: fn.from, to: fn.to });
+  status.info(`${fn.name}(${fn.arg}) - ${fn.replaces} from ${fn.tab}`);
+}
+
+/**
+ * Replace the browsed function, or its argument, with the library pick.
+ *
+ * Which of the two is not a mode: an effect swaps its NAME and keeps its
+ * number, because 400 is a cutoff whichever filter reads it; a sample call
+ * swaps its ARGUMENT and keeps the call, because `s(...)` is still what plays
+ * it. Both are the same gesture, and the function decides.
+ */
+function replaceBrowsedFn() {
+  const id = pane.getViewedId();
+  const fns = cursorBlockFunctions();
+  const fn = browsedFn === null ? null : fns[browsedFn];
+  const pick = panel.getHighlighted();
+  const edit = replacementFor(fn, pick);
+  if (!edit) {
+    status.info(
+      fn && pick ? `${pick.name} cannot replace ${fn.name}` : 'nothing browsed to replace',
+    );
+    return;
+  }
+  pane.replaceRange(id, edit.from, edit.to, edit.text);
+  status.info(`${fn.name}: ${edit.text}`);
+  // Offsets moved, so re-point the outline at the same function by index.
+  const moved = cursorBlockFunctions()[browsedFn];
+  pane.setBrowsedFn(id, moved ? { from: moved.from, to: moved.to } : null);
+}
+
+// ---- pattern build mode ---------------------------------------------------
+//
+// The clip grid becomes a piano roll: eight columns of eighth-notes along the
+// bottom, the row above each splitting one into sixteenths, and the top two
+// rows the scale with row 2 as the black keys. See pattern-build.js for the
+// model and for why each mini-notation form is the one it is.
+//
+// Entered by touching any bottom-row pad while a block is under the cursor,
+// and left with REC. Both of those addresses already mean something else -
+// row 1 solos a song tab, REC pins a block - so the mode does not add
+// controls, it re-scopes them, and every one of those handlers checks it.
+let patternMode = null; // { pattern, blockIndex, tabId }
+// Which pads are down right now. A note is written by a COMBINATION - a step
+// held while a degree is pressed - so both halves have to be tracked across
+// their own press and release rather than acted on individually.
+const heldLower = new Set(); // row 5: the eighth-note columns
+const heldUpper = new Set(); // row 4: the sixteenth after that eighth
+const heldSharp = new Set(); // row 2: raise the degree above it a semitone
+// The column a degree press writes into: the most recent bottom-row pad still
+// down, so a chord of held steps still has one unambiguous target.
+let activeColumn = null;
+
+/** `apc40.track3.clip5` -> `{ column: 2, row: 5 }`, or null. */
+function clipPad(name) {
+  const match = /^apc40\.track([1-8])\.clip([1-5])$/.exec(name ?? '');
+  return match ? { column: Number(match[1]) - 1, row: Number(match[2]) } : null;
+}
+
+/** Light row 2 where a semitone above the degree is outside the scale. */
+function paintPatternLeds(on) {
+  const lit = on ? new Set(accidentalDegrees(patternMode?.pattern.mode)) : new Set();
+  for (let column = 0; column < COLUMNS; column += 1) {
+    // Note 54 is clip2 - the black-key row. Channel is the track, which on
+    // this surface is the column. See apc40-map.json.
+    sendNote(device.outPort, column, 54, lit.has(column) ? LED.yellow : LED.off);
+  }
+}
+
+/** The step a degree press lands on, or null when no step is held. */
+function heldStep() {
+  if (activeColumn === null || !heldLower.has(activeColumn)) return null;
+  return stepIndex(activeColumn, heldUpper.has(activeColumn));
+}
+
+/** Write the pattern over the block being edited. */
+function writePattern() {
+  const { tabId, pattern, blockIndex } = patternMode;
+  // The write is the last thing that could notice the target is gone, and
+  // editor.js returns quietly on a missing tab - so an unchecked write here
+  // means every pad press does nothing, with the grid still lit as though it
+  // were recording. Say so and drop out instead.
+  if (!pane.hasTab(tabId)) {
+    exitPatternMode();
+    status.info('pattern build: off - the song it was writing into is gone');
+    return;
+  }
+  pane.replaceBlockText(tabId, blockIndex, patternBlock(pattern));
+  pane.selectBlocks(tabId, [blockIndex]);
+}
+
+/**
+ * Start stepping into the highlighted block, in place.
+ *
+ * A block this mode already wrote is READ BACK first, so re-entering to add a
+ * note continues the pattern instead of replacing it with an empty bar -
+ * without that, "edit in place" would quietly mean "in place of". A block that
+ * is not one of ours cannot be round-tripped and is started fresh; the mode
+ * says so rather than appearing to have parsed something it did not.
+ */
+function enterPatternMode() {
+  const id = pane.getViewedId();
+  const index = cursorBlockIndex();
+  if (!id || index === null) return;
+  let target = index;
+  let text = pane.getBlockAt(id, target)?.text ?? '';
+
+  // Two things must never be stepped over, and both would be destroyed
+  // silently because this mode edits in place:
+  //
+  //   the reverb bus - not a part, and on an empty sheet it is the ONLY block
+  //   so it is also what the cursor lands on;
+  //
+  //   a melody this grid cannot write back - `n("e4 g4 c5")` read as sixteen
+  //   rests, or a twenty-step bar read as its first sixteen. The block gets
+  //   rewritten on the FIRST pad press, so a hand-written line would be gone
+  //   before anyone saw it happen.
+  //
+  // Either way the pattern goes into a new block of its own instead.
+  if (hasBus(text) || !canStepInto(text)) {
+    target = pane.appendBlock(id, PATTERN_SEED);
+    focusNewBlock(id, target);
+    text = '';
+  }
+
+  // A block this mode wrote is read back whole. Anything else - most usefully
+  // the `s("piano")` that SEND B just put there - keeps its voice and its
+  // chain, and the pattern becomes the n() in front of them. Stepping a melody
+  // must not throw away the sound it is meant to be played by.
+  const existing = parsePattern(text);
+  const pattern = existing ?? createPattern(songKey(pane.getCode(id)) ?? undefined);
+  if (!existing) pattern.suffix = blockSuffix(text);
+
+  patternMode = { pattern, blockIndex: target, tabId: id };
+  paintPatternLeds(true);
+  // A half-finished SCENE 3 gesture belongs to the session it was made in.
+  // Carried over, the first press of the next session counts as the second
+  // tap of the last one and blanks a segment instead of duplicating it.
+  segmentGate.reset();
+  // The key is stated on entry rather than assumed. "Pre-determined" has to
+  // mean determined by something, and every degree stepped from here means
+  // nothing without it.
+  const voice = pattern.suffix ? ` over ${pattern.suffix.slice(0, 24)}` : '';
+  status.info(`pattern build: ${describeKey(pattern)}${voice}. REC to exit.`);
+}
+
+function exitPatternMode() {
+  paintPatternLeds(false);
+  patternMode = null;
+  heldLower.clear();
+  heldUpper.clear();
+  heldSharp.clear();
+  activeColumn = null;
+  status.info('pattern build: off');
+}
+
+/**
+ * Every pad and scene press while the mode is on. Returns true when the
+ * control was consumed, so the handlers it re-scopes never also run.
+ */
+function patternControl(control) {
+  const pad = clipPad(control.name);
+  const down = control.isDown === true;
+
+  if (pad) {
+    const { column, row } = pad;
+    if (row === 5) {
+      // Both edges: the step is a modifier, and dropping its release would
+      // leave every later degree press writing into a step nobody is holding.
+      if (down) {
+        // Delete before adding so a re-press moves the column to the END of
+        // the set - insertion order is what "most recent" means here.
+        heldLower.delete(column);
+        heldLower.add(column);
+        activeColumn = column;
+      } else {
+        heldLower.delete(column);
+        // Fall back to whatever is STILL held rather than to nothing. Letting
+        // go of the newer of two held steps used to leave no target at all,
+        // so a degree pressed afterwards went nowhere while a pad was still
+        // visibly down.
+        if (activeColumn === column) activeColumn = [...heldLower].at(-1) ?? null;
+      }
+      return true;
+    }
+    if (row === 4) {
+      if (down) heldUpper.add(column); else heldUpper.delete(column);
+      return true;
+    }
+    if (row === 2) {
+      if (down) heldSharp.add(column); else heldSharp.delete(column);
+      return true;
+    }
+    if (!down) return true; // rows 1 and 3 act on press only
+    if (row === 1) {
+      const step = heldStep();
+      if (step === null) {
+        status.info('hold a step before pressing a degree');
+        return true;
+      }
+      setStep(patternMode.pattern, step, { degree: column, sharp: heldSharp.has(column) });
+      writePattern();
+      return true;
+    }
+    if (row === 3) {
+      setRepeats(patternMode.pattern, column + 1);
+      writePattern();
+      status.info(`repeats: ${column + 1}`);
+      return true;
+    }
+  }
+
+  if (control.isDown !== true) return false;
+
+  if (control.name === 'apc40.scene1') {
+    const step = heldStep();
+    if (step === null) {
+      status.info('hold a step to rest it');
+      return true;
+    }
+    setRest(patternMode.pattern, step);
+    writePattern();
+    return true;
+  }
+  if (control.name === 'apc40.scene3') {
+    // A double press cannot be known until the second press lands, and by then
+    // the first has already duplicated the segment. So the second CONVERTS
+    // that duplicate to empty rather than adding a second one - one gesture,
+    // one segment, either way.
+    if (segmentGate.tap(performance.now())) {
+      makeActiveEmpty(patternMode.pattern);
+      status.info('empty segment, same length');
+    } else {
+      addSegment(patternMode.pattern);
+      status.info('segment duplicated');
+    }
+    writePattern();
+    return true;
+  }
+  if (control.name === 'apc40.global.rec') {
+    exitPatternMode();
+    return true;
+  }
+  return false;
+}
+
+/** Two taps of SCENE 3 inside the window means "empty" rather than "copy". */
+const segmentGate = createTapGate({ taps: 2, windowMs: 400 });
+
+// The caret moving changes WHICH block is addressed; an edit changes what its
+// numbers are. Both land here, and both are what keeps the knobs and the
+// annotation pointing at the code actually on screen.
+pane.onCursorMove(() => {
+  explainer.refresh();
+  refreshArgMap();
+});
+
 // Changing song drops the selection: the indexes named blocks in the old song,
 // and the same numbers in a different arrangement are different music.
-pane.onViewTab(() => blockCursor.clear());
+pane.onViewTab(() => {
+  blockCursor.clear();
+  // Pattern build addresses a block by index in ONE tab. Carrying it to
+  // another song would keep every grid press rewriting a block that is no
+  // longer on screen - invisible, with the pads still lit as though they were
+  // editing what you are looking at.
+  if (patternMode) exitPatternMode();
+  refreshArgMap();
+});
+
+// A tab can also go away WITHOUT the view changing - the crossfader-timed
+// delete closes the song it was aimed at, which may no longer be the one on
+// screen by the time the count lands. onViewTab covers the viewed tab only.
+pane.onCloseTab((id) => {
+  if (patternMode?.tabId === id) {
+    exitPatternMode();
+    status.info('pattern build: off - that song was deleted');
+  }
+});
 
 // SEND C: audition the highlighted sound once a beat, so a bank can be
 // browsed by ear. Free-running rather than locked to the transport - hunting
@@ -137,16 +831,33 @@ const audition = createAudition({
 });
 // One timer for the life of the page. It is a no-op while the audition is off,
 // which costs less than starting and stopping an interval on every press.
-setInterval(() => audition.tick(), 20);
+setInterval(() => {
+  audition.tick();
+  stepTempoRamp();
+}, 20);
 
 // The two knobs made relative in software. Track control knobs rather than
 // device knobs because the device bank re-addresses itself to whichever track
 // is selected, and a browse control that changed meaning with the selection
 // would be unusable.
 const relative = createRelativeBank({
-  knobs: ['apc40.trackctl.knob7', 'apc40.trackctl.knob8'],
+  knobs: [
+    'apc40.trackctl.knob1',
+    'apc40.trackctl.knob3',
+    'apc40.trackctl.knob4',
+    'apc40.trackctl.knob6',
+    'apc40.trackctl.knob7',
+    'apc40.trackctl.knob8',
+  ],
   send: (name, value) => {
-    const control = { 'apc40.trackctl.knob7': 54, 'apc40.trackctl.knob8': 55 }[name];
+    const control = {
+      'apc40.trackctl.knob1': 48,
+      'apc40.trackctl.knob3': 50,
+      'apc40.trackctl.knob4': 51,
+      'apc40.trackctl.knob6': 53,
+      'apc40.trackctl.knob7': 54,
+      'apc40.trackctl.knob8': 55,
+    }[name];
     if (control) sendCC(device.outPort, 0, control, value);
   },
 });
@@ -171,6 +882,10 @@ const CUE_DIVISOR = 4;
 const deleteGate = createTapGate({ taps: 3, windowMs: 600 });
 
 const steppers = {
+  'apc40.trackctl.knob1': createStepper(KNOB_DIVISOR),
+  'apc40.trackctl.knob3': createStepper(KNOB_DIVISOR),
+  'apc40.trackctl.knob4': createStepper(KNOB_DIVISOR),
+  'apc40.trackctl.knob6': createStepper(KNOB_DIVISOR),
   'apc40.trackctl.knob7': createStepper(KNOB_DIVISOR),
   'apc40.trackctl.knob8': createStepper(KNOB_DIVISOR),
   'apc40.global.cue_level': createStepper(CUE_DIVISOR),
@@ -187,7 +902,78 @@ function navigate(control) {
     if (turn.delta === 0) return true;
     const steps = steppers[turn.name].feed(Math.sign(turn.delta));
     if (steps === 0) return true;
-    // knob7 walks the category headings, knob8 the rows inside one.
+    // knob2 under SHIFT is how long a tempo change takes. It edits nothing on
+    // its own - it is the shape of the NEXT turn of knob 3.
+    if (turn.name === 'apc40.trackctl.knob2') {
+      if (!shiftHeld) return true;
+      rampCycles = clampRamp(rampCycles + steps);
+      status.info(
+        rampCycles === 0
+          ? 'tempo change: immediate'
+          : `tempo change over ${rampCycles} cycle${rampCycles === 1 ? '' : 's'}`,
+      );
+      return true;
+    }
+    // knob3 under SHIFT is the tempo, and like the key it is song-global -
+    // there is one setcpm, and a second would be a tempo change nobody asked
+    // the knob for.
+    if (turn.name === 'apc40.trackctl.knob3') {
+      if (!shiftHeld) return true;
+      const id = pane.getViewedId();
+      if (!id) return true;
+      const code = pane.getCode(id);
+      // A ramp already running is the truth about where the tempo is; the
+      // written song still says where it started.
+      const current = tempoRamp ? tempoRamp.current : songBpm(code);
+      if (current === null) {
+        status.info('no tempo declared in this song');
+        return true;
+      }
+      const bpm = clampBpm(current + steps);
+      if (bpm === Math.round(current)) {
+        status.info(`bpm: ${bpm} (${BPM_RANGE.min}-${BPM_RANGE.max})`);
+        return true;
+      }
+      startTempoRamp(id, current, bpm);
+      return true;
+    }
+    // knob4 under SHIFT walks the song's key round the circle of fifths. It
+    // is song-global on purpose: two blocks in different keys is not a
+    // modulation, it is a mistake nobody typed deliberately.
+    if (turn.name === 'apc40.trackctl.knob4') {
+      if (!shiftHeld) return true;
+      const id = pane.getViewedId();
+      if (!id) return true;
+      const code = pane.getCode(id);
+      const current = songKey(code);
+      if (!current) {
+        status.info('no key declared in this song');
+        return true;
+      }
+      const key = nextKey(current.key, steps);
+      pane.setCode(id, setSongKey(code, key));
+      if (patternMode) patternMode.pattern.key = key;
+      live.refresh();
+      status.info(`key: ${key.toUpperCase()} ${current.mode}`);
+      return true;
+    }
+    // knob1 sweeps the octave of the pattern being stepped in - and only
+    // while that is happening, because outside the mode there is no pattern
+    // for it to be the octave OF.
+    if (turn.name === 'apc40.trackctl.knob1') {
+      if (!patternMode) return true;
+      const next = patternMode.pattern.octave + steps;
+      setOctave(patternMode.pattern, next);
+      writePattern();
+      status.info(`pattern build: ${describeKey(patternMode.pattern)}`);
+      return true;
+    }
+    // knob6 walks the functions of the block under the block cursor; knob7
+    // walks the library's category headings, knob8 the rows inside one.
+    if (turn.name === 'apc40.trackctl.knob6') {
+      moveBrowsedFn(steps);
+      return true;
+    }
     const label =
       turn.name === 'apc40.trackctl.knob7'
         ? panel.moveCategory(steps)
@@ -204,6 +990,63 @@ function navigate(control) {
     if (steps === 0) return true;
     blockCursor.move(steps, pane.getBlockCount(id));
     showBlockSelection();
+    return true;
+  }
+
+  // The device knobs, when a single block is selected. Checked before the
+  // generic paths so a stray `cc:16` binding cannot also fire on a knob that
+  // is currently driving a number in the source.
+  if (deviceKnobIndex(control.name) !== null && argKnobs.feed(control)) return true;
+
+  // Pattern build mode owns the grid, the scenes and REC while it is on. It
+  // is checked before all of them because it does not ADD controls, it
+  // re-scopes ones that already mean something else.
+  if (patternMode && patternControl(control)) return true;
+
+  // Touching a bottom-row pad with a block under the cursor is what starts it.
+  // Only on press, and only with somewhere to write: entering a build mode
+  // that has no destination would strand every pad that followed.
+  if (!patternMode && control.isDown === true && clipPad(control.name)?.row === 5) {
+    if (cursorBlockIndex() === null) {
+      status.info('select a block before stepping a pattern');
+      return true;
+    }
+    enterPatternMode();
+    // The pad that opened the mode is also the first step held down, so hand
+    // it straight on rather than making the performer press it twice.
+    patternControl(control);
+    return true;
+  }
+
+  // The top row of clip pads, one per song tab on the top strip. Hold one or
+  // more and only those songs play; let go and the set returns to exactly what
+  // it was. That is the existing momentary SOLO, addressed by pad instead of
+  // by key - so the "return to previous state" is not a snapshot anyone has to
+  // take, it is what solo already means: while nothing is held, the held set
+  // is empty and the render is the ordinary one.
+  //
+  // Read BEFORE the press-only guard, like the other momentary controls: a
+  // hold is defined by its release as much as its press, and dropping the
+  // note-off would leave the set soloed for good.
+  const clip = /^apc40\.track([1-8])\.clip1$/.exec(control.name);
+  if (clip) {
+    const songTabs = pane.getTabs().filter((tab) => tab.bar === 'top');
+    const tab = songTabs[Number(clip[1]) - 1];
+    // A pad with no song under it does nothing, rather than soloing whichever
+    // tab happens to be last - eight pads are always there, songs are not.
+    if (tab && live.setTabHeld(tab.id, 'solo', control.isDown === true)) {
+      live.evaluateActive();
+      const held = songTabs.filter((t) => live.isTabHeld(t.id)).map((t) => t.name);
+      status.info(held.length ? `solo: ${held.join(' + ')}` : 'solo released');
+    }
+    return true;
+  }
+
+  // SHIFT is a modifier now rather than an action - it selects what the next
+  // knob turn MEANS - so like DETAIL VIEW it is read on both edges. A modifier
+  // that missed its release would leave every later turn re-keying the song.
+  if (control.name === 'apc40.global.shift') {
+    shiftHeld = control.isDown === true;
     return true;
   }
 
@@ -240,6 +1083,27 @@ function navigate(control) {
       status.info(pinned ? `block ${blockCursor.cursor + 1} kept` : `block ${blockCursor.cursor + 1} let go`);
       return true;
     }
+    case 'apc40.trackctl.send_b':
+      setBuilding(!building);
+      return true;
+    case 'apc40.global.tap_tempo':
+      // A browsed function wins over build mode: TC 6 was turned more
+      // recently than SEND B was latched, so it is the more specific
+      // statement of what this press is for.
+      if (browsedFn !== null) {
+        replaceBrowsedFn();
+        return true;
+      }
+      if (!building) return false; // outside build mode it is not ours
+      addPickToBlock();
+      return true;
+    case 'apc40.trackctl.pan':
+      panLatched = !panLatched;
+      status.info(panLatched ? 'finished blocks play next cycle' : 'finished blocks stay silent');
+      return true;
+    case 'apc40.trackctl.send_a':
+      setMonitor(!monitorOn);
+      return true;
     case 'apc40.trackctl.send_c': {
       const on = audition.toggle();
       status.info(
@@ -247,11 +1111,6 @@ function navigate(control) {
           ? `audition on: ${panel.getHighlightedSound() ?? 'no sound highlighted'}`
           : 'audition off',
       );
-      return true;
-    }
-    case 'apc40.global.shift': {
-      const pinned = explainer.togglePin();
-      status.info(pinned ? `explainer pinned: ${pinned}` : 'explainer following changes');
       return true;
     }
     case 'apc40.global.stop_all':
@@ -275,6 +1134,68 @@ let crossfader = null;
 // the four above it (58-61) latch and send no note-off, so "held" could not
 // have been read from them at all.
 let wholePageHeld = false;
+
+// SHIFT held: the next knob turn changes what the whole SONG is in, rather
+// than one number in one block.
+let shiftHeld = false;
+
+// How many cycles a tempo change is spread over. Zero is a hard cut, which is
+// the right default - most tempo changes in a set are cuts, and a blend is the
+// thing you reach for deliberately.
+let rampCycles = 0;
+// The tempo change in flight: { tabId, from, to, startCycle, cycles, current }.
+let tempoRamp = null;
+
+/**
+ * Blend the transport from one tempo to another.
+ *
+ * The scheduler's cps is retimed directly, once per frame, and the DOCUMENT IS
+ * WRITTEN ONCE when the ramp lands. Rewriting `setcpm` to move the tempo would
+ * queue a full re-render of the set per step - the same backlog that made the
+ * surface go deaf under a knob sweep - so the source stays still while the
+ * clock moves, and catches up at the end.
+ *
+ * Progress is measured in CYCLES off the transport rather than in wall-clock
+ * time, because the thing being changed is what turns cycles into seconds: a
+ * timer would drift against the music it is blending.
+ */
+function startTempoRamp(tabId, from, to) {
+  const immediate = rampCycles === 0 || !live.isRunning();
+  if (immediate) {
+    pane.setCode(tabId, setSongBpm(pane.getCode(tabId), to));
+    live.refresh();
+    tempoRamp = null;
+    status.info(`bpm: ${to}`);
+    return;
+  }
+  tempoRamp = {
+    tabId,
+    from,
+    to,
+    cycles: rampCycles,
+    startCycle: getTransport()?.cycle ?? 0,
+    current: from,
+  };
+  status.info(`bpm: ${Math.round(from)} -> ${to} over ${rampCycles} cycles`);
+}
+
+/** One frame of the ramp. A no-op when nothing is blending. */
+function stepTempoRamp() {
+  if (!tempoRamp) return;
+  const now = getTransport()?.cycle;
+  if (now === undefined) return;
+  const t = rampProgress(tempoRamp.startCycle, now, tempoRamp.cycles);
+  tempoRamp.current = rampBpm(tempoRamp.from, tempoRamp.to, t);
+  setTransportCps(bpmToCps(tempoRamp.current));
+  if (t < 1) return;
+  // Landed. Now - and only now - the source is told, so the song on screen
+  // agrees with the clock and survives a re-evaluation.
+  const { tabId, to } = tempoRamp;
+  tempoRamp = null;
+  pane.setCode(tabId, setSongBpm(pane.getCode(tabId), to));
+  live.refresh();
+  status.info(`bpm: ${to}`);
+}
 
 const actions = createActions({
   pane,
@@ -370,7 +1291,16 @@ showBootScreen(
     // to the first input, which is the single-controller case; pick "(none)"
     // in settings to give the app no control surface at all.
     const inputs = listInputs();
-    controlPort = inputs[0] ?? null;
+    // The port the device map was built against, if it is here. Falling
+    // straight to inputs[0] is what makes a surface look dead while the MIDI
+    // monitor - which listens to every input - clearly shows it sending: the
+    // app was simply listening to a different port. An exact name first, then
+    // any input that names the device, then the old first-input default.
+    controlPort =
+      inputs.find((name) => name === device.inPort) ??
+      inputs.find((name) => name.toLowerCase().includes('apc40')) ??
+      inputs[0] ??
+      null;
     // The monitor is deliberately wired ahead of the control-port filter and
     // sees EVERY input. Which port the controller is actually on is one of the
     // things it exists to answer, and a monitor that only listens to the port
@@ -387,38 +1317,57 @@ showBootScreen(
       onMidiMessage(input, (data) => {
         monitor.feed(data, input);
         if (input !== controlPort) return;
-
-        // Named control first, raw note:/cc: second. A name is the more
-        // specific statement of intent - `apc40.track3.clip1` means one
-        // physical button, where `note:55` means that button on any of eight
-        // tracks - and resolving it first is what lets the two live together:
-        // every existing note:/cc: binding still works, and still catches
-        // surfaces this app has no map for.
-        const control = device.resolve(data);
-        if (control?.name === 'apc40.global.crossfader') {
-          crossfader = control.value;
-          // Show the figure on the selection as the fader moves, so the
-          // countdown is readable before the button is pressed rather than
-          // only reported after it.
-          pane.setCycleCount(crossfaderCycles(crossfader));
+        try {
+          handleControlMessage(data);
+        } catch (err) {
+          // A throw in here used to end the listener for that message and
+          // nothing else - the monitor kept scrolling and the surface did
+          // nothing, with no way to tell the two apart. Say so instead.
+          console.error('[midi] control message failed', err);
+          status.error(`control surface: ${err?.message ?? err}`);
         }
-        if (control && captureControl(control)) return;
-        // Navigation before bindings: these controls carry a delta and are
-        // owned by the browser layer, so a stray note:/cc: binding on the same
-        // number must not also fire.
-        if (control && navigate(control)) return;
-
-        // Holds first within each vocabulary: a pad bound to a hold must not
-        // also fire a one-shot action on the same note-on.
-        if (control?.isDown !== null && control && applyHold(control.name, control.isDown)) return;
-        const hold = midiDataToHold(data);
-        if (hold && applyHold(hold.trigger, hold.isDown)) return;
-
-        if (control?.isDown === true && dispatch(control.name)) return;
-        const trigger = midiDataToTrigger(data);
-        if (trigger) dispatch(trigger);
       });
     }
+
+    /**
+     * Everything the control surface means, for one message off the wire.
+     *
+     * Extracted from the listener so a throw has somewhere to be caught: an
+     * exception here used to end that one message quietly, leaving a surface
+     * that looked plugged in, kept scrolling in the monitor, and did nothing.
+     */
+    function handleControlMessage(data) {
+      // Named control first, raw note:/cc: second. A name is the more
+      // specific statement of intent - `apc40.track3.clip1` means one
+      // physical button, where `note:55` means that button on any of eight
+      // tracks - and resolving it first is what lets the two live together:
+      // every existing note:/cc: binding still works, and still catches
+      // surfaces this app has no map for.
+      const control = device.resolve(data);
+      if (control?.name === 'apc40.global.crossfader') {
+        crossfader = control.value;
+        // Show the figure on the selection as the fader moves, so the
+        // countdown is readable before the button is pressed rather than
+        // only reported after it.
+        pane.setCycleCount(crossfaderCycles(crossfader));
+      }
+      if (control && captureControl(control)) return;
+      // Navigation before bindings: these controls carry a delta and are
+      // owned by the browser layer, so a stray note:/cc: binding on the same
+      // number must not also fire.
+      if (control && navigate(control)) return;
+
+      // Holds first within each vocabulary: a pad bound to a hold must not
+      // also fire a one-shot action on the same note-on.
+      if (control?.isDown !== null && control && applyHold(control.name, control.isDown)) return;
+      const hold = midiDataToHold(data);
+      if (hold && applyHold(hold.trigger, hold.isDown)) return;
+
+      if (control?.isDown === true && dispatch(control.name)) return;
+      const trigger = midiDataToTrigger(data);
+      if (trigger) dispatch(trigger);
+    }
+
     createSettings(document.getElementById('settings-pane'), {
       triggerMap,
       controlNames: device.names(),
@@ -467,10 +1416,15 @@ showBootScreen(
     // rendering the empty editor since. Now that the tab is active, tell it.
     explainer.refresh();
 
+    // Name the port the app is LISTENING to, not just the one it writes to.
+    // Which input drives the surface is the first thing to check when the
+    // monitor is scrolling and nothing responds, and it was the one fact the
+    // boot line did not report.
+    const surface = controlPort ? `surface: ${controlPort}` : 'no control surface';
     status.info(
       explainerStatus.startsWith('explainer blocked')
-        ? `ready — Ctrl+Enter to play (${explainerStatus})`
-        : 'ready — Ctrl+Enter to play',
+        ? `ready — Ctrl+Enter to play (${surface}; ${explainerStatus})`
+        : `ready — Ctrl+Enter to play (${surface})`,
     );
   },
   { onError: (err) => status.error(String(err?.message ?? err)) },

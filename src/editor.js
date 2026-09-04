@@ -5,8 +5,12 @@ import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { highlightExtension, highlightMiniLocations, updateMiniLocations } from '@strudel/codemirror';
 import { findBlock, findBlocksInRange, listBlocks, toggleBlocksComment } from './blocks.js';
 import { crtTheme } from './crt-theme.js';
+import { ensureBus } from './bus.js';
 import { functionColorExtension, functionColorTheme } from './ui/function-colors.js';
 import { cycleBadgeExtension, setCycleCount } from './ui/cycle-badge.js';
+import { argMapExtension, setArgMap } from './ui/arg-map.js';
+import { cursorBlockExtension, setCursorBlock } from './ui/cursor-block.js';
+import { browsedFnExtension, setBrowsedFn } from './ui/browsed-fn.js';
 
 export function createEditorPane(container) {
   const tabs = new Map(); // id -> { id, name, view, wrapper, bar }
@@ -27,6 +31,7 @@ export function createEditorPane(container) {
   let editListener = () => {};
   let cursorListener = () => {};
   let viewListener = () => {};
+  let closeListener = () => {};
   let counter = 0;
 
   function renderBar() {
@@ -62,8 +67,13 @@ export function createEditorPane(container) {
     bottomBar.hidden = ![...tabs.values()].some((t) => t.bar === 'bottom');
   }
 
-  function addTab(name, code = '', { bar: which = 'top', first = false } = {}) {
+  function addTab(name, code = '', { bar: which = 'top', first = false, bus = true } = {}) {
     counter += 1;
+    // Every song carries a reverb bus, added here rather than by each caller:
+    // there is one reverb per orbit, so there has to be exactly one place that
+    // says how big it is. The bottom bar is the exception - ripped material is
+    // parked there, not performed, and gets its bus when it joins a song.
+    const source = bus && which === 'top' ? ensureBus(code) : code;
     const id = `tab-${counter}`;
     const wrapper = document.createElement('div');
     wrapper.className = 'tab-view';
@@ -73,7 +83,7 @@ export function createEditorPane(container) {
     const view = new EditorView({
       parent: wrapper,
       state: EditorState.create({
-        doc: code,
+        doc: source,
         extensions: [
           lineNumbers(),
           // Off by default, and without it CodeMirror silently keeps only the
@@ -109,6 +119,9 @@ export function createEditorPane(container) {
           functionColorExtension,
           functionColorTheme,
           cycleBadgeExtension,
+          argMapExtension,
+          cursorBlockExtension,
+          browsedFnExtension,
           EditorView.lineWrapping,
           highlightExtension,
           // Caret and text changes both matter to the explainer: one changes
@@ -178,6 +191,11 @@ export function createEditorPane(container) {
     tab.wrapper.remove();
     tabs.delete(id);
     if (wasActive) activeId = null;
+    // Announced BEFORE the view moves, and for every close rather than only
+    // the viewed one. onViewTab covers the common case by accident - closing
+    // the viewed tab happens to switch views - but a mode holding a tab id
+    // needs to hear about the close itself, not about a side effect of it.
+    closeListener(id);
     if (viewedId === id) {
       viewedId = null;
       viewTab([...tabs.keys()][0]);
@@ -193,7 +211,15 @@ export function createEditorPane(container) {
     closeTab,
     clearHighlight,
     getTabs: () =>
-      [...tabs.values()].map((t) => ({ id: t.id, name: t.name, isActive: t.id === activeId })),
+      [...tabs.values()].map((t) => ({
+        id: t.id,
+        name: t.name,
+        isActive: t.id === activeId,
+        // Which strip the tab lives on. The clip pads address the SONG tabs,
+        // and the bottom bar holds ripped-out material that is deliberately
+        // not part of the set - so the two cannot share a numbering.
+        bar: t.bar,
+      })),
     setActiveTab(id) {
       if (!tabs.has(id)) return;
       if (activeId && activeId !== id) clearHighlight(activeId);
@@ -202,6 +228,8 @@ export function createEditorPane(container) {
       cursorListener(id);
     },
     getViewedId: () => viewedId,
+    /** Whether `id` still names a tab - for anything holding one across time. */
+    hasTab: (id) => tabs.has(id),
     getActiveId: () => activeId,
     getCode: (id) => tabs.get(id).view.state.doc.toString(),
     getName: (id) => tabs.get(id)?.name ?? null,
@@ -231,6 +259,18 @@ export function createEditorPane(container) {
      */
     onViewTab(cb) {
       viewListener = cb;
+    },
+    /**
+     * Called with the id of any tab that has just been removed.
+     *
+     * Separate from onViewTab because a tab can go away without the view
+     * changing, and anything holding a tab id - pattern build, holds - is
+     * then addressing a document that no longer exists. Every write here
+     * guards on a missing tab and returns quietly, so without this the
+     * failure is silence rather than an error.
+     */
+    onCloseTab(cb) {
+      closeListener = cb;
     },
     insertAtCursor(text) {
       const view = currentView();
@@ -278,6 +318,9 @@ export function createEditorPane(container) {
         selection: { anchor: from + 2 },
       });
       view.focus();
+      // Where it landed, so the block cursor can follow it there.
+      const after = view.state.doc.toString().split('\n');
+      return listBlocks(after).findIndex((b) => b.start === anchorLine + 2);
     },
     /**
      * Toggles every block the selection touches. With no selection this is
@@ -338,6 +381,56 @@ export function createEditorPane(container) {
       return [...found.values()].sort((a, b) => a.start - b.start);
     },
     /**
+     * The one block the selection covers, with its text and absolute offsets,
+     * or null.
+     *
+     * Deliberately null for a multi-block selection rather than picking the
+     * first: the knob bank addresses arguments by position, and pointing it at
+     * one block of several would silently number the arguments of blocks the
+     * user can see are also selected.
+     */
+    getSoleSelectedBlock(id) {
+      const tab = tabs.get(id);
+      if (!tab) return null;
+      const blocks = this.getSelectedBlocks(id);
+      if (blocks.length !== 1) return null;
+      const doc = tab.view.state.doc;
+      const block = blocks[0];
+      if (block.end >= doc.lines) return null;
+      const from = doc.line(block.start + 1).from;
+      const to = doc.line(block.end + 1).to;
+      return { ...block, from, to, text: doc.sliceString(from, to) };
+    },
+    /**
+     * Draw (or clear) the knob-address rows under lines `from`..`to`. Pushed
+     * to the one tab that owns them - unlike the cycle count, an arg map names
+     * offsets in a specific document.
+     */
+    setArgMap(id, map) {
+      const tab = tabs.get(id);
+      if (!tab) return;
+      tab.view.dispatch({ effects: setArgMap.of(map) });
+    },
+    /**
+     * Overwrite one span of a tab's document, leaving the selection alone.
+     *
+     * This is how a knob writes: it replaces the digits of one argument and
+     * nothing else, so the multi-range block selection the surface built stays
+     * exactly where it was and the next turn addresses the same block.
+     *
+     * `notify: false` performs the edit WITHOUT telling the parser. A control
+     * that writes hundreds of times a second needs that: every notification
+     * queues a full re-render of the set (see live.js, which serialises them),
+     * so a caller sweeping a knob has to coalesce its own re-evaluation rather
+     * than emit one per message.
+     */
+    replaceRange(id, from, to, text, { notify = true } = {}) {
+      const tab = tabs.get(id);
+      if (!tab) return;
+      tab.view.dispatch({ changes: { from, to, insert: text } });
+      if (notify && id === activeId) editListener(id);
+    },
+    /**
      * The countdown shown on every highlighted block. Pushed to every tab, not
      * just the visible one: the crossfader is a global control, and a tab
      * switched to later would otherwise show a stale figure until it moved.
@@ -346,6 +439,46 @@ export function createEditorPane(container) {
       for (const tab of tabs.values()) {
         tab.view.dispatch({ effects: setCycleCount.of(count) });
       }
+    },
+    /**
+     * Mark which selected block the knobs are on, or clear with null.
+     *
+     * Separate from the selection itself because they answer different
+     * questions: the selection is what play, rip and Ctrl+M will act on, and
+     * this is the one of them the eight knobs are currently editing.
+     */
+    setCursorBlock(id, index) {
+      const tab = tabs.get(id);
+      if (!tab) return;
+      const block = index === null || index === undefined
+        ? null
+        : listBlocks(tab.view.state.doc.toString().split('\n'))[index];
+      tab.view.dispatch({
+        effects: setCursorBlock.of(block ? { from: block.start, to: block.end } : null),
+      });
+    },
+    /**
+     * One block by index, with its text and absolute offsets, or null.
+     *
+     * The knobs address the CURSOR block, which is one of possibly several
+     * selected - so they cannot go through getSoleSelectedBlock, which
+     * deliberately refuses a multi-block selection.
+     */
+    getBlockAt(id, index) {
+      const tab = tabs.get(id);
+      if (!tab || index === null || index === undefined) return null;
+      const doc = tab.view.state.doc;
+      const block = listBlocks(doc.toString().split('\n'))[index];
+      if (!block || block.end >= doc.lines) return null;
+      const from = doc.line(block.start + 1).from;
+      const to = doc.line(block.end + 1).to;
+      return { ...block, index, from, to, text: doc.sliceString(from, to) };
+    },
+    /** Outline the function TC 6 is on, or clear with null. */
+    setBrowsedFn(id, span) {
+      const tab = tabs.get(id);
+      if (!tab) return;
+      tab.view.dispatch({ effects: setBrowsedFn.of(span ?? null) });
     },
     /** How many blocks the tab holds - what the block cursor counts against. */
     getBlockCount(id) {
@@ -384,6 +517,41 @@ export function createEditorPane(container) {
         scrollIntoView: true,
       });
     },
+    /**
+     * Overwrite block `index` with `text`, keeping it selected.
+     *
+     * The block builder rewrites the SAME block on every pick - each new sound
+     * is folded into its angle brackets - so this has to leave the selection
+     * on it, or the knobs would come unbound from the thing being built the
+     * moment a second sound was added.
+     */
+    replaceBlockText(id, index, text) {
+      const tab = tabs.get(id);
+      if (!tab) return;
+      const doc = tab.view.state.doc;
+      const block = listBlocks(doc.toString().split('\n'))[index];
+      if (!block) return;
+      const from = doc.line(block.start + 1).from;
+      const to = doc.line(block.end + 1).to;
+      tab.view.dispatch({ changes: { from, to, insert: text } });
+      if (id === activeId) editListener(id);
+    },
+    /**
+     * Put `text` on its own line at line `at`, pushing everything down.
+     *
+     * For the statements that have to lead the document - `setcpm`, `samples`
+     * - which are picked from the library like anything else but cannot be
+     * appended where the caret happens to be.
+     */
+    insertLine(id, at, text) {
+      const tab = tabs.get(id);
+      if (!tab) return;
+      const doc = tab.view.state.doc;
+      const clamped = Math.min(Math.max(at, 0), doc.lines - 1);
+      const pos = doc.line(clamped + 1).from;
+      tab.view.dispatch({ changes: { from: pos, insert: `${text}\n` } });
+      if (id === activeId) editListener(id);
+    },
     /** Replace a tab's whole document. Used to drop ripped blocks out of it. */
     setCode(id, text) {
       const tab = tabs.get(id);
@@ -396,10 +564,13 @@ export function createEditorPane(container) {
     /** Append `text` as its own block at the end of a tab - the landing site of a rip. */
     appendBlock(id, text) {
       const tab = tabs.get(id);
-      if (!tab) return;
+      if (!tab) return null;
       const doc = tab.view.state.doc;
       const insert = doc.length === 0 ? text : `\n\n${text}`;
       tab.view.dispatch({ changes: { from: doc.length, insert } });
+      // The index it landed at, so the caller can put the cursor on it. Read
+      // after the dispatch, because that is when the block exists.
+      return listBlocks(tab.view.state.doc.toString().split('\n')).length - 1;
     },
     /**
      * The paper rip: the doomed lines curl, fold along their middle, and drop

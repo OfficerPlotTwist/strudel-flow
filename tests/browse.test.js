@@ -139,3 +139,37 @@ describe('createStepper', () => {
     expect(createStepper(2).feed(9)).toBe(4);
   });
 });
+
+describe('moveTo', () => {
+  it('puts the cursor on a given block', () => {
+    const cursor = createBlockCursor();
+    cursor.moveTo(3);
+    expect(cursor.cursor).toBe(3);
+    expect(cursor.indexes(6)).toEqual([3]);
+  });
+
+  it('keeps pins, so a new block joins the selection', () => {
+    // The pins were deliberate; creating a block should not clear them.
+    const cursor = createBlockCursor();
+    cursor.moveTo(0);
+    cursor.latch();
+    cursor.moveTo(4);
+    expect(cursor.indexes(6)).toEqual([0, 4]);
+  });
+
+  it('ignores an index that is not a real block', () => {
+    // A caller that miscounted must not silently move the cursor somewhere
+    // arbitrary - appendBlock returns null when it had no tab to write to.
+    const cursor = createBlockCursor();
+    cursor.moveTo(2);
+    for (const bad of [-1, null, undefined, 1.5, 'x']) cursor.moveTo(bad);
+    expect(cursor.cursor).toBe(2);
+  });
+
+  it('leaves stepping from the new position', () => {
+    const cursor = createBlockCursor();
+    cursor.moveTo(2);
+    cursor.move(1, 5);
+    expect(cursor.cursor).toBe(3);
+  });
+});
