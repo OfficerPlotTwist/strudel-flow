@@ -244,11 +244,18 @@ documentation. Any song-global rewrite must go through `replaceInCode`.
   `note("c4 e4")` stays where it is. That is accepted behaviour, not a bug to
   fix - the knob owns the key declaration and nothing else. Do not "improve" it
   into a transposer.
-- **Five files are CRLF** where the rest of the repo is LF: `src/explain.js`,
-  `src/library.js`, `src/midi-probe.js`, `src/seed-fx/mix.js`,
-  `src/ui/popout.js`. Harmless today; worth a single normalising pass rather
-  than churning them mid-change.
-- The `.gitattributes` says `* text=auto eol=lf`, so those five predate it.
+- **CRLF in the working tree is a CHECKOUT artefact, not a repo state.** Six
+  files were CRLF on disk (`src/explain.js`, `src/library.js`,
+  `src/midi-probe.js`, `src/seed-fx/mix.js`, `src/ui/popout.js`,
+  `vite.config.js`) and have been rewritten to LF. Nothing was committed,
+  because nothing had changed: `git ls-files --eol` read `i/lf w/crlf` on all
+  six - the blobs were already LF and `git hash-object` on the converted file
+  matched the index exactly. `core.autocrlf=true` is set at SYSTEM scope on
+  this machine, which is what wrote CRLF on checkout; `.gitattributes`
+  (`* text=auto eol=lf`) overrides it going forward, so a fresh clone gets LF.
+  If you see it again, convert on disk and expect a clean `git status` - a
+  `git status` that says M with an empty `git diff` is just a stale stat cache,
+  cleared by `git add`.
 
 ### How the sweep was run, if you want to repeat it
 
