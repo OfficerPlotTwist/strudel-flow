@@ -1,6 +1,7 @@
 import { addEntry, CATEGORIES, groupByCategory as groupEntries, removeEntry, UNCATEGORIZED } from '../library.js';
 import { exportJson, importJson, migrateToDegrees, saveLibrary, seedLibrary } from '../storage.js';
 import { getSoundEntries } from '../engine.js';
+import { wrapIndex } from '../browse.js';
 import { allFunctionNames, describe, groupByCategory, signatureOf } from '../explain.js';
 
 const TABS = ['snippets', 'songs', 'sounds', 'funcs'];
@@ -19,6 +20,11 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
   // Category sections the user has collapsed. Open is the default: a closed-by-
   // default list of twelve headings hides every function behind a second click.
   const closedCategories = new Set();
+  // Where the control surface is looking. Held as MODEL keys rather than DOM
+  // positions, because the list is rebuilt from scratch on every refresh and
+  // an index into the old DOM would point at whatever moved into that slot.
+  let browseKey = null;
+  let browseCategory = null;
 
   function persist() {
     try {
@@ -89,6 +95,8 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
     const renderEntry = (entry) => {
       const item = document.createElement('li');
       item.className = entry.id === selectedId ? 'lib-item selected' : 'lib-item';
+      item.dataset.browseKey = entry.id;
+      if (entry.id === browseKey) item.classList.add('browse-cursor');
 
       const name = document.createElement('button');
       name.className = 'lib-name';
@@ -245,6 +253,8 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
       for (const entry of filtered) {
         const item = document.createElement('li');
         item.className = 'lib-item';
+        item.dataset.browseKey = entry.name;
+        if (entry.name === browseKey) item.classList.add('browse-cursor');
 
         const name = document.createElement('button');
         name.className = 'lib-name';
@@ -321,6 +331,8 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
       const renderOne = (info) => {
         const item = document.createElement('li');
         item.className = info.name === openFunc ? 'lib-item lib-func selected' : 'lib-item lib-func';
+        item.dataset.browseKey = info.name;
+        if (info.name === browseKey) item.classList.add('browse-cursor');
 
         const name = document.createElement('button');
         name.className = 'lib-name';
@@ -405,11 +417,87 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
 
   refresh();
 
+  // ---- browsing from the control surface ---------------------------------
+  //
+  // These read the RENDERED list rather than the four tabs' very different
+  // models. That is deliberate: snippets, songs, sounds and functions each
+  // group and filter their entries differently, and the one thing they agree
+  // on is what ends up on screen - which is also the thing the performer is
+  // looking at while turning the knob. Every row carries its model key in a
+  // data attribute, so what gets stored is still a key, never a DOM position.
+
+  /** The rendered list as `[{ category, items }]`, headings included. */
+  function sections() {
+    const rows = [...container.querySelectorAll('.lib-list > li')];
+    const out = [];
+    for (const row of rows) {
+      const heading = row.querySelector('.lib-func-cat-btn, .lib-cat-btn');
+      if (heading) {
+        out.push({ category: heading.textContent.replace(/^[^a-z]*/i, '').trim(), items: [] });
+      } else if (row.dataset.browseKey !== undefined) {
+        // A list with no headings at all (SOUNDS) is one nameless section.
+        if (out.length === 0) out.push({ category: null, items: [] });
+        out[out.length - 1].items.push(row);
+      }
+    }
+    return out.filter((section) => section.items.length > 0);
+  }
+
+  function currentSectionIndex(list) {
+    const byCategory = list.findIndex((s) => s.category === browseCategory);
+    if (byCategory !== -1) return byCategory;
+    // Fall back to whichever section holds the browsed row, so moving the
+    // category cursor after clicking something starts from what is on screen.
+    const byKey = list.findIndex((s) => s.items.some((i) => i.dataset.browseKey === browseKey));
+    return byKey === -1 ? 0 : byKey;
+  }
+
+  function show(item) {
+    browseKey = item.dataset.browseKey;
+    item.classList.add('browse-cursor');
+    for (const other of container.querySelectorAll('.browse-cursor')) {
+      if (other !== item) other.classList.remove('browse-cursor');
+    }
+    item.scrollIntoView({ block: 'nearest' });
+    return item.querySelector('.lib-name')?.textContent ?? browseKey;
+  }
+
   return {
     refresh,
     saveEntry,
+    /** Cycle which library tab is showing. Driven by nudge - / nudge +. */
+    moveTab(delta) {
+      kind = TABS[wrapIndex(TABS.indexOf(kind), delta, TABS.length)];
+      browseKey = null;
+      browseCategory = null;
+      refresh();
+      return kind;
+    },
+    /** Step to another category within the current tab. */
+    moveCategory(delta) {
+      const list = sections();
+      if (list.length === 0) return null;
+      const next = list[wrapIndex(currentSectionIndex(list), delta, list.length)];
+      browseCategory = next.category;
+      show(next.items[0]);
+      return next.category ?? kind;
+    },
+    /** Step to another entry inside the category the cursor is in. */
+    moveItem(delta) {
+      const list = sections();
+      if (list.length === 0) return null;
+      const section = list[currentSectionIndex(list)];
+      const at = section.items.findIndex((i) => i.dataset.browseKey === browseKey);
+      // Highlight only - clicking a row INSERTS it, and a scroll wheel that
+      // pasted code into the song on the way past would be unusable.
+      return show(section.items[wrapIndex(at === -1 ? 0 : at, at === -1 ? 0 : delta, section.items.length)]);
+    },
     getSelectedSnippetCode() {
-      const entry = lib.snippets.find((e) => e.id === selectedId);
+      // The browse cursor wins when it is on something: it is the more recent
+      // statement of intent, and it is the row currently outlined on screen.
+      const entry =
+        lib.snippets.find((e) => e.id === browseKey) ??
+        lib.snippets.find((e) => e.id === selectedId);
       return entry ? entry.code : null;
     },
   };

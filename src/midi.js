@@ -49,6 +49,26 @@ export function listInputs() {
   return enabled ? WebMidi.inputs.map((i) => i.name) : [];
 }
 
+/**
+ * Write a control-change value to a named output port.
+ *
+ * The app has only ever read MIDI. This exists because making an absolute knob
+ * behave like an encoder is a read-modify-write on the hardware: the knob's
+ * value is a counter inside the APC40, and re-centering it means writing that
+ * counter back (see relative.js). Silent by design when the port is missing -
+ * an unplugged controller is the normal case, not an error worth a dialog.
+ */
+export function sendCC(portName, channel, controller, value) {
+  if (!enabled) return false;
+  const output = WebMidi.outputs.find((o) => o.name === portName);
+  if (!output) return false;
+  // webmidi channels are 1-based; every other channel number in this app comes
+  // off the wire and is 0-based, so the conversion belongs here rather than in
+  // each caller.
+  output.channels[channel + 1].sendControlChange(controller, value);
+  return true;
+}
+
 /** Subscribe to raw MIDI messages from a named input port. */
 export function onMidiMessage(portName, handler) {
   const input = WebMidi.inputs.find((i) => i.name === portName);

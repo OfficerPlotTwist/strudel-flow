@@ -351,3 +351,10 @@ main {
   opacity: 0.7;
 }
 .lib-func-cat.collapsed .lib-func-cat-btn { opacity: 0.75; }
+
+/* The control surface's browse cursor. Distinct from .selected: selected is
+   what the app will act on, browse-cursor is only where the knob is looking. */
+.lib-item.browse-cursor {
+  outline: 1px solid var(--phosphor);
+  outline-offset: -1px;
+}

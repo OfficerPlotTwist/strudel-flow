@@ -1,5 +1,5 @@
 import { initEngine, unlockAudio } from './engine.js';
-import { enableMidi, listInputs, listOutputs, onMidiMessage } from './midi.js';
+import { enableMidi, listInputs, listOutputs, onMidiMessage, sendCC } from './midi.js';
 import { createEditorPane } from './editor.js';
 import { createLive } from './live.js';
 import { isStandaloneBlock } from './blocks.js';
@@ -9,6 +9,8 @@ import { createStatus } from './ui/status.js';
 import { createSettings } from './ui/settings.js';
 import { createMidiMonitor } from './ui/midi-monitor.js';
 import { createDeviceMap } from './device-map.js';
+import { createRelativeBank } from './relative.js';
+import { createBlockCursor } from './browse.js';
 import { createExplainerWindow } from './ui/explainer-window.js';
 import { createActions } from './actions.js';
 import {
@@ -94,6 +96,95 @@ function captureControl(control) {
   return true;
 }
 const currentTabHolds = () => tabHoldBindings(pane.getTabs(), tabHoldOverrides);
+
+// ---- browsing from the control surface ------------------------------------
+//
+// The cue encoder scrolls a cursor over the blocks of the song on screen, REC
+// pins the block under it, and the pinned set plus the cursor IS the editor's
+// selection - written back as a multi-range selection rather than kept in a
+// private set beside it. That is what lets the play/stop buttons, the rip
+// keys and Ctrl+M all act on what the knob chose without knowing it exists.
+const blockCursor = createBlockCursor();
+
+/** Push the cursor's choice into the editor, so it is visible and actionable. */
+function showBlockSelection() {
+  const id = pane.getViewedId();
+  if (!id) return;
+  const indexes = blockCursor.indexes(pane.getBlockCount(id));
+  if (indexes.length === 0) return;
+  // The cursor block goes LAST so it becomes the main range and the view
+  // scrolls to it rather than to whichever pinned block sorts last.
+  const ordered = [...indexes.filter((i) => i !== blockCursor.cursor), blockCursor.cursor];
+  pane.selectBlocks(id, ordered);
+}
+
+// Changing song drops the selection: the indexes named blocks in the old song,
+// and the same numbers in a different arrangement are different music.
+pane.onViewTab(() => blockCursor.clear());
+
+// The two knobs made relative in software. Track control knobs rather than
+// device knobs because the device bank re-addresses itself to whichever track
+// is selected, and a browse control that changed meaning with the selection
+// would be unusable.
+const relative = createRelativeBank({
+  knobs: ['apc40.trackctl.knob7', 'apc40.trackctl.knob8'],
+  send: (name, value) => {
+    const control = { 'apc40.trackctl.knob7': 54, 'apc40.trackctl.knob8': 55 }[name];
+    if (control) sendCC(device.outPort, 0, control, value);
+  },
+});
+
+/**
+ * Navigation the control surface performs directly, rather than through the
+ * action map: these carry a DELTA, and an action is a name with no argument.
+ * Returns true when the control was consumed.
+ */
+function navigate(control) {
+  const turn = relative.feed(control);
+  if (turn) {
+    if (turn.delta === 0) return true;
+    // knob7 walks the category headings, knob8 the rows inside one.
+    const label =
+      turn.name === 'apc40.trackctl.knob7'
+        ? panel.moveCategory(Math.sign(turn.delta))
+        : panel.moveItem(Math.sign(turn.delta));
+    if (label) status.info(label);
+    return true;
+  }
+
+  if (control.name === 'apc40.global.cue_level') {
+    // Already relative in firmware - device-map decodes it as a signed delta.
+    const id = pane.getViewedId();
+    if (!id) return true;
+    blockCursor.move(Math.sign(control.value), pane.getBlockCount(id));
+    showBlockSelection();
+    return true;
+  }
+
+  if (control.isDown !== true) return false; // buttons act on press only
+
+  switch (control.name) {
+    case 'apc40.global.nudge_minus':
+      status.info(`library: ${panel.moveTab(-1)}`);
+      return true;
+    case 'apc40.global.nudge_plus':
+      status.info(`library: ${panel.moveTab(1)}`);
+      return true;
+    case 'apc40.global.rec': {
+      const pinned = blockCursor.latch();
+      showBlockSelection();
+      status.info(pinned ? `block ${blockCursor.cursor + 1} kept` : `block ${blockCursor.cursor + 1} let go`);
+      return true;
+    }
+    case 'apc40.global.stop_all':
+      blockCursor.clear();
+      showBlockSelection();
+      status.info('selection cleared');
+      return true;
+    default:
+      return false;
+  }
+}
 
 // Last crossfader position, 0..1, or null until it has been moved. A fader has
 // a physical position the app cannot read - nothing arrives until it is
@@ -199,6 +290,11 @@ showBootScreen(
     // sees EVERY input. Which port the controller is actually on is one of the
     // things it exists to answer, and a monitor that only listens to the port
     // you already guessed cannot tell you that you guessed wrong.
+    // Park the browse knobs at their centre so the first turn measures a real
+    // movement rather than the distance from wherever they were left. Silent
+    // if the surface is not plugged in - which is the normal case.
+    relative.park();
+
     const monitor = createMidiMonitor(document.getElementById('settings-pane'), {
       describe: device.describe,
     });
@@ -216,6 +312,10 @@ showBootScreen(
         const control = device.resolve(data);
         if (control?.name === 'apc40.global.crossfader') crossfader = control.value;
         if (control && captureControl(control)) return;
+        // Navigation before bindings: these controls carry a delta and are
+        // owned by the browser layer, so a stray note:/cc: binding on the same
+        // number must not also fire.
+        if (control && navigate(control)) return;
 
         // Holds first within each vocabulary: a pad bound to a hold must not
         // also fire a one-shot action on the same note-on.

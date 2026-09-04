@@ -1,5 +1,5 @@
 import { javascript } from '@codemirror/lang-javascript';
-import { EditorState, Prec } from '@codemirror/state';
+import { EditorSelection, EditorState, Prec } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { highlightExtension, highlightMiniLocations, updateMiniLocations } from '@strudel/codemirror';
@@ -24,6 +24,7 @@ export function createEditorPane(container) {
   let activeId = null;
   let editListener = () => {};
   let cursorListener = () => {};
+  let viewListener = () => {};
   let counter = 0;
 
   function renderBar() {
@@ -73,6 +74,10 @@ export function createEditorPane(container) {
         doc: code,
         extensions: [
           lineNumbers(),
+          // Off by default, and without it CodeMirror silently keeps only the
+          // main range - so pinning two blocks from the control surface would
+          // select the second and quietly drop the first.
+          EditorState.allowMultipleSelections.of(true),
           history(),
           keymap.of([...defaultKeymap, ...historyKeymap]),
           // Ctrl+Enter and Ctrl+i are claimed by our global trigger map
@@ -125,10 +130,12 @@ export function createEditorPane(container) {
   function viewTab(id) {
     if (!tabs.has(id)) return;
     for (const tab of tabs.values()) tab.wrapper.hidden = tab.id !== id;
+    const changed = viewedId !== id;
     viewedId = id;
     renderBar();
     tabs.get(id).view.focus();
     cursorListener(id);
+    if (changed) viewListener(id);
   }
 
   function currentView() {
@@ -175,6 +182,15 @@ export function createEditorPane(container) {
     /** Called with a tab id whenever that tab's caret moves or its text changes. */
     onCursorMove(cb) {
       cursorListener = cb;
+    },
+    /**
+     * Called when a DIFFERENT tab comes on screen. Separate from onCursorMove,
+     * which also fires for a caret nudge inside the same song - a block
+     * selection made on the control surface has to survive that and be dropped
+     * only when the song underneath it changes.
+     */
+    onViewTab(cb) {
+      viewListener = cb;
     },
     insertAtCursor(text) {
       const view = currentView();
@@ -263,15 +279,60 @@ export function createEditorPane(container) {
       if (!tab) return [];
       const doc = tab.view.state.doc;
       const lines = doc.toString().split('\n');
-      const { from, to } = tab.view.state.selection.main;
-      const fromLine = doc.lineAt(from).number - 1;
-      const toLine = doc.lineAt(to).number - 1;
       const all = listBlocks(lines);
-      const touched = findBlocksInRange(lines, fromLine, toLine);
-      return touched.map((block) => ({
-        ...block,
-        index: all.findIndex((b) => b.start === block.start),
-      }));
+      // EVERY range, not just the main one. A selection made with the mouse
+      // has exactly one, but the control surface pins blocks that are not
+      // adjacent - and those can only be expressed as several ranges, so
+      // reading `selection.main` alone would see just the last one pinned.
+      const found = new Map();
+      for (const range of tab.view.state.selection.ranges) {
+        const fromLine = doc.lineAt(range.from).number - 1;
+        const toLine = doc.lineAt(range.to).number - 1;
+        for (const block of findBlocksInRange(lines, fromLine, toLine)) {
+          found.set(block.start, {
+            ...block,
+            index: all.findIndex((b) => b.start === block.start),
+          });
+        }
+      }
+      return [...found.values()].sort((a, b) => a.start - b.start);
+    },
+    /** How many blocks the tab holds - what the block cursor counts against. */
+    getBlockCount(id) {
+      const tab = tabs.get(id);
+      if (!tab) return 0;
+      return listBlocks(tab.view.state.doc.toString().split('\n')).length;
+    },
+    /**
+     * Select exactly these blocks, by index, as one multi-range selection.
+     *
+     * This is how the control surface writes its choice back into the editor
+     * rather than keeping a private set beside it: there is one selection in
+     * this app, it is visible on screen, and every existing consumer - arm,
+     * rip, Ctrl+M - already reads it.
+     *
+     * The LAST index becomes the main range, so it is the one the view
+     * scrolls to. Callers pass the cursor block last for that reason.
+     */
+    selectBlocks(id, indexes) {
+      const tab = tabs.get(id);
+      if (!tab) return;
+      const doc = tab.view.state.doc;
+      const blocks = listBlocks(doc.toString().split('\n'));
+      const ranges = indexes
+        .map((i) => blocks[i])
+        .filter(Boolean)
+        .map((block) =>
+          EditorSelection.range(
+            doc.line(block.start + 1).from,
+            doc.line(block.end + 1).to,
+          ),
+        );
+      if (ranges.length === 0) return;
+      tab.view.dispatch({
+        selection: EditorSelection.create(ranges, ranges.length - 1),
+        scrollIntoView: true,
+      });
     },
     /** Replace a tab's whole document. Used to drop ripped blocks out of it. */
     setCode(id, text) {
