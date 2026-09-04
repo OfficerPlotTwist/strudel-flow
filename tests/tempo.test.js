@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { BPM_RANGE, clampBpm, hasTempo, setSongBpm, songBpm } from '../src/tempo.js';
+import {
+  BPM_RANGE,
+  RAMP_RANGE,
+  bpmToCps,
+  clampBpm,
+  clampRamp,
+  hasTempo,
+  rampBpm,
+  rampProgress,
+  setSongBpm,
+  songBpm,
+} from '../src/tempo.js';
 import { CIRCLE_OF_FIFTHS, nextKey, setSongKey, songKey } from '../src/pattern-build.js';
 
 describe('songBpm', () => {
@@ -93,5 +104,42 @@ describe('setSongKey', () => {
   it('is read back by songKey', () => {
     const out = setSongKey('$: n("0").scale("c4:major")', 'e');
     expect(songKey(out)).toEqual({ key: 'e', mode: 'major', octave: 4 });
+  });
+});
+
+describe('tempo ramp', () => {
+  it('interpolates in BPM, not in cps', () => {
+    // A linear sweep of cps spends longer at the slow end, which is audible as
+    // a blend that drags and then rushes.
+    expect(rampBpm(100, 140, 0)).toBe(100);
+    expect(rampBpm(100, 140, 0.5)).toBe(120);
+    expect(rampBpm(100, 140, 1)).toBe(140);
+  });
+
+  it('lands exactly on the target when a frame overruns', () => {
+    expect(rampBpm(100, 140, 1.4)).toBe(140);
+    expect(rampBpm(100, 140, -0.2)).toBe(100);
+  });
+
+  it('measures progress in cycles, so it cannot drift against the music', () => {
+    expect(rampProgress(10, 10, 8)).toBe(0);
+    expect(rampProgress(10, 14, 8)).toBe(0.5);
+    expect(rampProgress(10, 30, 8)).toBe(1);
+  });
+
+  it('treats a zero-length ramp as already finished', () => {
+    // Zero cycles is a hard cut, which is what most tempo changes in a set are.
+    expect(rampProgress(10, 10, 0)).toBe(1);
+  });
+
+  it('clamps the ramp length to what the knob reaches', () => {
+    expect(clampRamp(-5)).toBe(RAMP_RANGE.min);
+    expect(clampRamp(999)).toBe(RAMP_RANGE.max);
+  });
+
+  it('converts BPM to cps at four beats to the bar', () => {
+    // 120 BPM is 30 bars a minute is half a bar a second.
+    expect(bpmToCps(120)).toBeCloseTo(0.5, 6);
+    expect(bpmToCps(87)).toBeCloseTo(87 / 240, 6);
   });
 });

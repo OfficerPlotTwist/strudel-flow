@@ -205,6 +205,26 @@ export function previewSound(name, { gain = 0.9, duration = 0.25 } = {}) {
 }
 
 /**
+ * Move the transport's tempo without re-evaluating anything.
+ *
+ * The scheduler owns the clock, and `setCps` retimes it in place - so a tempo
+ * ramp costs one number per frame instead of a transpile of the whole set per
+ * frame. Rewriting `setcpm` in the document to ramp would queue a full
+ * re-render per step, which is the backlog that made the surface go deaf under
+ * a knob sweep (see scheduleArgRefresh in main.js). The document is written
+ * once, when the ramp lands.
+ *
+ * Returns false before the first evaluation, when there is no scheduler and
+ * therefore no clock to retime.
+ */
+export function setTransportCps(cps) {
+  const scheduler = repl?.scheduler;
+  if (!scheduler || typeof scheduler.setCps !== 'function') return false;
+  scheduler.setCps(cps);
+  return true;
+}
+
+/**
  * The AudioContext superdough is playing through.
  *
  * Exposed so the monitor bus can read `destination.maxChannelCount` - whether

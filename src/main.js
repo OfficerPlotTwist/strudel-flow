@@ -1,4 +1,11 @@
-import { audioContext, getTransport, initEngine, previewSound, unlockAudio } from './engine.js';
+import {
+  audioContext,
+  getTransport,
+  initEngine,
+  previewSound,
+  setTransportCps,
+  unlockAudio,
+} from './engine.js';
 import { LED, enableMidi, listInputs, listOutputs, onMidiMessage, sendCC, sendNote } from './midi.js';
 import { createEditorPane } from './editor.js';
 import { createLive } from './live.js';
@@ -24,7 +31,17 @@ import {
   findNumericArgs,
 } from './args.js';
 import { busSizeSpan, ensureBus } from './bus.js';
-import { BPM_RANGE, clampBpm, setSongBpm, songBpm } from './tempo.js';
+import {
+  BPM_RANGE,
+  RAMP_RANGE,
+  bpmToCps,
+  clampBpm,
+  clampRamp,
+  rampBpm,
+  rampProgress,
+  setSongBpm,
+  songBpm,
+} from './tempo.js';
 import { blockFunctions, replacementFor, stepFunction } from './fn-browse.js';
 import {
   COLUMNS,
@@ -723,7 +740,10 @@ const audition = createAudition({
 });
 // One timer for the life of the page. It is a no-op while the audition is off,
 // which costs less than starting and stopping an interval on every press.
-setInterval(() => audition.tick(), 20);
+setInterval(() => {
+  audition.tick();
+  stepTempoRamp();
+}, 20);
 
 // The two knobs made relative in software. Track control knobs rather than
 // device knobs because the device bank re-addresses itself to whichever track
@@ -791,6 +811,18 @@ function navigate(control) {
     if (turn.delta === 0) return true;
     const steps = steppers[turn.name].feed(Math.sign(turn.delta));
     if (steps === 0) return true;
+    // knob2 under SHIFT is how long a tempo change takes. It edits nothing on
+    // its own - it is the shape of the NEXT turn of knob 3.
+    if (turn.name === 'apc40.trackctl.knob2') {
+      if (!shiftHeld) return true;
+      rampCycles = clampRamp(rampCycles + steps);
+      status.info(
+        rampCycles === 0
+          ? 'tempo change: immediate'
+          : `tempo change over ${rampCycles} cycle${rampCycles === 1 ? '' : 's'}`,
+      );
+      return true;
+    }
     // knob3 under SHIFT is the tempo, and like the key it is song-global -
     // there is one setcpm, and a second would be a tempo change nobody asked
     // the knob for.
@@ -799,19 +831,19 @@ function navigate(control) {
       const id = pane.getViewedId();
       if (!id) return true;
       const code = pane.getCode(id);
-      const current = songBpm(code);
+      // A ramp already running is the truth about where the tempo is; the
+      // written song still says where it started.
+      const current = tempoRamp ? tempoRamp.current : songBpm(code);
       if (current === null) {
         status.info('no tempo declared in this song');
         return true;
       }
       const bpm = clampBpm(current + steps);
-      if (bpm === current) {
+      if (bpm === Math.round(current)) {
         status.info(`bpm: ${bpm} (${BPM_RANGE.min}-${BPM_RANGE.max})`);
         return true;
       }
-      pane.setCode(id, setSongBpm(code, bpm));
-      live.refresh();
-      status.info(`bpm: ${bpm}`);
+      startTempoRamp(id, current, bpm);
       return true;
     }
     // knob4 under SHIFT walks the song's key round the circle of fifths. It
@@ -1015,6 +1047,64 @@ let wholePageHeld = false;
 // SHIFT held: the next knob turn changes what the whole SONG is in, rather
 // than one number in one block.
 let shiftHeld = false;
+
+// How many cycles a tempo change is spread over. Zero is a hard cut, which is
+// the right default - most tempo changes in a set are cuts, and a blend is the
+// thing you reach for deliberately.
+let rampCycles = 0;
+// The tempo change in flight: { tabId, from, to, startCycle, cycles, current }.
+let tempoRamp = null;
+
+/**
+ * Blend the transport from one tempo to another.
+ *
+ * The scheduler's cps is retimed directly, once per frame, and the DOCUMENT IS
+ * WRITTEN ONCE when the ramp lands. Rewriting `setcpm` to move the tempo would
+ * queue a full re-render of the set per step - the same backlog that made the
+ * surface go deaf under a knob sweep - so the source stays still while the
+ * clock moves, and catches up at the end.
+ *
+ * Progress is measured in CYCLES off the transport rather than in wall-clock
+ * time, because the thing being changed is what turns cycles into seconds: a
+ * timer would drift against the music it is blending.
+ */
+function startTempoRamp(tabId, from, to) {
+  const immediate = rampCycles === 0 || !live.isRunning();
+  if (immediate) {
+    pane.setCode(tabId, setSongBpm(pane.getCode(tabId), to));
+    live.refresh();
+    tempoRamp = null;
+    status.info(`bpm: ${to}`);
+    return;
+  }
+  tempoRamp = {
+    tabId,
+    from,
+    to,
+    cycles: rampCycles,
+    startCycle: getTransport()?.cycle ?? 0,
+    current: from,
+  };
+  status.info(`bpm: ${Math.round(from)} -> ${to} over ${rampCycles} cycles`);
+}
+
+/** One frame of the ramp. A no-op when nothing is blending. */
+function stepTempoRamp() {
+  if (!tempoRamp) return;
+  const now = getTransport()?.cycle;
+  if (now === undefined) return;
+  const t = rampProgress(tempoRamp.startCycle, now, tempoRamp.cycles);
+  tempoRamp.current = rampBpm(tempoRamp.from, tempoRamp.to, t);
+  setTransportCps(bpmToCps(tempoRamp.current));
+  if (t < 1) return;
+  // Landed. Now - and only now - the source is told, so the song on screen
+  // agrees with the clock and survives a re-evaluation.
+  const { tabId, to } = tempoRamp;
+  tempoRamp = null;
+  pane.setCode(tabId, setSongBpm(pane.getCode(tabId), to));
+  live.refresh();
+  status.info(`bpm: ${to}`);
+}
 
 const actions = createActions({
   pane,
