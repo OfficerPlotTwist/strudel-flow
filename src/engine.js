@@ -204,6 +204,17 @@ export function previewSound(name, { gain = 0.9, duration = 0.25 } = {}) {
   }
 }
 
+/**
+ * The AudioContext superdough is playing through.
+ *
+ * Exposed so the monitor bus can read `destination.maxChannelCount` - whether
+ * a real cue split is possible is a property of the hardware, and nothing else
+ * in the app can answer it.
+ */
+export function audioContext() {
+  return getAudioContext();
+}
+
 export function getTransport() {
   const scheduler = repl?.scheduler;
   if (!scheduler) return null;

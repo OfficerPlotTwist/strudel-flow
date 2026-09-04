@@ -195,7 +195,15 @@ export function createEditorPane(container) {
     closeTab,
     clearHighlight,
     getTabs: () =>
-      [...tabs.values()].map((t) => ({ id: t.id, name: t.name, isActive: t.id === activeId })),
+      [...tabs.values()].map((t) => ({
+        id: t.id,
+        name: t.name,
+        isActive: t.id === activeId,
+        // Which strip the tab lives on. The clip pads address the SONG tabs,
+        // and the bottom bar holds ripped-out material that is deliberately
+        // not part of the set - so the two cannot share a numbering.
+        bar: t.bar,
+      })),
     setActiveTab(id) {
       if (!tabs.has(id)) return;
       if (activeId && activeId !== id) clearHighlight(activeId);
@@ -435,6 +443,41 @@ export function createEditorPane(container) {
         selection: EditorSelection.create(ranges, ranges.length - 1),
         scrollIntoView: true,
       });
+    },
+    /**
+     * Overwrite block `index` with `text`, keeping it selected.
+     *
+     * The block builder rewrites the SAME block on every pick - each new sound
+     * is folded into its angle brackets - so this has to leave the selection
+     * on it, or the knobs would come unbound from the thing being built the
+     * moment a second sound was added.
+     */
+    replaceBlockText(id, index, text) {
+      const tab = tabs.get(id);
+      if (!tab) return;
+      const doc = tab.view.state.doc;
+      const block = listBlocks(doc.toString().split('\n'))[index];
+      if (!block) return;
+      const from = doc.line(block.start + 1).from;
+      const to = doc.line(block.end + 1).to;
+      tab.view.dispatch({ changes: { from, to, insert: text } });
+      if (id === activeId) editListener(id);
+    },
+    /**
+     * Put `text` on its own line at line `at`, pushing everything down.
+     *
+     * For the statements that have to lead the document - `setcpm`, `samples`
+     * - which are picked from the library like anything else but cannot be
+     * appended where the caret happens to be.
+     */
+    insertLine(id, at, text) {
+      const tab = tabs.get(id);
+      if (!tab) return;
+      const doc = tab.view.state.doc;
+      const clamped = Math.min(Math.max(at, 0), doc.lines - 1);
+      const pos = doc.line(clamped + 1).from;
+      tab.view.dispatch({ changes: { from: pos, insert: `${text}\n` } });
+      if (id === activeId) editListener(id);
     },
     /** Replace a tab's whole document. Used to drop ripped blocks out of it. */
     setCode(id, text) {

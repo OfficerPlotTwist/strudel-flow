@@ -105,6 +105,17 @@ export const ARG_RANGES = {
   unison: { min: 1, max: 7, integer: true },
   octave: { min: -2, max: 4, integer: true },
   transpose: { min: -24, max: 24, integer: true },
+
+  // Multi-argument calls declare one range PER POSITION, in order. `adsr` is
+  // the reason this shape exists: every block the builder makes carries one,
+  // so it is the most-turned control on the surface, and its four numbers are
+  // four different quantities - three times and a level.
+  adsr: [
+    { min: 0, max: 4 },   // attack
+    { min: 0, max: 4 },   // decay
+    { min: 0, max: 1 },   // sustain - a level, not a time
+    { min: 0, max: 8 },   // release
+  ],
 };
 
 /**
@@ -171,7 +182,12 @@ export function maskCode(code) {
  * `.pan(sine.range(0.4, 0.6))` are patterns, and replacing one with a constant
  * would delete the movement rather than adjust it.
  */
-const CALL = /([A-Za-z_$][\w$]*)\s*\(\s*(-?(?:\d+\.?\d*|\.\d+))\s*\)/g;
+const NUMBER = String.raw`-?(?:\d+\.?\d*|\.\d+)`;
+const CALL = new RegExp(
+  String.raw`([A-Za-z_$][\w$]*)\s*\(\s*(${NUMBER}(?:\s*,\s*${NUMBER})*)\s*\)`,
+  'g',
+);
+const LITERAL = new RegExp(NUMBER, 'g');
 
 /**
  * Every knobbable numeric argument in `code`, in source order.
@@ -189,24 +205,35 @@ export function findNumericArgs(code, offset = 0) {
   CALL.lastIndex = 0;
   let match;
   while ((match = CALL.exec(masked))) {
-    const [, fn, literal] = match;
+    const [, fn, argList] = match;
     if (EXCLUDED.has(fn)) continue;
     // A name preceded by a word character is the tail of a longer identifier
     // (`myGain(2)` is not `gain`), which the pattern alone cannot see.
     const before = masked[match.index - 1];
     if (before && /[\w$]/.test(before)) continue;
-    const from = match.index + match[0].indexOf(literal, fn.length);
-    let line = 0;
-    while (line + 1 < lineStarts.length && lineStarts[line + 1] <= from) line += 1;
-    args.push({
-      fn,
-      value: Number(literal),
-      text: literal,
-      from: from + offset,
-      to: from + literal.length + offset,
-      line,
-      col: from - lineStarts[line],
-    });
+    // One slot per argument, not per call: `.adsr(0.01, 0.1, 0.6, 0.2)` is
+    // four separate controls that happen to share a pair of parentheses.
+    const listAt = match.index + match[0].indexOf(argList, fn.length);
+    LITERAL.lastIndex = 0;
+    let literalMatch;
+    let position = 0;
+    while ((literalMatch = LITERAL.exec(argList))) {
+      const literal = literalMatch[0];
+      const from = listAt + literalMatch.index;
+      let line = 0;
+      while (line + 1 < lineStarts.length && lineStarts[line + 1] <= from) line += 1;
+      args.push({
+        fn,
+        position,
+        value: Number(literal),
+        text: literal,
+        from: from + offset,
+        to: from + literal.length + offset,
+        line,
+        col: from - lineStarts[line],
+      });
+      position += 1;
+    }
   }
   return args;
 }
@@ -220,8 +247,13 @@ export function findNumericArgs(code, offset = 0) {
  * current value, so the knob starts where the code already is and the first
  * turn is a nudge rather than a jump.
  */
-export function rangeFor(fn, value) {
-  const known = ARG_RANGES[fn];
+export function rangeFor(fn, value, position = 0) {
+  const declared = ARG_RANGES[fn];
+  // An array declares one range per argument position. A call with more
+  // arguments than the table describes falls through to the value-derived
+  // guess for the extras rather than reusing the last range, which would be a
+  // confident claim about a parameter nobody wrote down.
+  const known = Array.isArray(declared) ? declared[position] : declared;
   if (known) return { log: false, integer: false, ...known };
   const magnitude = Math.abs(value);
   if (magnitude <= 1) return { min: 0, max: 1, log: false, integer: false };
@@ -275,7 +307,7 @@ export function formatArgValue(range, value) {
 export function assignArgSlots(args) {
   return args.slice(0, ARG_TRACKS.length * KNOBS_PER_TRACK).map((arg, i) => ({
     ...arg,
-    range: rangeFor(arg.fn, arg.value),
+    range: rangeFor(arg.fn, arg.value, arg.position ?? 0),
     track: ARG_TRACKS[Math.floor(i / KNOBS_PER_TRACK)],
     knob: (i % KNOBS_PER_TRACK) + 1,
     // The wire address the (track, knob) pair means: CC 16..23 on the

@@ -33,6 +33,10 @@ export function createLive({ pane }) {
   // The armed play/stop countdown, or null. Like a rip it outlives the button
   // press; unlike a rip it ends by editing the buffer rather than emptying it.
   let armed = null; // { tabId, blockIndexes, action, pressCycle, targetCycle }
+  // Asked, on every render, whether one block should go to the cue outputs
+  // instead of the mains. A callback rather than state because the answer
+  // depends on what is being built right now, which main.js owns.
+  let monitorSource = () => null;
   // Is the transport running? The app boots into silence and stays there until
   // something is deliberately triggered, so there has to be a difference
   // between "play this" and "the thing that is playing changed". Without it,
@@ -85,6 +89,27 @@ export function createLive({ pane }) {
       const source = armed.action === 'play' ? uncommentForPlayback(lines, targets) : lines;
       const gated = applyArm(source, targets, armed.action, armed.pressCycle, armed.targetCycle);
       return { text: gated.lines.join('\n'), edits: gated.edits };
+    }
+    // The cue, last: it rewrites one block into a monitored copy of itself,
+    // and it has to see whatever the holds and countdowns above already did
+    // to that block rather than a version from before they ran.
+    const monitor = monitorSource();
+    if (monitor && monitor.tabId === id) {
+      const block = listBlocks(lines)[monitor.blockIndex];
+      if (block) {
+        const before = lines.slice(0, block.start);
+        const body = lines.slice(block.start, block.end + 1).join('\n');
+        const after = lines.slice(block.end + 1);
+        // NOT length-preserving: the wrapper adds characters, so every
+        // mini-notation offset after this block would slide. Reported as an
+        // edit, the same way a fade is, so the caller can rebase.
+        const wrapped = monitor.wrap(body);
+        const at = before.length ? before.join('\n').length + 1 : 0;
+        return {
+          text: [...before, wrapped, ...after].join('\n'),
+          edits: [{ at, delta: wrapped.length - body.length }],
+        };
+      }
     }
     return { text: lines.join('\n'), edits: [] };
   }
@@ -234,6 +259,13 @@ export function createLive({ pane }) {
       armed = next;
     },
     getArmed: () => armed,
+    /**
+     * Register who decides, per render, whether a block goes to the cue.
+     * Returns `{ tabId, blockIndex, wrap }` or null. See monitor.js.
+     */
+    setMonitor(fn) {
+      monitorSource = fn ?? (() => null);
+    },
     setTabHeld(tabId, mode, isDown) {
       return setHeld(mode === 'solo' ? heldSolo : heldAdd, tabId, isDown);
     },

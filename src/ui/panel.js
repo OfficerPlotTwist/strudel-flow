@@ -511,6 +511,27 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
     getHighlightedSound() {
       return kind === 'sounds' ? browseKey : null;
     },
+    /**
+     * Whatever the browse cursor is on, as something that can be put in a
+     * song - `{ kind, name, code }` - or null.
+     *
+     * One getter across all four tabs, because the block builder does not care
+     * which list a pick came from, only what it is worth inserting. The two
+     * translations happen here rather than at the call site: a SOUNDS row is a
+     * name and becomes `s("name")`, and a FUNCS row is a method and becomes
+     * the fragment `.name()`, which is exactly what chains onto a block.
+     */
+    getHighlighted() {
+      if (!browseKey) return null;
+      if (kind === 'sounds') {
+        return { kind, name: browseKey, code: `s("${browseKey}")` };
+      }
+      if (kind === 'funcs') {
+        return { kind, name: browseKey, code: `.${browseKey}()` };
+      }
+      const entry = lib[kind]?.find((e) => e.id === browseKey);
+      return entry ? { kind, name: entry.name, code: entry.code } : null;
+    },
     getSelectedSnippetCode() {
       // The browse cursor wins when it is on something: it is the more recent
       // statement of intent, and it is the row currently outlined on screen.

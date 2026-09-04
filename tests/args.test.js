@@ -52,9 +52,33 @@ describe('findNumericArgs', () => {
     expect(findNumericArgs(code).map((a) => a.fn)).toEqual(['gain']);
   });
 
-  it('skips a call whose argument is already a pattern', () => {
+  it('never offers to replace a pattern with a constant', () => {
     const code = '.lpf(perlin.range(220, 780)).pan(sine.range(0.4, 0.6)).room(0.3)';
-    expect(findNumericArgs(code).map((a) => a.fn)).toEqual(['room']);
+    const found = findNumericArgs(code).map((a) => a.fn);
+    // The guarantee: lpf and pan are DRIVEN, and a knob writing a constant
+    // over either would delete the movement rather than adjust it.
+    expect(found).not.toContain('lpf');
+    expect(found).not.toContain('pan');
+    // The sweep's own endpoints are fair game - turning those keeps the
+    // movement and changes how far it goes.
+    expect(found).toEqual(['range', 'range', 'range', 'range', 'room']);
+  });
+
+  it('gives each argument of a multi-argument call its own slot', () => {
+    const args = findNumericArgs('.adsr(0.01, 0.1, 0.6, 0.2)');
+    expect(args.map((a) => a.position)).toEqual([0, 1, 2, 3]);
+    expect(args.map((a) => a.value)).toEqual([0.01, 0.1, 0.6, 0.2]);
+    // Sustain is a level; the other three are times, and must not share its range.
+    expect(rangeFor('adsr', 0.6, 2)).toMatchObject({ min: 0, max: 1 });
+    expect(rangeFor('adsr', 0.2, 3)).toMatchObject({ min: 0, max: 8 });
+  });
+
+  it('falls back for an argument position the table does not describe', () => {
+    // Reusing the last declared range here would be a confident claim about a
+    // parameter nobody wrote down.
+    const range = rangeFor('adsr', 3, 9);
+    expect(range.min).toBeLessThanOrEqual(3);
+    expect(range.max).toBeGreaterThanOrEqual(3);
   });
 
   it('skips numbers inside comments and mini-notation', () => {

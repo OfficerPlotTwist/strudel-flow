@@ -1,4 +1,4 @@
-import { getTransport, initEngine, previewSound, unlockAudio } from './engine.js';
+import { audioContext, getTransport, initEngine, previewSound, unlockAudio } from './engine.js';
 import { enableMidi, listInputs, listOutputs, onMidiMessage, sendCC } from './midi.js';
 import { createEditorPane } from './editor.js';
 import { createLive } from './live.js';
@@ -13,6 +13,8 @@ import { createRelativeBank } from './relative.js';
 import { createBlockCursor, createStepper } from './browse.js';
 import { argRows, assignArgSlots, findNumericArgs } from './args.js';
 import { createArgKnobs, deviceKnobIndex } from './arg-knobs.js';
+import { addToBlock, classifyItem, setupLine } from './build.js';
+import { DEFAULT_MONITOR_CHANNELS, splitStatus, toMonitor } from './monitor.js';
 import { createAudition } from './audition.js';
 import { crossfaderCycles } from './arm.js';
 import { createExplainerWindow } from './ui/explainer-window.js';
@@ -206,6 +208,133 @@ function refreshArgMap() {
   });
 }
 
+// ---- building a block from the library ------------------------------------
+//
+// SEND B latches build mode. While it is on, TAP TEMPO takes whatever the
+// browse cursor is on in the right-hand panel and adds it to ONE block: the
+// first pick creates it, and every pick after that folds into the same block
+// rather than starting another. That is the whole difference from the
+// library's ordinary insert - picking a kick and then a snare here means one
+// part that alternates between them, not two parts playing at once.
+//
+// The block stays selected the entire time, so the device knobs are bound to
+// its numbers as it is being built rather than after.
+let building = null; // { tabId, blockIndex } while SEND B is on
+// PAN decides what happens when SEND B goes off: latched, the finished block
+// is evaluated and lands on the next cycle boundary; unlatched it stays in the
+// document, silent, like everything else this app writes.
+let panLatched = false;
+// SEND A: the block under construction goes to the cue outputs instead of the
+// mains, so it can be heard while the set plays on without the room hearing it.
+let monitorOn = false;
+let monitorChannels = DEFAULT_MONITOR_CHANNELS;
+
+/**
+ * The envelope every built block carries.
+ *
+ * Appended on creation rather than offered as a pick, because a block with no
+ * envelope has nothing to shape and the four numbers here are the four the
+ * hand reaches for first - which is also why they are worth having already
+ * under the knobs the moment the block exists.
+ */
+const BUILT_ADSR = '.adsr(0.01, 0.1, 0.6, 0.2)';
+
+/** Put the block being built under the knobs and on screen. */
+function selectBuilt() {
+  if (!building || building.blockIndex === null) return;
+  pane.selectBlocks(building.tabId, [building.blockIndex]);
+}
+
+/**
+ * Add whatever the browse cursor is on to the block under construction.
+ *
+ * Setup statements are the exception that has to be handled first: `setcpm`
+ * and `samples` configure the whole song, and appended into a block halfway
+ * down they still run - and then silently change the tempo of everything above
+ * them. They are slotted to the top instead.
+ */
+function addPickToBlock() {
+  const pick = panel.getHighlighted();
+  if (!pick) {
+    status.info('build: nothing under the browse cursor');
+    return;
+  }
+  const id = building.tabId;
+
+  if (classifyItem(pick.code) === 'setup') {
+    const lines = pane.getCode(id).split('\n');
+    pane.insertLine(id, setupLine(lines), pick.code.trim());
+    status.info(`build: ${pick.name} to the top`);
+    return;
+  }
+
+  if (building.blockIndex === null) {
+    pane.appendBlock(id, `${pick.code.trim()}${BUILT_ADSR}`);
+    building.blockIndex = pane.getBlockCount(id) - 1;
+    selectBuilt();
+    status.info(`build: ${pick.name}`);
+    return;
+  }
+
+  const block = pane.getSoleSelectedBlock(id);
+  const current = block?.text ?? '';
+  const { text, separate } = addToBlock(current, pick.code);
+  if (separate) {
+    // Not a rejection - a melody and a drum part are two parts however they
+    // were picked, and the new one becomes the block now being built.
+    pane.appendBlock(id, `${text}${BUILT_ADSR}`);
+    building.blockIndex = pane.getBlockCount(id) - 1;
+  } else {
+    pane.replaceBlockText(id, building.blockIndex, text);
+  }
+  selectBuilt();
+  status.info(separate ? `build: ${pick.name} (new block)` : `build: + ${pick.name}`);
+}
+
+/** Enter or leave build mode. */
+function setBuilding(on) {
+  if (on) {
+    const id = pane.getViewedId();
+    if (!id) return;
+    building = { tabId: id, blockIndex: null };
+    status.info('build: SEND B on - TAP TEMPO adds the browsed item');
+    return;
+  }
+  const finished = building;
+  building = null;
+  if (!finished || finished.blockIndex === null) {
+    status.info('build: off');
+    return;
+  }
+  if (panLatched) {
+    // Strudel starts a re-evaluated pattern on the next cycle boundary, which
+    // is exactly what PAN is asking for - no countdown of our own is needed.
+    live.evaluateActive();
+    status.info('build: done, playing from the next cycle');
+  } else {
+    status.info('build: done, not playing');
+  }
+}
+
+/**
+ * Send the block under construction to the cue outputs, or stop.
+ *
+ * The suffix goes on the RENDERED source, not into the document: the cue is a
+ * way of listening, not an edit, and a block that had been monitored would
+ * otherwise keep `.channels("3 4")` after the headphones came off.
+ */
+function setMonitor(on) {
+  monitorOn = on;
+  const ctx = audioContext();
+  status.info(on ? `monitor: ${splitStatus(ctx, monitorChannels)}` : 'monitor off');
+  live.refresh();
+}
+
+live.setMonitor(() => {
+  if (!monitorOn || !building || building.blockIndex === null) return null;
+  return { tabId: building.tabId, blockIndex: building.blockIndex, wrap: (text) => toMonitor(text, monitorChannels) };
+});
+
 // The caret moving changes WHICH block is addressed; an edit changes what its
 // numbers are. Both land here, and both are what keeps the knobs and the
 // annotation pointing at the code actually on screen.
@@ -308,6 +437,30 @@ function navigate(control) {
   // is currently driving a number in the source.
   if (deviceKnobIndex(control.name) !== null && argKnobs.feed(control)) return true;
 
+  // The top row of clip pads, one per song tab on the top strip. Hold one or
+  // more and only those songs play; let go and the set returns to exactly what
+  // it was. That is the existing momentary SOLO, addressed by pad instead of
+  // by key - so the "return to previous state" is not a snapshot anyone has to
+  // take, it is what solo already means: while nothing is held, the held set
+  // is empty and the render is the ordinary one.
+  //
+  // Read BEFORE the press-only guard, like the other momentary controls: a
+  // hold is defined by its release as much as its press, and dropping the
+  // note-off would leave the set soloed for good.
+  const clip = /^apc40\.track([1-8])\.clip1$/.exec(control.name);
+  if (clip) {
+    const songTabs = pane.getTabs().filter((tab) => tab.bar === 'top');
+    const tab = songTabs[Number(clip[1]) - 1];
+    // A pad with no song under it does nothing, rather than soloing whichever
+    // tab happens to be last - eight pads are always there, songs are not.
+    if (tab && live.setTabHeld(tab.id, 'solo', control.isDown === true)) {
+      live.evaluateActive();
+      const held = songTabs.filter((t) => live.isTabHeld(t.id)).map((t) => t.name);
+      status.info(held.length ? `solo: ${held.join(' + ')}` : 'solo released');
+    }
+    return true;
+  }
+
   // Read BEFORE the press-only guard below: a modifier is defined by its
   // release as much as its press, and dropping the note-off would leave the
   // whole song armed for good.
@@ -341,6 +494,20 @@ function navigate(control) {
       status.info(pinned ? `block ${blockCursor.cursor + 1} kept` : `block ${blockCursor.cursor + 1} let go`);
       return true;
     }
+    case 'apc40.trackctl.send_b':
+      setBuilding(!building);
+      return true;
+    case 'apc40.global.tap_tempo':
+      if (!building) return false; // outside build mode it is not ours
+      addPickToBlock();
+      return true;
+    case 'apc40.trackctl.pan':
+      panLatched = !panLatched;
+      status.info(panLatched ? 'finished blocks play next cycle' : 'finished blocks stay silent');
+      return true;
+    case 'apc40.trackctl.send_a':
+      setMonitor(!monitorOn);
+      return true;
     case 'apc40.trackctl.send_c': {
       const on = audition.toggle();
       status.info(
