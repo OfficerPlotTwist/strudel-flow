@@ -1,4 +1,6 @@
 import { describe, signatureOf, uniqueFunctions } from '../explain.js';
+import { functionSpans } from '../changes.js';
+import { functionColor } from '../palette.js';
 
 /**
  * The popout carries its own copy of the CRT look. It is deliberately a small
@@ -127,6 +129,9 @@ export function createExplainer(container, { doc = document } = {}) {
     const sig = doc.createElement('h2');
     sig.className = 'ex-sig';
     sig.textContent = signatureOf(info);
+    // Same colour this function has in the editor, so the eye can jump
+    // between the two screens without re-reading the name.
+    sig.style.color = functionColor(name, liveNames.has(name));
     detail.append(sig);
 
     if (info.isAlias) {
@@ -173,6 +178,9 @@ export function createExplainer(container, { doc = document } = {}) {
       const n = doc.createElement('span');
       n.className = 'n';
       n.textContent = name;
+      // Bright when this function is in a block that is actually playing,
+      // the same hue but dim when every use of it is commented out.
+      n.style.color = functionColor(name, liveNames.has(name));
       const d = doc.createElement('span');
       d.className = 'd';
       d.textContent = info?.description ?? '';
@@ -183,18 +191,34 @@ export function createExplainer(container, { doc = document } = {}) {
     used.append(list);
   }
 
-  let last = { songName: '', code: '', cursorName: null };
+  let last = { songName: '', code: '', cursorName: null, subject: null };
+  // Which functions are in live blocks - recomputed per paint because
+  // commenting a block changes nothing about the code except this.
+  let liveNames = new Set();
 
   function paint() {
-    const { songName, code, cursorName } = last;
+    const { songName, code, cursorName, subject } = last;
+    liveNames = new Set(
+      functionSpans(code)
+        .filter((span) => span.live)
+        .map((span) => span.name),
+    );
     songLabel.innerHTML = '';
     songLabel.append(doc.createTextNode('song: '));
     const b = doc.createElement('b');
     b.textContent = songName || '(none active)';
     songLabel.append(b);
-    modeLabel.textContent = pinned ? `pinned: ${pinned}` : 'following cursor';
-    renderDetail(pinned ?? cursorName);
-    renderUsed(code, cursorName, (name) => {
+    // Priority: an explicit pin outranks everything, then whatever the last
+    // edit touched, and only then the caret. The pin is the whole point of
+    // SHIFT - it says "stop moving, I am reading this one".
+    const showing = pinned ?? subject?.name ?? cursorName;
+    modeLabel.textContent = pinned
+      ? `pinned: ${pinned}`
+      : subject
+        ? `${subject.kind}: ${subject.name}`
+        : 'following cursor';
+    renderDetail(showing);
+    renderUsed(code, showing, (name) => {
       pinned = pinned === name ? null : name;
       paint();
     });
@@ -203,10 +227,29 @@ export function createExplainer(container, { doc = document } = {}) {
   paint();
 
   return {
-    /** `cursorName` is the function the caret is on, or null. */
-    update({ songName, code, cursorName }) {
-      last = { songName, code, cursorName };
+    /**
+     * `cursorName` is the function the caret is on; `subject` is whatever the
+     * last edit touched, which is what the window shows by default.
+     */
+    update({ songName, code, cursorName, subject = null }) {
+      last = { songName, code, cursorName, subject };
       paint();
+    },
+    /** SHIFT: hold this function on screen, or let go of it. */
+    togglePin(name) {
+      const target = name ?? last.subject?.name ?? last.cursorName;
+      if (!target) return null;
+      pinned = pinned === target ? null : target;
+      paint();
+      return pinned;
+    },
+    pinnedName: () => pinned,
+    /** Release a pin whose function no longer appears in any live block. */
+    releaseIfMuted() {
+      if (!pinned || liveNames.has(pinned)) return false;
+      pinned = null;
+      paint();
+      return true;
     },
   };
 }

@@ -176,6 +176,11 @@ function navigate(control) {
       status.info(pinned ? `block ${blockCursor.cursor + 1} kept` : `block ${blockCursor.cursor + 1} let go`);
       return true;
     }
+    case 'apc40.global.shift': {
+      const pinned = explainer.togglePin();
+      status.info(pinned ? `explainer pinned: ${pinned}` : 'explainer following changes');
+      return true;
+    }
     case 'apc40.global.stop_all':
       blockCursor.clear();
       showBlockSelection();

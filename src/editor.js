@@ -5,6 +5,7 @@ import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { highlightExtension, highlightMiniLocations, updateMiniLocations } from '@strudel/codemirror';
 import { findBlock, findBlocksInRange, listBlocks, toggleBlocksComment } from './blocks.js';
 import { crtTheme } from './crt-theme.js';
+import { functionColorExtension, functionColorTheme } from './ui/function-colors.js';
 
 export function createEditorPane(container) {
   const tabs = new Map(); // id -> { id, name, view, wrapper, bar }
@@ -96,6 +97,10 @@ export function createEditorPane(container) {
           ),
           javascript(),
           crtTheme,
+          // After javascript(): both colour the same text, and the later
+          // extension's inline style is what survives on a function name.
+          functionColorExtension,
+          functionColorTheme,
           EditorView.lineWrapping,
           highlightExtension,
           // Caret and text changes both matter to the explainer: one changes
