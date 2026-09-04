@@ -183,3 +183,79 @@ The surface **re-scopes** controls rather than adding them: REC pins a block
 normally and leaves pattern build inside it; clip row 1 solos a song tab
 normally and is the scale degree inside it. Any table of bindings needs a
 "when" column or it is wrong half the time.
+
+## What a probe sweep found, and what it settled
+
+Three agents probed this codebase independently and confirmed ten bugs, all
+now fixed (`cb9b393`). They are recorded here not as history but because the
+SHAPE of them repeats, and because several plausible theories were disproven at
+some cost — re-deriving those would be waste.
+
+### The failure mode that produced most of them
+
+**A guard written for the one dangerous case you thought of, while the class
+has three members.** Pattern build edits the cursor block in place. The reverb
+bus was foreseen and guarded; a hand-written melody and an over-long pattern
+were not, and both were destroyed on the first pad press with no error. When
+you protect one instance of "input this code cannot faithfully round-trip",
+ask what else is in that set.
+
+**The other recurring shape: a rewrite that matched text instead of code.** The
+key and tempo knobs rewrote every `.scale()` and `setcpm()` in the file,
+including inside comments and string literals, so turning a knob mid-set edited
+documentation. Any song-global rewrite must go through `replaceInCode`.
+
+### Settled questions — do not re-investigate
+
+- **Knob writes are NOT stale between MIDI messages.** It looks like they must
+  be: `scheduleArgRefresh` debounces the parser by 120 ms while a pot emits
+  ~200 msg/s, which suggests `argKnobs.slots` goes stale and a virtual slot
+  gets appended repeatedly. It does not. CodeMirror's `updateListener` fires
+  synchronously on every `docChanged` regardless of the `notify:false` flag,
+  and `main.js` wires it straight to `refreshArgMap()`; messages are handled one
+  at a time on the main thread. A five-step sweep on a virtual `adsr` slot
+  produces exactly one `.adsr(...)` call. Verified, twice, from opposite
+  directions.
+- **`formatArgValue` cannot emit `-0` in practice.** The pure function can for
+  adversarial inputs, but sweeping all 128 knob positions against every
+  negative-capable range (`nudge`, `detune`) never lands in the band that
+  rounds to `-0`. Not reachable.
+- **The tempo-ramp race is correctly designed.** Starting a second ramp before
+  the first lands picks up from the live in-flight value, not the stale written
+  one, and the document is still written exactly once.
+- Also verified sound: annotation alignment against nested calls, negative
+  numbers and four arguments on one line; argument overflow past 56 slots;
+  the burst guard in `arg-knobs.js`; `maskCode` on escaped quotes, template
+  literals and unterminated strings; circle-of-fifths wrap in both directions;
+  `webmidi@3.1.16` taking raw 0–127 for `sendControlChange`.
+
+### Known rough edges, not yet addressed
+
+- **Deleting the viewed tab while pattern build targets it** leaves the mode
+  pointing at a tab that no longer exists. Writes become silent no-ops
+  (`editor.js` guards on a missing tab) and REC is the only way out. Traced but
+  not reproduced end to end, because it needs the crossfader-timed delete.
+- **`SHIFT + TC 4` re-keys but does not transpose.** Scale degrees follow
+  correctly; any block using absolute `note("c4 e4")` stays where it is and
+  goes out of key.
+- **Five files are CRLF** where the rest of the repo is LF: `src/explain.js`,
+  `src/library.js`, `src/midi-probe.js`, `src/seed-fx/mix.js`,
+  `src/ui/popout.js`. Harmless today; worth a single normalising pass rather
+  than churning them mid-change.
+- The `.gitattributes` says `* text=auto eol=lf`, so those five predate it.
+
+### How the sweep was run, if you want to repeat it
+
+Three agents, one area each, **one dev-server port each** — they must not share
+a server, because the Strudel engine is global and `evaluateCode` replaces
+whatever is playing. Each was told to confirm with a runnable probe or report
+nothing, and not to fix anything.
+
+That fan-out worked because the areas could be wrong INDEPENDENTLY. Probing an
+existing artefact parallelises; deriving a design does not, because each finding
+changes the next decision and you get three incompatible answers.
+
+**Verify every finding yourself before acting on it.** Of the eleven reported,
+all held up — but the check is cheap and one of them ("stop a lone const kills
+the song") was severe enough that acting on a wrong report would have been
+worse than not looking.
