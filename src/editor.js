@@ -161,9 +161,36 @@ export function createEditorPane(container) {
     if (tab) highlightMiniLocations(tab.view, 0, []);
   }
 
+  /**
+   * Remove a tab and everything belonging to it.
+   *
+   * Refuses the last one: an editor with no tabs has no document, and every
+   * caller here reads `getViewedId()` and uses it without asking whether one
+   * exists. Returns what happened so the caller can report it.
+   */
+  function closeTab(id) {
+    const tab = tabs.get(id);
+    if (!tab) return { closed: false, reason: 'no such tab' };
+    if (tabs.size < 2) return { closed: false, reason: 'last tab' };
+
+    const wasActive = activeId === id;
+    tab.view.destroy();
+    tab.wrapper.remove();
+    tabs.delete(id);
+    if (wasActive) activeId = null;
+    if (viewedId === id) {
+      viewedId = null;
+      viewTab([...tabs.keys()][0]);
+    } else {
+      renderBar();
+    }
+    return { closed: true, wasActive };
+  }
+
   return {
     addTab,
     viewTab,
+    closeTab,
     clearHighlight,
     getTabs: () =>
       [...tabs.values()].map((t) => ({ id: t.id, name: t.name, isActive: t.id === activeId })),

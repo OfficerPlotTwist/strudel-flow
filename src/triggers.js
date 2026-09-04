@@ -64,6 +64,11 @@ export function defaultTriggerMap() {
     // and the crossfader beside them sets how many cycles it takes.
     'apc40.global.play': 'armPlay',
     'apc40.global.stop': 'armStop',
+    // The bank arrows sit under the same hand as the transport, and stepping
+    // through songs is the other thing that hand does. Bank DOWN is dead on
+    // this unit (see the map's faults), so only left/right and up are bound.
+    'apc40.global.left': 'prevTab',
+    'apc40.global.right': 'nextTab',
   };
 }
 
@@ -176,4 +181,31 @@ export function setTabHoldTrigger(overrides, bindings, tabId, mode, trigger) {
     next[binding.tabId] = entry;
   }
   return { ...overrides, ...next };
+}
+
+/**
+ * Counts rapid repeats of one control, so a destructive action can be put
+ * behind a deliberate gesture rather than a single press.
+ *
+ * The APC40's buttons are large and close together; deleting a song on one
+ * press would be one fumble away at all times. Three taps inside `windowMs`
+ * of each other is hard to do by accident and easy to do on purpose.
+ *
+ * The run resets on firing, so a fourth tap begins a new count rather than
+ * deleting a second tab.
+ */
+export function createTapGate({ taps = 3, windowMs = 600 } = {}) {
+  let count = 0;
+  let last = -Infinity;
+  return {
+    tap(now) {
+      count = now - last <= windowMs ? count + 1 : 1;
+      last = now;
+      if (count < taps) return false;
+      count = 0;
+      return true;
+    },
+    /** How far into the gesture we are - for showing progress. */
+    pending: () => count,
+  };
 }

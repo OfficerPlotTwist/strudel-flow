@@ -25,6 +25,7 @@ import {
   resolveHold,
   resolveTabHold,
   tabHoldBindings,
+  createTapGate,
 } from './triggers.js';
 
 const status = createStatus(document.getElementById('status-strip'));
@@ -164,6 +165,11 @@ const relative = createRelativeBank({
 const KNOB_DIVISOR = 4;
 const CUE_DIVISOR = 4;
 
+// UP deletes the song on screen, and does it three taps in. The APC40's
+// buttons are large and close together, so a one-press delete would be one
+// fumble away for the whole set.
+const deleteGate = createTapGate({ taps: 3, windowMs: 600 });
+
 const steppers = {
   'apc40.trackctl.knob7': createStepper(KNOB_DIVISOR),
   'apc40.trackctl.knob8': createStepper(KNOB_DIVISOR),
@@ -218,6 +224,16 @@ function navigate(control) {
     case 'apc40.global.nudge_plus':
       status.info(`library: ${panel.moveTab(1)}`);
       return true;
+    case 'apc40.global.up': {
+      // Three taps, not one: this deletes a song. The gate reports how far in
+      // the gesture is, so a single stray press says what it did and no more.
+      if (!deleteGate.tap(performance.now())) {
+        status.info(`delete song: tap ${deleteGate.pending()}/3`);
+        return true;
+      }
+      actions.deleteTab();
+      return true;
+    }
     case 'apc40.global.rec': {
       const pinned = blockCursor.latch();
       showBlockSelection();

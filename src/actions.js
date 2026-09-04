@@ -123,8 +123,18 @@ export function createActions({
       status.info(wholePage ? 'song is empty' : 'no block in selection');
       return;
     }
+    // A tab that is not contributing to the render is SILENT, however few of
+    // its blocks are commented - nothing outside the active song (and anything
+    // held over it) reaches the parser at all. Reading "uncommented" as
+    // "playing" is what made play on a second tab report "already playing"
+    // for a song nobody could hear.
+    const silent = !live.contributingIds().includes(id);
+    // Play on a silent tab has work to do even with nothing to uncomment:
+    // making that tab the active one is what starts it.
+    const needsActivating = action === 'play' && silent;
+
     const targets = armable(lines, selected, action);
-    if (targets.length === 0) {
+    if (targets.length === 0 && !needsActivating) {
       // Not a failure: pressing play on something already playing is a
       // deliberate no-op, and saying so is more use than silence.
       status.info(`already ${action === 'play' ? 'playing' : 'stopped'}`);
@@ -147,7 +157,11 @@ export function createActions({
     });
     // Play must be able to start a stopped transport - that is what the button
     // means. Stop only re-renders: it has nothing to start.
-    await (action === 'play' ? live.evaluateActive() : live.refresh());
+    //
+    // A silent tab is the exception: evaluating now would start the tab that
+    // IS active, which is a different song from the one the button was
+    // pressed on. It waits, and the switch happens at the target.
+    await (action === 'play' && !silent ? live.evaluateActive() : live.refresh());
     const waitCycles = target - cycle;
     status.info(
       `${action} ${indexes.length} block(s)${wholePage ? ' (whole page)' : ''} at cycle ${target}`,
@@ -166,10 +180,56 @@ export function createActions({
       pane.setCode(id, toggleBlocksComment(current, blocks).join('\n'));
     }
     live.setArmed(null);
-    await live.refresh();
+    if (needsActivating) {
+      // The switch IS the play: until this tab is the active one, nothing in
+      // it reaches the parser.
+      pane.setActiveTab(id);
+      await live.evaluateActive();
+    } else {
+      await live.refresh();
+    }
+  }
+
+  /**
+   * Delete the song on screen, on the crossfader's beat.
+   *
+   * Timed like an arm rather than done instantly, for the same reason: a song
+   * vanishing mid-bar is a hole in the set. The gesture that reaches here is
+   * three taps (see createTapGate) - the timing is the musical part, the taps
+   * are the part that stops it happening by accident.
+   */
+  async function deleteTab() {
+    const id = pane.getViewedId();
+    const name = pane.getName(id) ?? 'song';
+    if (pane.getTabs().length < 2) {
+      status.info('cannot delete the only tab');
+      return;
+    }
+    const { cycle, cps } = getTransport() ?? { cycle: 0, cps: 1 };
+    const target = armTarget(cycle, crossfaderCycles(getCrossfader?.()));
+    const waitCycles = target - cycle;
+    status.info(`deleting "${name}" at cycle ${target}`);
+
+    if (waitCycles > 0) {
+      await new Promise((resolve) => setTimeout(resolve, (waitCycles / cps) * 1000));
+    }
+
+    const { closed, wasActive, reason } = pane.closeTab(id);
+    if (!closed) {
+      status.info(`delete refused: ${reason}`);
+      return;
+    }
+    // Nothing is active any more, and `live` renders the active tab plus
+    // whatever is held over it - so with no active tab there is no render to
+    // replace what is sounding. Stop, rather than leave the last one ringing.
+    if (wasActive) live.stop();
+    else await live.refresh();
+    status.info(`deleted "${name}"`);
   }
 
   return {
+    /** Triple-tapped UP: remove the song on screen, on the crossfader's beat. */
+    deleteTab,
     /** Selected blocks start playing after the crossfader's count of cycles. */
     armPlay: () => arm('play'),
     /** The same countdown, in the other direction. */
