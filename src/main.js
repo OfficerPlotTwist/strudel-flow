@@ -150,13 +150,22 @@ const relative = createRelativeBank({
 });
 
 // One list position per MIDI message is faster than anyone can read - these
-// encoders send up to 200 a second. Each scroll control moves one step per two
-// messages instead, with the odd half carried rather than dropped so a slow
+// encoders send up to 200 a second. Each scroll control moves one step per N
+// messages instead, with the remainder carried rather than dropped so a slow
 // turn still arrives.
+//
+// The two track-control knobs are divided harder than the cue encoder. They
+// are absolute pots made relative in software (see relative.js), so every
+// physical step of the pot is a message, where the cue encoder's firmware
+// already puts turn speed in the magnitude - which this layer discards. The
+// same divisor therefore travels visibly further on the knobs.
+const KNOB_DIVISOR = 4;
+const CUE_DIVISOR = 2;
+
 const steppers = {
-  'apc40.trackctl.knob7': createStepper(2),
-  'apc40.trackctl.knob8': createStepper(2),
-  'apc40.global.cue_level': createStepper(2),
+  'apc40.trackctl.knob7': createStepper(KNOB_DIVISOR),
+  'apc40.trackctl.knob8': createStepper(KNOB_DIVISOR),
+  'apc40.global.cue_level': createStepper(CUE_DIVISOR),
 };
 
 /**
