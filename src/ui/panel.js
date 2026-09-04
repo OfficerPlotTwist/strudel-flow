@@ -503,6 +503,14 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
       // pasted code into the song on the way past would be unusable.
       return show(section.items[wrapIndex(at === -1 ? 0 : at, at === -1 ? 0 : delta, section.items.length)]);
     },
+    /**
+     * The sound under the browse cursor, or null when the SOUNDS tab is not
+     * the one showing. Only that tab's rows are keyed by sound name; a snippet
+     * id would name no sound and the audition would sit silent.
+     */
+    getHighlightedSound() {
+      return kind === 'sounds' ? browseKey : null;
+    },
     getSelectedSnippetCode() {
       // The browse cursor wins when it is on something: it is the more recent
       // statement of intent, and it is the row currently outlined on screen.

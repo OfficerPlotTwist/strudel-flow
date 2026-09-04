@@ -1,4 +1,4 @@
-import { initEngine, unlockAudio } from './engine.js';
+import { getTransport, initEngine, previewSound, unlockAudio } from './engine.js';
 import { enableMidi, listInputs, listOutputs, onMidiMessage, sendCC } from './midi.js';
 import { createEditorPane } from './editor.js';
 import { createLive } from './live.js';
@@ -11,6 +11,7 @@ import { createMidiMonitor } from './ui/midi-monitor.js';
 import { createDeviceMap } from './device-map.js';
 import { createRelativeBank } from './relative.js';
 import { createBlockCursor } from './browse.js';
+import { createAudition } from './audition.js';
 import { createExplainerWindow } from './ui/explainer-window.js';
 import { createActions } from './actions.js';
 import {
@@ -122,6 +123,20 @@ function showBlockSelection() {
 // and the same numbers in a different arrangement are different music.
 pane.onViewTab(() => blockCursor.clear());
 
+// SEND C: audition the highlighted sound once a beat, so a bank can be
+// browsed by ear. Free-running rather than locked to the transport - hunting
+// for a sample is mostly done while the set is stopped, and a clock that only
+// ticked during playback would be silent exactly then.
+const audition = createAudition({
+  play: (name) => previewSound(name),
+  getSound: () => panel.getHighlightedSound(),
+  getCps: () => getTransport()?.cps ?? 0.5,
+  now: () => performance.now() / 1000,
+});
+// One timer for the life of the page. It is a no-op while the audition is off,
+// which costs less than starting and stopping an interval on every press.
+setInterval(() => audition.tick(), 20);
+
 // The two knobs made relative in software. Track control knobs rather than
 // device knobs because the device bank re-addresses itself to whichever track
 // is selected, and a browse control that changed meaning with the selection
@@ -174,6 +189,15 @@ function navigate(control) {
       const pinned = blockCursor.latch();
       showBlockSelection();
       status.info(pinned ? `block ${blockCursor.cursor + 1} kept` : `block ${blockCursor.cursor + 1} let go`);
+      return true;
+    }
+    case 'apc40.trackctl.send_c': {
+      const on = audition.toggle();
+      status.info(
+        on
+          ? `audition on: ${panel.getHighlightedSound() ?? 'no sound highlighted'}`
+          : 'audition off',
+      );
       return true;
     }
     case 'apc40.global.shift': {

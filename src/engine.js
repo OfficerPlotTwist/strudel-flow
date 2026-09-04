@@ -1,6 +1,6 @@
 // Static import: @strudel/webaudio registers a worklet as a module-level
 // side effect. A lazy import after the first mousedown misses the worklet load.
-import { getAudioContext, initAudioOnFirstClick } from '@strudel/webaudio';
+import { getAudioContext, initAudioOnFirstClick, superdough } from '@strudel/webaudio';
 import { initStrudel, evaluate, hush, samples, aliasBank, registerZZFXSounds, soundMap } from '@strudel/web';
 import { Drawer } from '@strudel/draw';
 import '@strudel/midi';
@@ -179,6 +179,31 @@ export async function evaluateCode(code) {
  * Returns null before the first evaluation, when there is no scheduler and
  * therefore no "now" to speak of.
  */
+/**
+ * Play one sound, once, right now - outside the pattern entirely.
+ *
+ * This is for auditioning a sample while browsing the SOUNDS list, so it must
+ * not touch the repl: evaluating a preview would replace whatever is playing,
+ * and scheduling it into the pattern would make a preview part of the set.
+ * superdough is the layer underneath both, and triggering it directly is the
+ * only way to make a sound the arrangement knows nothing about.
+ *
+ * Slightly ahead of `currentTime`, because a deadline already in the past is
+ * dropped rather than played late.
+ */
+export function previewSound(name, { gain = 0.9, duration = 0.25 } = {}) {
+  if (!name) return false;
+  const ctx = getAudioContext();
+  if (!ctx || ctx.state !== 'running') return false;
+  try {
+    superdough({ s: name, gain }, ctx.currentTime + 0.02, duration);
+    return true;
+  } catch (err) {
+    console.warn('[engine] preview failed', name, err);
+    return false;
+  }
+}
+
 export function getTransport() {
   const scheduler = repl?.scheduler;
   if (!scheduler) return null;
