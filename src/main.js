@@ -1,5 +1,5 @@
 import { audioContext, getTransport, initEngine, previewSound, unlockAudio } from './engine.js';
-import { enableMidi, listInputs, listOutputs, onMidiMessage, sendCC } from './midi.js';
+import { LED, enableMidi, listInputs, listOutputs, onMidiMessage, sendCC, sendNote } from './midi.js';
 import { createEditorPane } from './editor.js';
 import { createLive } from './live.js';
 import { isStandaloneBlock } from './blocks.js';
@@ -25,6 +25,20 @@ import {
 } from './args.js';
 import { busSizeSpan, ensureBus } from './bus.js';
 import { blockFunctions, replacementFor, stepFunction } from './fn-browse.js';
+import {
+  COLUMNS,
+  OCTAVE_RANGE,
+  accidentalDegrees,
+  addSegment,
+  createPattern,
+  makeActiveEmpty,
+  patternBlock,
+  setOctave,
+  setRepeats,
+  setRest,
+  setStep,
+  stepIndex,
+} from './pattern-build.js';
 import { createArgKnobs, deviceKnobIndex } from './arg-knobs.js';
 import { addToBlock, classifyItem, setupLine } from './build.js';
 import { DEFAULT_MONITOR_CHANNELS, splitStatus, toMonitor } from './monitor.js';
@@ -501,6 +515,168 @@ function replaceBrowsedFn() {
   pane.setBrowsedFn(id, moved ? { from: moved.from, to: moved.to } : null);
 }
 
+// ---- pattern build mode ---------------------------------------------------
+//
+// The clip grid becomes a piano roll: eight columns of eighth-notes along the
+// bottom, the row above each splitting one into sixteenths, and the top two
+// rows the scale with row 2 as the black keys. See pattern-build.js for the
+// model and for why each mini-notation form is the one it is.
+//
+// Entered by touching any bottom-row pad while a block is under the cursor,
+// and left with REC. Both of those addresses already mean something else -
+// row 1 solos a song tab, REC pins a block - so the mode does not add
+// controls, it re-scopes them, and every one of those handlers checks it.
+let patternMode = null; // { pattern, blockIndex, tabId }
+// Which pads are down right now. A note is written by a COMBINATION - a step
+// held while a degree is pressed - so both halves have to be tracked across
+// their own press and release rather than acted on individually.
+const heldLower = new Set(); // row 5: the eighth-note columns
+const heldUpper = new Set(); // row 4: the sixteenth after that eighth
+const heldSharp = new Set(); // row 2: raise the degree above it a semitone
+// The column a degree press writes into: the most recent bottom-row pad still
+// down, so a chord of held steps still has one unambiguous target.
+let activeColumn = null;
+
+/** `apc40.track3.clip5` -> `{ column: 2, row: 5 }`, or null. */
+function clipPad(name) {
+  const match = /^apc40\.track([1-8])\.clip([1-5])$/.exec(name ?? '');
+  return match ? { column: Number(match[1]) - 1, row: Number(match[2]) } : null;
+}
+
+/** Light row 2 where a semitone above the degree is outside the scale. */
+function paintPatternLeds(on) {
+  const lit = on ? new Set(accidentalDegrees(patternMode?.pattern.mode)) : new Set();
+  for (let column = 0; column < COLUMNS; column += 1) {
+    // Note 54 is clip2 - the black-key row. Channel is the track, which on
+    // this surface is the column. See apc40-map.json.
+    sendNote(device.outPort, column, 54, lit.has(column) ? LED.yellow : LED.off);
+  }
+}
+
+/** The step a degree press lands on, or null when no step is held. */
+function heldStep() {
+  if (activeColumn === null || !heldLower.has(activeColumn)) return null;
+  return stepIndex(activeColumn, heldUpper.has(activeColumn));
+}
+
+/**
+ * Write the pattern into the document.
+ *
+ * A block this mode built before is edited in place; anything else gets a NEW
+ * block after it. Stepping a pattern must never eat a part that was already
+ * there - the cursor block says WHERE, not what to overwrite.
+ */
+function writePattern() {
+  const { tabId, pattern } = patternMode;
+  const text = patternBlock(pattern);
+  if (patternMode.blockIndex === null) {
+    pane.appendBlock(tabId, text);
+    patternMode.blockIndex = pane.getBlockCount(tabId) - 1;
+  } else {
+    pane.replaceBlockText(tabId, patternMode.blockIndex, text);
+  }
+  pane.selectBlocks(tabId, [patternMode.blockIndex]);
+}
+
+function enterPatternMode() {
+  const id = pane.getViewedId();
+  if (!id) return;
+  patternMode = { pattern: createPattern(), blockIndex: null, tabId: id };
+  paintPatternLeds(true);
+  status.info('pattern build: hold a step, press a degree. REC to exit.');
+}
+
+function exitPatternMode() {
+  paintPatternLeds(false);
+  patternMode = null;
+  heldLower.clear();
+  heldUpper.clear();
+  heldSharp.clear();
+  activeColumn = null;
+  status.info('pattern build: off');
+}
+
+/**
+ * Every pad and scene press while the mode is on. Returns true when the
+ * control was consumed, so the handlers it re-scopes never also run.
+ */
+function patternControl(control) {
+  const pad = clipPad(control.name);
+  const down = control.isDown === true;
+
+  if (pad) {
+    const { column, row } = pad;
+    if (row === 5) {
+      // Both edges: the step is a modifier, and dropping its release would
+      // leave every later degree press writing into a step nobody is holding.
+      if (down) { heldLower.add(column); activeColumn = column; }
+      else { heldLower.delete(column); if (activeColumn === column) activeColumn = null; }
+      return true;
+    }
+    if (row === 4) {
+      if (down) heldUpper.add(column); else heldUpper.delete(column);
+      return true;
+    }
+    if (row === 2) {
+      if (down) heldSharp.add(column); else heldSharp.delete(column);
+      return true;
+    }
+    if (!down) return true; // rows 1 and 3 act on press only
+    if (row === 1) {
+      const step = heldStep();
+      if (step === null) {
+        status.info('hold a step before pressing a degree');
+        return true;
+      }
+      setStep(patternMode.pattern, step, { degree: column, sharp: heldSharp.has(column) });
+      writePattern();
+      return true;
+    }
+    if (row === 3) {
+      setRepeats(patternMode.pattern, column + 1);
+      writePattern();
+      status.info(`repeats: ${column + 1}`);
+      return true;
+    }
+  }
+
+  if (control.isDown !== true) return false;
+
+  if (control.name === 'apc40.scene1') {
+    const step = heldStep();
+    if (step === null) {
+      status.info('hold a step to rest it');
+      return true;
+    }
+    setRest(patternMode.pattern, step);
+    writePattern();
+    return true;
+  }
+  if (control.name === 'apc40.scene3') {
+    // A double press cannot be known until the second press lands, and by then
+    // the first has already duplicated the segment. So the second CONVERTS
+    // that duplicate to empty rather than adding a second one - one gesture,
+    // one segment, either way.
+    if (segmentGate.tap(performance.now())) {
+      makeActiveEmpty(patternMode.pattern);
+      status.info('empty segment, same length');
+    } else {
+      addSegment(patternMode.pattern);
+      status.info('segment duplicated');
+    }
+    writePattern();
+    return true;
+  }
+  if (control.name === 'apc40.global.rec') {
+    exitPatternMode();
+    return true;
+  }
+  return false;
+}
+
+/** Two taps of SCENE 3 inside the window means "empty" rather than "copy". */
+const segmentGate = createTapGate({ taps: 2, windowMs: 400 });
+
 // The caret moving changes WHICH block is addressed; an edit changes what its
 // numbers are. Both land here, and both are what keeps the knobs and the
 // annotation pointing at the code actually on screen.
@@ -535,9 +711,15 @@ setInterval(() => audition.tick(), 20);
 // is selected, and a browse control that changed meaning with the selection
 // would be unusable.
 const relative = createRelativeBank({
-  knobs: ['apc40.trackctl.knob6', 'apc40.trackctl.knob7', 'apc40.trackctl.knob8'],
+  knobs: [
+    'apc40.trackctl.knob1',
+    'apc40.trackctl.knob6',
+    'apc40.trackctl.knob7',
+    'apc40.trackctl.knob8',
+  ],
   send: (name, value) => {
     const control = {
+      'apc40.trackctl.knob1': 48,
       'apc40.trackctl.knob6': 53,
       'apc40.trackctl.knob7': 54,
       'apc40.trackctl.knob8': 55,
@@ -566,6 +748,7 @@ const CUE_DIVISOR = 4;
 const deleteGate = createTapGate({ taps: 3, windowMs: 600 });
 
 const steppers = {
+  'apc40.trackctl.knob1': createStepper(KNOB_DIVISOR),
   'apc40.trackctl.knob6': createStepper(KNOB_DIVISOR),
   'apc40.trackctl.knob7': createStepper(KNOB_DIVISOR),
   'apc40.trackctl.knob8': createStepper(KNOB_DIVISOR),
@@ -583,6 +766,17 @@ function navigate(control) {
     if (turn.delta === 0) return true;
     const steps = steppers[turn.name].feed(Math.sign(turn.delta));
     if (steps === 0) return true;
+    // knob1 sweeps the octave of the pattern being stepped in - and only
+    // while that is happening, because outside the mode there is no pattern
+    // for it to be the octave OF.
+    if (turn.name === 'apc40.trackctl.knob1') {
+      if (!patternMode) return true;
+      const next = patternMode.pattern.octave + steps;
+      setOctave(patternMode.pattern, next);
+      writePattern();
+      status.info(`octave ${patternMode.pattern.octave} (${OCTAVE_RANGE.min}-${OCTAVE_RANGE.max})`);
+      return true;
+    }
     // knob6 walks the functions of the block under the block cursor; knob7
     // walks the library's category headings, knob8 the rows inside one.
     if (turn.name === 'apc40.trackctl.knob6') {
@@ -612,6 +806,26 @@ function navigate(control) {
   // generic paths so a stray `cc:16` binding cannot also fire on a knob that
   // is currently driving a number in the source.
   if (deviceKnobIndex(control.name) !== null && argKnobs.feed(control)) return true;
+
+  // Pattern build mode owns the grid, the scenes and REC while it is on. It
+  // is checked before all of them because it does not ADD controls, it
+  // re-scopes ones that already mean something else.
+  if (patternMode && patternControl(control)) return true;
+
+  // Touching a bottom-row pad with a block under the cursor is what starts it.
+  // Only on press, and only with somewhere to write: entering a build mode
+  // that has no destination would strand every pad that followed.
+  if (!patternMode && control.isDown === true && clipPad(control.name)?.row === 5) {
+    if (cursorBlockIndex() === null) {
+      status.info('select a block before stepping a pattern');
+      return true;
+    }
+    enterPatternMode();
+    // The pad that opened the mode is also the first step held down, so hand
+    // it straight on rather than making the performer press it twice.
+    patternControl(control);
+    return true;
+  }
 
   // The top row of clip pads, one per song tab on the top strip. Hold one or
   // more and only those songs play; let go and the set returns to exactly what

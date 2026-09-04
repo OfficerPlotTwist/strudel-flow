@@ -6,6 +6,7 @@ import {
   accidentalDegrees,
   addSegment,
   createPattern,
+  makeActiveEmpty,
   patternBlock,
   renderPattern,
   renderSegment,
@@ -113,11 +114,15 @@ describe('segments', () => {
     expect(renderPattern(p)).toBe(`<[${renderSegment(p.segments[0])}]!2 [${renderSegment(p.segments[1])}]!2>`);
   });
 
-  it('adds an empty segment of the same length on the second press', () => {
+  it('converts the duplicate to empty on the second press, not add a third', () => {
+    // The double press is only knowable once the second lands, by which time
+    // the first has already duplicated. One gesture must still be one segment.
     const p = createPattern();
     setStep(p, 0, { degree: 4 });
     setRepeats(p, 3);
-    addSegment(p, { empty: true });
+    addSegment(p);
+    makeActiveEmpty(p);
+    expect(p.segments).toHaveLength(2);
     expect(p.segments[1].repeats).toBe(3);
     expect(renderSegment(p.segments[1])).toBe(Array(STEPS).fill('~').join(' '));
   });

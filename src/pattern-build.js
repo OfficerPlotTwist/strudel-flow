@@ -102,6 +102,20 @@ export function addSegment(pattern, { empty = false } = {}) {
   return pattern;
 }
 
+/**
+ * Blank the active segment, keeping its length.
+ *
+ * This is the second half of the SCENE 3 gesture. A double press cannot be
+ * recognised until the second press arrives, by which time the first has
+ * already duplicated the segment - so the second press converts that
+ * duplicate rather than adding another, and one gesture produces one segment
+ * either way.
+ */
+export function makeActiveEmpty(pattern) {
+  pattern.segments[pattern.active].steps = Array(STEPS).fill(null);
+  return pattern;
+}
+
 /** One step as mini-notation. */
 function stepText(step) {
   if (step === null) return '_'; // held: the note before it is still sounding
