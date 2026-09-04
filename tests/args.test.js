@@ -119,7 +119,11 @@ describe('assignArgSlots', () => {
     expect(slotLabel(slots[0])).toBe('1:1');
     expect(slotLabel(slots[7])).toBe('1:8');
     expect(slotLabel(slots[8])).toBe('2:1');
-    expect(slotLabel(slots[71])).toBe('master:8');
+    // The master track prints as `m` - a display spelling, so that the one
+    // word among eight rows of digits stops shoving its neighbours off the
+    // columns they point at. The slot still carries the track's real name.
+    expect(slotLabel(slots[71])).toBe('m:8');
+    expect(slots[71].track).toBe('master');
   });
 
   it('gives each slot the CC and channel its address means on the wire', () => {

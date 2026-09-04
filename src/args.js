@@ -522,15 +522,30 @@ export function assignArgSlots(args, tracks = ARG_TRACKS) {
 }
 
 /**
+ * How a track prints in the annotation, where that differs from its name.
+ *
+ * `master` is the only one: it is the single word on a surface of digits, and
+ * an eight-character label is what its own alignment rule is fighting. The
+ * track keeps its name everywhere else - this is the display spelling, not the
+ * identity, and `MASTER_TRACK` remains what the slot carries.
+ */
+const TRACK_LABELS = { [MASTER_TRACK]: 'm' };
+
+/**
  * What the annotation prints under an argument: track, then device knob.
  *
  * Bare rather than quoted. The quotes were noise - nothing here is a string,
  * and at four characters instead of eight the label is half as likely to
  * collide with the one beside it, which means more of them keep the true
  * column of the number they point at.
+ *
+ * The same argument contracts `master` to `m`. Every other label is three
+ * characters and `master:8` is eight, so the master row was the one pushing
+ * its neighbours off their columns - and it is the row over `.adsr(...)`,
+ * where four arguments sit closest together.
  */
 export function slotLabel(slot) {
-  return `${slot.track}:${slot.knob}`;
+  return `${TRACK_LABELS[slot.track] ?? slot.track}:${slot.knob}`;
 }
 
 /**
