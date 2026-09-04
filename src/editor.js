@@ -31,6 +31,7 @@ export function createEditorPane(container) {
   let editListener = () => {};
   let cursorListener = () => {};
   let viewListener = () => {};
+  let closeListener = () => {};
   let counter = 0;
 
   function renderBar() {
@@ -190,6 +191,11 @@ export function createEditorPane(container) {
     tab.wrapper.remove();
     tabs.delete(id);
     if (wasActive) activeId = null;
+    // Announced BEFORE the view moves, and for every close rather than only
+    // the viewed one. onViewTab covers the common case by accident - closing
+    // the viewed tab happens to switch views - but a mode holding a tab id
+    // needs to hear about the close itself, not about a side effect of it.
+    closeListener(id);
     if (viewedId === id) {
       viewedId = null;
       viewTab([...tabs.keys()][0]);
@@ -222,6 +228,8 @@ export function createEditorPane(container) {
       cursorListener(id);
     },
     getViewedId: () => viewedId,
+    /** Whether `id` still names a tab - for anything holding one across time. */
+    hasTab: (id) => tabs.has(id),
     getActiveId: () => activeId,
     getCode: (id) => tabs.get(id).view.state.doc.toString(),
     getName: (id) => tabs.get(id)?.name ?? null,
@@ -251,6 +259,18 @@ export function createEditorPane(container) {
      */
     onViewTab(cb) {
       viewListener = cb;
+    },
+    /**
+     * Called with the id of any tab that has just been removed.
+     *
+     * Separate from onViewTab because a tab can go away without the view
+     * changing, and anything holding a tab id - pattern build, holds - is
+     * then addressing a document that no longer exists. Every write here
+     * guards on a missing tab and returns quietly, so without this the
+     * failure is silence rather than an error.
+     */
+    onCloseTab(cb) {
+      closeListener = cb;
     },
     insertAtCursor(text) {
       const view = currentView();

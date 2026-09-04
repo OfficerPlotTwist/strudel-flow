@@ -618,6 +618,15 @@ function heldStep() {
 /** Write the pattern over the block being edited. */
 function writePattern() {
   const { tabId, pattern, blockIndex } = patternMode;
+  // The write is the last thing that could notice the target is gone, and
+  // editor.js returns quietly on a missing tab - so an unchecked write here
+  // means every pad press does nothing, with the grid still lit as though it
+  // were recording. Say so and drop out instead.
+  if (!pane.hasTab(tabId)) {
+    exitPatternMode();
+    status.info('pattern build: off - the song it was writing into is gone');
+    return;
+  }
   pane.replaceBlockText(tabId, blockIndex, patternBlock(pattern));
   pane.selectBlocks(tabId, [blockIndex]);
 }
@@ -798,6 +807,16 @@ pane.onViewTab(() => {
   // editing what you are looking at.
   if (patternMode) exitPatternMode();
   refreshArgMap();
+});
+
+// A tab can also go away WITHOUT the view changing - the crossfader-timed
+// delete closes the song it was aimed at, which may no longer be the one on
+// screen by the time the count lands. onViewTab covers the viewed tab only.
+pane.onCloseTab((id) => {
+  if (patternMode?.tabId === id) {
+    exitPatternMode();
+    status.info('pattern build: off - that song was deleted');
+  }
 });
 
 // SEND C: audition the highlighted sound once a beat, so a bank can be

@@ -223,6 +223,14 @@ documentation. Any song-global rewrite must go through `replaceInCode`.
 - **The tempo-ramp race is correctly designed.** Starting a second ramp before
   the first lands picks up from the live in-flight value, not the stale written
   one, and the document is still written exactly once.
+- **A tab closing now announces itself, and the pattern write checks.** It
+  looked as though the crossfader-timed delete could leave pattern build
+  pointing at a dead tab; probed, closing the VIEWED tab already routes through
+  `viewTab` and fires `onViewTab`, which exits the mode. What did not fire was
+  a close of any OTHER tab, and `replaceBlockText` returns quietly on a missing
+  tab - so the failure would have been a lit grid recording nothing. Fixed at
+  the class rather than the route: `onCloseTab` fires for every close, and
+  `writePattern` refuses on `!pane.hasTab(tabId)` and drops the mode.
 - Also verified sound: annotation alignment against nested calls, negative
   numbers and four arguments on one line; argument overflow past 56 slots;
   the burst guard in `arg-knobs.js`; `maskCode` on escaped quotes, template
@@ -231,13 +239,11 @@ documentation. Any song-global rewrite must go through `replaceInCode`.
 
 ### Known rough edges, not yet addressed
 
-- **Deleting the viewed tab while pattern build targets it** leaves the mode
-  pointing at a tab that no longer exists. Writes become silent no-ops
-  (`editor.js` guards on a missing tab) and REC is the only way out. Traced but
-  not reproduced end to end, because it needs the crossfader-timed delete.
-- **`SHIFT + TC 4` re-keys but does not transpose.** Scale degrees follow
-  correctly; any block using absolute `note("c4 e4")` stays where it is and
-  goes out of key.
+- **`SHIFT + TC 4` re-keys the DECLARATION only, by decision.** It rewrites
+  every `.scale("d3:minor")` and the degrees follow; a block using absolute
+  `note("c4 e4")` stays where it is. That is accepted behaviour, not a bug to
+  fix - the knob owns the key declaration and nothing else. Do not "improve" it
+  into a transposer.
 - **Five files are CRLF** where the rest of the repo is LF: `src/explain.js`,
   `src/library.js`, `src/midi-probe.js`, `src/seed-fx/mix.js`,
   `src/ui/popout.js`. Harmless today; worth a single normalising pass rather
