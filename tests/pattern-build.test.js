@@ -7,6 +7,7 @@ import {
   addSegment,
   createPattern,
   makeActiveEmpty,
+  parsePattern,
   patternBlock,
   renderPattern,
   renderSegment,
@@ -160,5 +161,42 @@ describe('patternBlock', () => {
     const block = patternBlock(p);
     expect(block).toContain('.scale("d3:minor")');
     expect(block.startsWith('$: n("')).toBe(true);
+  });
+});
+
+describe('parsePattern', () => {
+  it('round-trips a block this mode wrote', () => {
+    // Editing in place must not mean "in place of": re-entering the mode has
+    // to continue the pattern, not replace it with an empty bar.
+    const p = createPattern({ key: 'd', mode: 'minor', octave: 3 });
+    setStep(p, 0, { degree: 0 });
+    setStep(p, 1, { degree: 4, sharp: true });
+    setRest(p, 2);
+    setRepeats(p, 3);
+    addSegment(p);
+    const back = parsePattern(patternBlock(p));
+    expect(patternBlock(back)).toBe(patternBlock(p));
+  });
+
+  it('recovers the key, mode and octave', () => {
+    const back = parsePattern(['$: n("0 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _")', '  .scale("f5:lydian")'].join(String.fromCharCode(10)));
+    expect(back).toMatchObject({ key: 'f', mode: 'lydian', octave: 5 });
+  });
+
+  it('reads a single unbracketed segment', () => {
+    const back = parsePattern('$: n("3 ~ _ _ _ _ _ _ _ _ _ _ _ _ _ _").scale("c4:major")');
+    expect(back.segments).toHaveLength(1);
+    expect(renderSegment(back.segments[0]).startsWith('3 ~ _')).toBe(true);
+  });
+
+  it('refuses a block it did not write, rather than half-reading it', () => {
+    expect(parsePattern('$: s("bd sd").gain(1)')).toBeNull();
+    expect(parsePattern('$: n("0 2 4")')).toBeNull(); // no scale: no key
+    expect(parsePattern('')).toBeNull();
+  });
+
+  it('pads a short pattern out to sixteen steps', () => {
+    const back = parsePattern('$: n("0 2").scale("c4:major")');
+    expect(renderSegment(back.segments[0]).split(' ')).toHaveLength(16);
   });
 });

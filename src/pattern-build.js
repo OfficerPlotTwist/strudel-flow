@@ -166,6 +166,56 @@ export function patternBlock(pattern) {
   return `$: n("${renderPattern(pattern)}")\n  .scale("${pattern.key}${pattern.octave}:${pattern.mode}")`;
 }
 
+/** `0`, `1#`, `~`, `_` -> the step it represents. */
+function parseStep(word) {
+  if (word === '~') return 'rest';
+  if (word === '_') return null;
+  const match = /^(\d+)(#?)$/.exec(word);
+  return match ? { degree: Number(match[1]), sharp: match[2] === '#' } : 'rest';
+}
+
+/**
+ * Read a block this mode wrote back into a pattern, or null.
+ *
+ * Without this, entering the mode on a pattern you stepped in earlier would
+ * replace it with an empty bar - editing in place would mean "in place of".
+ * A block that is NOT one of ours returns null and is left to the caller,
+ * which is the honest answer: this cannot round-trip hand-written Strudel and
+ * should not pretend to.
+ */
+export function parsePattern(text) {
+  const scale = /\.scale\(\s*"([a-gA-G][#b]?)(\d)\s*:\s*([a-z]+)"\s*\)/.exec(text ?? '');
+  const notes = /\bn\(\s*"([^"]*)"\s*\)/.exec(text ?? '');
+  if (!scale || !notes) return null;
+
+  const pattern = createPattern({
+    key: scale[1].toLowerCase(),
+    mode: scale[3],
+    octave: Number(scale[2]),
+  });
+
+  const body = notes[1].trim();
+  // `<[...]!3 [...]!2>` is several segments; a bare run of words is one.
+  const alternation = /^<(.*)>$/s.exec(body);
+  const chunks = alternation
+    ? [...alternation[1].matchAll(/\[([^\]]*)\](?:!(\d+))?/g)].map((m) => ({
+        words: m[1].trim().split(/\s+/),
+        repeats: Number(m[2] ?? 1),
+      }))
+    : [{ words: body.split(/\s+/), repeats: 1 }];
+  if (chunks.length === 0) return null;
+
+  pattern.segments = chunks.map(({ words, repeats }) => {
+    const segment = createSegment(Math.min(Math.max(repeats, 1), COLUMNS));
+    for (let i = 0; i < STEPS; i += 1) {
+      segment.steps[i] = words[i] === undefined ? 'rest' : parseStep(words[i]);
+    }
+    return segment;
+  });
+  pattern.active = pattern.segments.length - 1;
+  return pattern;
+}
+
 /** Clamp an octave into the range TC 1 sweeps. */
 export function setOctave(pattern, octave) {
   pattern.octave = Math.min(Math.max(Math.round(octave), OCTAVE_RANGE.min), OCTAVE_RANGE.max);

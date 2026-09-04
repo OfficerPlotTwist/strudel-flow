@@ -32,6 +32,7 @@ import {
   addSegment,
   createPattern,
   makeActiveEmpty,
+  parsePattern,
   patternBlock,
   setOctave,
   setRepeats,
@@ -559,31 +560,34 @@ function heldStep() {
   return stepIndex(activeColumn, heldUpper.has(activeColumn));
 }
 
-/**
- * Write the pattern into the document.
- *
- * A block this mode built before is edited in place; anything else gets a NEW
- * block after it. Stepping a pattern must never eat a part that was already
- * there - the cursor block says WHERE, not what to overwrite.
- */
+/** Write the pattern over the block being edited. */
 function writePattern() {
-  const { tabId, pattern } = patternMode;
-  const text = patternBlock(pattern);
-  if (patternMode.blockIndex === null) {
-    pane.appendBlock(tabId, text);
-    patternMode.blockIndex = pane.getBlockCount(tabId) - 1;
-  } else {
-    pane.replaceBlockText(tabId, patternMode.blockIndex, text);
-  }
-  pane.selectBlocks(tabId, [patternMode.blockIndex]);
+  const { tabId, pattern, blockIndex } = patternMode;
+  pane.replaceBlockText(tabId, blockIndex, patternBlock(pattern));
+  pane.selectBlocks(tabId, [blockIndex]);
 }
 
+/**
+ * Start stepping into the highlighted block, in place.
+ *
+ * A block this mode already wrote is READ BACK first, so re-entering to add a
+ * note continues the pattern instead of replacing it with an empty bar -
+ * without that, "edit in place" would quietly mean "in place of". A block that
+ * is not one of ours cannot be round-tripped and is started fresh; the mode
+ * says so rather than appearing to have parsed something it did not.
+ */
 function enterPatternMode() {
   const id = pane.getViewedId();
-  if (!id) return;
-  patternMode = { pattern: createPattern(), blockIndex: null, tabId: id };
+  const index = cursorBlockIndex();
+  if (!id || index === null) return;
+  const existing = parsePattern(pane.getBlockAt(id, index)?.text ?? '');
+  patternMode = { pattern: existing ?? createPattern(), blockIndex: index, tabId: id };
   paintPatternLeds(true);
-  status.info('pattern build: hold a step, press a degree. REC to exit.');
+  status.info(
+    existing
+      ? `pattern build: continuing ${existing.segments.length} segment(s). REC to exit.`
+      : 'pattern build: hold a step, press a degree. REC to exit.',
+  );
 }
 
 function exitPatternMode() {
