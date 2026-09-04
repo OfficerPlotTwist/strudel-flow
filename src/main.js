@@ -111,7 +111,7 @@ const panel = createLibraryPanel(document.getElementById('library-pane'), {
       // A whole pattern goes in as its own block. Splicing it at the caret is
       // how the library used to produce syntax errors on every insert that
       // did not happen to land on a blank line.
-      pane.insertAsBlock(code);
+      focusNewBlock(pane.getViewedId(), pane.insertAsBlock(code));
     } else {
       // A fragment (.gain(0.5), s("bd")) is meant to chain onto what is
       // already under the caret, so it goes exactly where the caret is.
@@ -162,6 +162,24 @@ const currentTabHolds = () => tabHoldBindings(pane.getTabs(), tabHoldOverrides);
 // private set beside it. That is what lets the play/stop buttons, the rip
 // keys and Ctrl+M all act on what the knob chose without knowing it exists.
 const blockCursor = createBlockCursor();
+
+/**
+ * Put the block cursor on a block that has just been created.
+ *
+ * The selection and the block cursor are two different things: selecting a
+ * block shows it, but the cue encoder keeps its own position, so without this
+ * the next turn of the encoder jumps back to wherever it was and drags the
+ * eight knobs with it. A block that was just made is where attention is, and
+ * the cursor has to agree.
+ *
+ * Pins are left alone - they were deliberate, and a new block should join the
+ * selection rather than clear it.
+ */
+function focusNewBlock(id, index) {
+  if (index === null || index === undefined || index < 0) return;
+  blockCursor.moveTo(index);
+  showBlockSelection();
+}
 
 /** Push the cursor's choice into the editor, so it is visible and actionable. */
 function showBlockSelection() {
@@ -405,8 +423,8 @@ function addPickToBlock() {
   }
 
   if (building.blockIndex === null) {
-    pane.appendBlock(id, `${pick.code.trim()}${BUILT_ADSR}`);
-    building.blockIndex = pane.getBlockCount(id) - 1;
+    building.blockIndex = pane.appendBlock(id, `${pick.code.trim()}${BUILT_ADSR}`);
+    focusNewBlock(id, building.blockIndex);
     selectBuilt();
     status.info(`build: ${pick.name}`);
     return;
@@ -418,8 +436,8 @@ function addPickToBlock() {
   if (separate) {
     // Not a rejection - a melody and a drum part are two parts however they
     // were picked, and the new one becomes the block now being built.
-    pane.appendBlock(id, `${text}${BUILT_ADSR}`);
-    building.blockIndex = pane.getBlockCount(id) - 1;
+    building.blockIndex = pane.appendBlock(id, `${text}${BUILT_ADSR}`);
+    focusNewBlock(id, building.blockIndex);
   } else {
     pane.replaceBlockText(id, building.blockIndex, text);
   }

@@ -41,6 +41,24 @@ export function createBlockCursor() {
     },
 
     /**
+     * Put the cursor on a specific block.
+     *
+     * Stepping is the encoder's job; this is for the moments when the app
+     * already knows where attention belongs - a block that has just been
+     * created is the obvious one. Without it the cursor stays wherever it was
+     * and the next turn of the encoder jumps back to a block nobody is looking
+     * at, taking the knobs with it.
+     *
+     * Out-of-range indexes are ignored rather than clamped: a caller that
+     * miscounted should not silently move the cursor somewhere arbitrary.
+     */
+    moveTo(index) {
+      if (!Number.isInteger(index) || index < 0) return cursor;
+      cursor = index;
+      return cursor;
+    },
+
+    /**
      * Pin the block under the cursor, or let go of it if it was already
      * pinned. Toggling rather than only adding: a pin that could not be undone
      * would make one mis-press cost the whole selection.

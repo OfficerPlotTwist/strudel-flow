@@ -298,6 +298,9 @@ export function createEditorPane(container) {
         selection: { anchor: from + 2 },
       });
       view.focus();
+      // Where it landed, so the block cursor can follow it there.
+      const after = view.state.doc.toString().split('\n');
+      return listBlocks(after).findIndex((b) => b.start === anchorLine + 2);
     },
     /**
      * Toggles every block the selection touches. With no selection this is
@@ -541,10 +544,13 @@ export function createEditorPane(container) {
     /** Append `text` as its own block at the end of a tab - the landing site of a rip. */
     appendBlock(id, text) {
       const tab = tabs.get(id);
-      if (!tab) return;
+      if (!tab) return null;
       const doc = tab.view.state.doc;
       const insert = doc.length === 0 ? text : `\n\n${text}`;
       tab.view.dispatch({ changes: { from: doc.length, insert } });
+      // The index it landed at, so the caller can put the cursor on it. Read
+      // after the dispatch, because that is when the block exists.
+      return listBlocks(tab.view.state.doc.toString().split('\n')).length - 1;
     },
     /**
      * The paper rip: the doomed lines curl, fold along their middle, and drop
