@@ -12,6 +12,7 @@ import { createDeviceMap } from './device-map.js';
 import { createRelativeBank } from './relative.js';
 import { createBlockCursor, createStepper } from './browse.js';
 import { createAudition } from './audition.js';
+import { crossfaderCycles } from './arm.js';
 import { createExplainerWindow } from './ui/explainer-window.js';
 import { createActions } from './actions.js';
 import {
@@ -154,13 +155,14 @@ const relative = createRelativeBank({
 // messages instead, with the remainder carried rather than dropped so a slow
 // turn still arrives.
 //
-// The two track-control knobs are divided harder than the cue encoder. They
-// are absolute pots made relative in software (see relative.js), so every
-// physical step of the pot is a message, where the cue encoder's firmware
-// already puts turn speed in the magnitude - which this layer discards. The
-// same divisor therefore travels visibly further on the knobs.
+// Kept as two names rather than one constant because they are not the same
+// control: the knobs are absolute pots made relative in software (see
+// relative.js), so every physical step of the pot is a message, while the cue
+// encoder's firmware puts turn speed in the magnitude - which this layer
+// discards by taking only the sign. They happen to want the same divisor now;
+// they have already wanted different ones once.
 const KNOB_DIVISOR = 4;
-const CUE_DIVISOR = 2;
+const CUE_DIVISOR = 4;
 
 const steppers = {
   'apc40.trackctl.knob7': createStepper(KNOB_DIVISOR),
@@ -377,7 +379,13 @@ showBootScreen(
         // every existing note:/cc: binding still works, and still catches
         // surfaces this app has no map for.
         const control = device.resolve(data);
-        if (control?.name === 'apc40.global.crossfader') crossfader = control.value;
+        if (control?.name === 'apc40.global.crossfader') {
+          crossfader = control.value;
+          // Show the figure on the selection as the fader moves, so the
+          // countdown is readable before the button is pressed rather than
+          // only reported after it.
+          pane.setCycleCount(crossfaderCycles(crossfader));
+        }
         if (control && captureControl(control)) return;
         // Navigation before bindings: these controls carry a delta and are
         // owned by the browser layer, so a stray note:/cc: binding on the same

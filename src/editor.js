@@ -6,6 +6,7 @@ import { highlightExtension, highlightMiniLocations, updateMiniLocations } from 
 import { findBlock, findBlocksInRange, listBlocks, toggleBlocksComment } from './blocks.js';
 import { crtTheme } from './crt-theme.js';
 import { functionColorExtension, functionColorTheme } from './ui/function-colors.js';
+import { cycleBadgeExtension, setCycleCount } from './ui/cycle-badge.js';
 
 export function createEditorPane(container) {
   const tabs = new Map(); // id -> { id, name, view, wrapper, bar }
@@ -107,6 +108,7 @@ export function createEditorPane(container) {
           // extension's inline style is what survives on a function name.
           functionColorExtension,
           functionColorTheme,
+          cycleBadgeExtension,
           EditorView.lineWrapping,
           highlightExtension,
           // Caret and text changes both matter to the explainer: one changes
@@ -307,6 +309,16 @@ export function createEditorPane(container) {
         }
       }
       return [...found.values()].sort((a, b) => a.start - b.start);
+    },
+    /**
+     * The countdown shown on every highlighted block. Pushed to every tab, not
+     * just the visible one: the crossfader is a global control, and a tab
+     * switched to later would otherwise show a stale figure until it moved.
+     */
+    setCycleCount(count) {
+      for (const tab of tabs.values()) {
+        tab.view.dispatch({ effects: setCycleCount.of(count) });
+      }
     },
     /** How many blocks the tab holds - what the block cursor counts against. */
     getBlockCount(id) {

@@ -358,3 +358,18 @@ main {
   outline: 1px solid var(--phosphor);
   outline-offset: -1px;
 }
+
+/* The armed-countdown readout on a highlighted block. Negative space: the
+   selection is already a light wash, so the badge inverts it instead of
+   introducing a third colour. */
+.cm-cycle-badge {
+  display: inline-block;
+  margin-left: 0.6ch;
+  padding: 0 0.5ch;
+  background: var(--phosphor);
+  color: var(--bg);
+  border-radius: 2px;
+  font-size: 0.85em;
+  user-select: none;
+  vertical-align: baseline;
+}
