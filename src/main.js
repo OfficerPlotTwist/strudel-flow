@@ -30,7 +30,7 @@ import {
   callText,
   findNumericArgs,
 } from './args.js';
-import { busSizeSpan, ensureBus } from './bus.js';
+import { busSizeSpan, ensureBus, hasBus } from './bus.js';
 import {
   BPM_RANGE,
   RAMP_RANGE,
@@ -93,7 +93,11 @@ initEngine({
   onError: (msg) => status.error(msg),
   onDraw: (haps, time) => pane.highlight(haps, time),
 });
-const first = pane.addTab('song-1', '$: s("bd sd")\n\n$: note("<c a f e>(3,8)")');
+// An empty sheet. The app opens on a song holding nothing but its reverb bus
+// (addTab adds that), because the first thing a performer does is decide what
+// goes there - and demo content is something to delete before you can start,
+// every single launch.
+const first = pane.addTab('song-1', '');
 
 // Everything that reaches the parser goes through `live`: it composes the
 // active tab with whatever blocks and tabs are being held down right now.
@@ -393,6 +397,9 @@ let monitorChannels = DEFAULT_MONITOR_CHANNELS;
  */
 const BUILT_ADSR = '.adsr(0.01, 0.1, 0.6, 0.2)';
 
+/** The block a pattern is stepped into when there is nowhere else to put it. */
+const PATTERN_SEED = '$: n("~")';
+
 /** Put the block being built under the knobs and on screen. */
 function selectBuilt() {
   if (!building || building.blockIndex === null) return;
@@ -621,7 +628,18 @@ function enterPatternMode() {
   const id = pane.getViewedId();
   const index = cursorBlockIndex();
   if (!id || index === null) return;
-  const text = pane.getBlockAt(id, index)?.text ?? '';
+  let target = index;
+  let text = pane.getBlockAt(id, target)?.text ?? '';
+
+  // The reverb bus is not a part and must never be stepped over. On an empty
+  // sheet it is the ONLY block, so it is also what the cursor lands on - and
+  // editing in place would have made the first pattern of every new song
+  // delete that song's reverb.
+  if (hasBus(text)) {
+    target = pane.appendBlock(id, PATTERN_SEED);
+    focusNewBlock(id, target);
+    text = '';
+  }
 
   // A block this mode wrote is read back whole. Anything else - most usefully
   // the `s("piano")` that SEND B just put there - keeps its voice and its
@@ -631,7 +649,7 @@ function enterPatternMode() {
   const pattern = existing ?? createPattern(songKey(pane.getCode(id)) ?? undefined);
   if (!existing) pattern.suffix = blockSuffix(text);
 
-  patternMode = { pattern, blockIndex: index, tabId: id };
+  patternMode = { pattern, blockIndex: target, tabId: id };
   paintPatternLeds(true);
   // The key is stated on entry rather than assumed. "Pre-determined" has to
   // mean determined by something, and every degree stepped from here means

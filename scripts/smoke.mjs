@@ -219,6 +219,12 @@ await step('Get Got is seeded as a song, not a snippet', async () => {
 console.log('rip keys');
 await step('F6 fades the selection out and parks it in a bottom-bar tab', async () => {
   await page.click('.cm-content');
+  // The app opens on an empty sheet now, so this brings the material it
+  // intends to rip rather than relying on demo content being there.
+  await page.keyboard.press('Control+Home');
+  await page.keyboard.type('$: s("bd sd")');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(300);
   await page.keyboard.press('Control+a');
   const before = await page.locator('.cm-content:visible').innerText();
   await page.keyboard.press('F6');
