@@ -403,3 +403,14 @@ main {
   box-shadow: inset 2px 0 0 0 var(--phosphor);
   transition: padding-left 90ms linear;
 }
+
+/*
+ * The function TC 6 is on. An outline rather than a fill: the function already
+ * carries its own colour (see ui/function-colors.js), and painting over it
+ * would lose the one cue that says what kind of function it is.
+ */
+.cm-browsed-fn {
+  outline: 1px solid var(--phosphor);
+  outline-offset: 1px;
+  border-radius: 2px;
+}

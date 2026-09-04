@@ -24,6 +24,7 @@ import {
   findNumericArgs,
 } from './args.js';
 import { busSizeSpan, ensureBus } from './bus.js';
+import { blockFunctions, replacementFor, stepFunction } from './fn-browse.js';
 import { createArgKnobs, deviceKnobIndex } from './arg-knobs.js';
 import { addToBlock, classifyItem, setupLine } from './build.js';
 import { DEFAULT_MONITOR_CHANNELS, splitStatus, toMonitor } from './monitor.js';
@@ -293,6 +294,16 @@ function refreshArgMap() {
   ];
   pane.setArgMap(id, ranges);
   pane.setCursorBlock(id, block.index);
+
+  // TC 6 holds an INDEX into this block's functions, so moving to a different
+  // block invalidates it - the fourth function of another part is a different
+  // word. Reset rather than carry it over, which would outline something the
+  // knob was never turned to.
+  if (browsedBlock !== `${id}:${block.index}`) {
+    browsedBlock = `${id}:${block.index}`;
+    browsedFn = null;
+    pane.setBrowsedFn(id, null);
+  }
 }
 
 // ---- building a block from the library ------------------------------------
@@ -422,6 +433,74 @@ live.setMonitor(() => {
   return { tabId: building.tabId, blockIndex: building.blockIndex, wrap: (text) => toMonitor(text, monitorChannels) };
 });
 
+/**
+ * Which function of the cursor block TC 6 is on, by index, or null.
+ *
+ * Kept as an index rather than a span because the block is being edited
+ * underneath it - a knob write changes offsets on every message - and the
+ * fourth function is still the fourth function afterwards.
+ */
+let browsedFn = null;
+/** Which block that index belongs to, so it is dropped when the block changes. */
+let browsedBlock = null;
+
+/** The functions of the block the knobs are on, in source order. */
+function cursorBlockFunctions() {
+  const id = pane.getViewedId();
+  const index = id ? cursorBlockIndex() : null;
+  const block = index === null ? null : pane.getBlockAt(id, index);
+  return block ? blockFunctions(block.text, block.from) : [];
+}
+
+/**
+ * Move TC 6 through the block's functions.
+ *
+ * Selecting a function also tabs the library to the list that can answer it -
+ * a sample call wants a sound, an effect wants another effect - so the pick
+ * and the thing being replaced cannot get out of step. That is the whole
+ * reason the tab switch lives here and not under the user's thumb.
+ */
+function moveBrowsedFn(steps) {
+  const fns = cursorBlockFunctions();
+  const next = stepFunction(browsedFn ?? -1, steps, fns.length);
+  if (next === null) {
+    status.info('no functions in this block');
+    return;
+  }
+  browsedFn = next;
+  const fn = fns[next];
+  panel.showTab(fn.tab);
+  pane.setBrowsedFn(pane.getViewedId(), { from: fn.from, to: fn.to });
+  status.info(`${fn.name}(${fn.arg}) - ${fn.replaces} from ${fn.tab}`);
+}
+
+/**
+ * Replace the browsed function, or its argument, with the library pick.
+ *
+ * Which of the two is not a mode: an effect swaps its NAME and keeps its
+ * number, because 400 is a cutoff whichever filter reads it; a sample call
+ * swaps its ARGUMENT and keeps the call, because `s(...)` is still what plays
+ * it. Both are the same gesture, and the function decides.
+ */
+function replaceBrowsedFn() {
+  const id = pane.getViewedId();
+  const fns = cursorBlockFunctions();
+  const fn = browsedFn === null ? null : fns[browsedFn];
+  const pick = panel.getHighlighted();
+  const edit = replacementFor(fn, pick);
+  if (!edit) {
+    status.info(
+      fn && pick ? `${pick.name} cannot replace ${fn.name}` : 'nothing browsed to replace',
+    );
+    return;
+  }
+  pane.replaceRange(id, edit.from, edit.to, edit.text);
+  status.info(`${fn.name}: ${edit.text}`);
+  // Offsets moved, so re-point the outline at the same function by index.
+  const moved = cursorBlockFunctions()[browsedFn];
+  pane.setBrowsedFn(id, moved ? { from: moved.from, to: moved.to } : null);
+}
+
 // The caret moving changes WHICH block is addressed; an edit changes what its
 // numbers are. Both land here, and both are what keeps the knobs and the
 // annotation pointing at the code actually on screen.
@@ -456,9 +535,13 @@ setInterval(() => audition.tick(), 20);
 // is selected, and a browse control that changed meaning with the selection
 // would be unusable.
 const relative = createRelativeBank({
-  knobs: ['apc40.trackctl.knob7', 'apc40.trackctl.knob8'],
+  knobs: ['apc40.trackctl.knob6', 'apc40.trackctl.knob7', 'apc40.trackctl.knob8'],
   send: (name, value) => {
-    const control = { 'apc40.trackctl.knob7': 54, 'apc40.trackctl.knob8': 55 }[name];
+    const control = {
+      'apc40.trackctl.knob6': 53,
+      'apc40.trackctl.knob7': 54,
+      'apc40.trackctl.knob8': 55,
+    }[name];
     if (control) sendCC(device.outPort, 0, control, value);
   },
 });
@@ -483,6 +566,7 @@ const CUE_DIVISOR = 4;
 const deleteGate = createTapGate({ taps: 3, windowMs: 600 });
 
 const steppers = {
+  'apc40.trackctl.knob6': createStepper(KNOB_DIVISOR),
   'apc40.trackctl.knob7': createStepper(KNOB_DIVISOR),
   'apc40.trackctl.knob8': createStepper(KNOB_DIVISOR),
   'apc40.global.cue_level': createStepper(CUE_DIVISOR),
@@ -499,7 +583,12 @@ function navigate(control) {
     if (turn.delta === 0) return true;
     const steps = steppers[turn.name].feed(Math.sign(turn.delta));
     if (steps === 0) return true;
-    // knob7 walks the category headings, knob8 the rows inside one.
+    // knob6 walks the functions of the block under the block cursor; knob7
+    // walks the library's category headings, knob8 the rows inside one.
+    if (turn.name === 'apc40.trackctl.knob6') {
+      moveBrowsedFn(steps);
+      return true;
+    }
     const label =
       turn.name === 'apc40.trackctl.knob7'
         ? panel.moveCategory(steps)
@@ -585,6 +674,13 @@ function navigate(control) {
       setBuilding(!building);
       return true;
     case 'apc40.global.tap_tempo':
+      // A browsed function wins over build mode: TC 6 was turned more
+      // recently than SEND B was latched, so it is the more specific
+      // statement of what this press is for.
+      if (browsedFn !== null) {
+        replaceBrowsedFn();
+        return true;
+      }
       if (!building) return false; // outside build mode it is not ours
       addPickToBlock();
       return true;

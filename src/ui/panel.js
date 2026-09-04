@@ -471,6 +471,25 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
   return {
     refresh,
     saveEntry,
+    /**
+     * Show a named tab, without moving the browse cursor if it is already
+     * there.
+     *
+     * Used when the function under the block cursor decides which list can
+     * answer it. Preserving the cursor matters: scrolling the block's
+     * functions past two sample calls in a row must not keep resetting the
+     * sound you had picked out.
+     */
+    showTab(next) {
+      if (!TABS.includes(next) || next === kind) return kind;
+      kind = next;
+      browseKey = null;
+      browseCategory = null;
+      refresh();
+      return kind;
+    },
+    /** Which tab is showing. */
+    getTab: () => kind,
     /** Cycle which library tab is showing. Driven by nudge - / nudge +. */
     moveTab(delta) {
       kind = TABS[wrapIndex(TABS.indexOf(kind), delta, TABS.length)];

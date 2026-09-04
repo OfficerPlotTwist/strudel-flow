@@ -10,6 +10,7 @@ import { functionColorExtension, functionColorTheme } from './ui/function-colors
 import { cycleBadgeExtension, setCycleCount } from './ui/cycle-badge.js';
 import { argMapExtension, setArgMap } from './ui/arg-map.js';
 import { cursorBlockExtension, setCursorBlock } from './ui/cursor-block.js';
+import { browsedFnExtension, setBrowsedFn } from './ui/browsed-fn.js';
 
 export function createEditorPane(container) {
   const tabs = new Map(); // id -> { id, name, view, wrapper, bar }
@@ -119,6 +120,7 @@ export function createEditorPane(container) {
           cycleBadgeExtension,
           argMapExtension,
           cursorBlockExtension,
+          browsedFnExtension,
           EditorView.lineWrapping,
           highlightExtension,
           // Caret and text changes both matter to the explainer: one changes
@@ -448,6 +450,12 @@ export function createEditorPane(container) {
       const from = doc.line(block.start + 1).from;
       const to = doc.line(block.end + 1).to;
       return { ...block, index, from, to, text: doc.sliceString(from, to) };
+    },
+    /** Outline the function TC 6 is on, or clear with null. */
+    setBrowsedFn(id, span) {
+      const tab = tabs.get(id);
+      if (!tab) return;
+      tab.view.dispatch({ effects: setBrowsedFn.of(span ?? null) });
     },
     /** How many blocks the tab holds - what the block cursor counts against. */
     getBlockCount(id) {
