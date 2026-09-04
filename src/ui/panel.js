@@ -433,10 +433,16 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
     for (const row of rows) {
       const heading = row.querySelector('.lib-func-cat-btn, .lib-cat-btn');
       if (heading) {
-        out.push({ category: heading.textContent.replace(/^[^a-z]*/i, '').trim(), items: [] });
+        out.push({
+          category: heading.textContent.replace(/^[^a-z]*/i, '').trim(),
+          // The heading row, not the button inside it - that is the thing to
+          // put against the top edge when this category is stepped to.
+          row,
+          items: [],
+        });
       } else if (row.dataset.browseKey !== undefined) {
         // A list with no headings at all (SOUNDS) is one nameless section.
-        if (out.length === 0) out.push({ category: null, items: [] });
+        if (out.length === 0) out.push({ category: null, row: null, items: [] });
         out[out.length - 1].items.push(row);
       }
     }
@@ -452,13 +458,13 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
     return byKey === -1 ? 0 : byKey;
   }
 
-  function show(item) {
+  function show(item, { scroll = true } = {}) {
     browseKey = item.dataset.browseKey;
     item.classList.add('browse-cursor');
     for (const other of container.querySelectorAll('.browse-cursor')) {
       if (other !== item) other.classList.remove('browse-cursor');
     }
-    item.scrollIntoView({ block: 'nearest' });
+    if (scroll) item.scrollIntoView({ block: 'nearest' });
     return item.querySelector('.lib-name')?.textContent ?? browseKey;
   }
 
@@ -479,7 +485,12 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
       if (list.length === 0) return null;
       const next = list[wrapIndex(currentSectionIndex(list), delta, list.length)];
       browseCategory = next.category;
-      show(next.items[0]);
+      // The cursor lands on the first entry, but the HEADING is what goes to
+      // the top edge: stepping to a category should show the whole category,
+      // and 'nearest' on its first row leaves the heading off-screen above
+      // whenever you arrive from below.
+      show(next.items[0], { scroll: false });
+      (next.row ?? next.items[0]).scrollIntoView({ block: 'start' });
       return next.category ?? kind;
     },
     /** Step to another entry inside the category the cursor is in. */

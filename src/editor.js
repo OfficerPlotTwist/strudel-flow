@@ -1,6 +1,6 @@
 import { javascript } from '@codemirror/lang-javascript';
 import { EditorSelection, EditorState, Prec } from '@codemirror/state';
-import { EditorView, keymap, lineNumbers } from '@codemirror/view';
+import { EditorView, drawSelection, keymap, lineNumbers } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { highlightExtension, highlightMiniLocations, updateMiniLocations } from '@strudel/codemirror';
 import { findBlock, findBlocksInRange, listBlocks, toggleBlocksComment } from './blocks.js';
@@ -79,6 +79,12 @@ export function createEditorPane(container) {
           // main range - so pinning two blocks from the control surface would
           // select the second and quietly drop the first.
           EditorState.allowMultipleSelections.of(true),
+          // Without this CodeMirror leaves selection drawing to the browser,
+          // and the native selection can only show ONE range - so a block
+          // chosen with the cue encoder was genuinely selected and simply not
+          // drawn. It also generates .cm-selectionBackground, which crt-theme
+          // has been styling all along with nothing to apply it to.
+          drawSelection(),
           history(),
           keymap.of([...defaultKeymap, ...historyKeymap]),
           // Ctrl+Enter and Ctrl+i are claimed by our global trigger map
