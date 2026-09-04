@@ -65,6 +65,11 @@ export function armTarget(pressCycle, cycles) {
  * does it: a plain `.gain()` at the end of a chain replaces whatever gain the
  * block set for itself, so a quiet part would jump to full volume on arming.
  */
+function armChainFor(action, period, phase) {
+  const steps = action === 'stop' ? '1 0' : '0 1';
+  return `.mul(gain("${steps}".slow(${period}).late(${phase.toFixed(4)})))`;
+}
+
 export function armChain(action, pressCycle, targetCycle) {
   const wait = targetCycle - pressCycle;
   if (wait <= 0) return '';
@@ -76,8 +81,88 @@ export function armChain(action, pressCycle, targetCycle) {
   const half = Math.max(2, Math.ceil(wait));
   const period = half * 2;
   const phase = (((targetCycle - half) % period) + period) % period;
-  const steps = action === 'stop' ? '1 0' : '0 1';
-  return `.mul(gain("${steps}".slow(${period}).late(${phase.toFixed(4)})))`;
+  return armChainFor(action, period, phase);
+}
+
+/**
+ * Could this block's first line begin a statement?
+ *
+ * `isFadeable` asks whether a block makes SOUND, and answers by rejecting a
+ * short list of statement keywords. That is not the same question as whether
+ * the text is code at all, and the difference is not academic: a play target
+ * is judged on its UNCOMMENTED text, so a block of prose comments - a header,
+ * a paragraph of transcription notes - uncomments into
+ * `===========` and `GET GOT -- Death Grips (The Money Store, 2012)`, sails
+ * past every keyword check, and is handed to the parser as source. That is
+ * where "unexpected token" came from on playing a block of the Get Got song.
+ *
+ * Only the first non-blank line is tested, because continuation lines of a
+ * chain legitimately start with a dot.
+ */
+function looksLikeCode(lines, block) {
+  for (let i = block.start; i <= block.end; i += 1) {
+    const trimmed = lines[i].trim();
+    if (!trimmed) continue;
+    return (
+      // `$: pattern` or `name: pattern`
+      /^(\$|[A-Za-z_$][\w$]*)\s*:/.test(trimmed) ||
+      // a definition the rest of the song refers to
+      /^(const|let|var|function)\s/.test(trimmed) ||
+      // a bare call - `s("bd")`, `stack(`
+      /^[A-Za-z_$][\w$]*\s*\(/.test(trimmed)
+    );
+  }
+  return false;
+}
+
+/** A chain of the same shape as any real one, for the parse check below. */
+const SPECIMEN_CHAIN = armChainFor('play', 4, 0);
+
+/**
+ * The line the gate is appended to: the block's last line that is not a
+ * comment.
+ *
+ * Not simply `block.end`. A block often ends with a trailing note - a comment
+ * explaining the part - and a chain appended after that lands INSIDE the
+ * comment, where it parses cleanly and does nothing at all. Refusing to arm
+ * such a block would be worse than the bug; attaching to the code above it is
+ * what the author meant.
+ */
+export function attachLine(lines, block) {
+  for (let i = block.end; i >= block.start; i -= 1) {
+    const trimmed = lines[i].trim();
+    if (trimmed && !trimmed.startsWith('//')) return i;
+  }
+  return block.end;
+}
+
+/**
+ * Would appending the gate to this block still parse?
+ *
+ * `looksLikeCode` catches prose. This catches everything else - a block left
+ * mid-expression, on a dangling comma, or otherwise unable to accept a method
+ * call - without having to enumerate the shapes in advance. There is no
+ * general rule saying the attach line can take a `.mul(...)`, so the honest
+ * test is to try it.
+ *
+ * `$:` and bare `name:` labels are Strudel's, not JavaScript's, so they are
+ * rewritten to assignments before parsing. Undefined identifiers are fine:
+ * `new Function` compiles, it does not run, so a block referring to a `const`
+ * defined elsewhere in the song still parses on its own.
+ */
+function chainParses(lines, block) {
+  const text = lines
+    .slice(block.start, attachLine(lines, block) + 1)
+    .join('\n')
+    .replace(/^(\s*)\$:/gm, '$1const _armProbe =')
+    .replace(/^(\s*)([A-Za-z_$][\w$]*):(?!\/)/gm, '$1const $2 =');
+  try {
+    // eslint-disable-next-line no-new-func
+    new Function(`${text}${SPECIMEN_CHAIN}`);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -99,7 +184,11 @@ export function armable(lines, blocks, action) {
     // with its markers removed. Judging the commented form instead would
     // reject every block the play button exists to start.
     const rendered = stopped ? uncommentForPlayback(lines, [block]) : lines;
-    return isFadeable(rendered, block);
+    return (
+      looksLikeCode(rendered, block) &&
+      isFadeable(rendered, block) &&
+      chainParses(rendered, block)
+    );
   });
 }
 
@@ -116,7 +205,7 @@ export function applyArm(lines, blocks, action, pressCycle, targetCycle) {
   const edits = [];
   // Offsets are computed on the ORIGINAL line lengths and corrected by the
   // insertions already made above them, so the walk stays single-pass.
-  const byLine = new Map(blocks.map((b) => [b.end, b]));
+  const byLine = new Map(blocks.map((b) => [attachLine(lines, b), b]));
   let inserted = 0;
   let offset = 0;
   for (let i = 0; i < next.length; i += 1) {

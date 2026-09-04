@@ -165,3 +165,76 @@ describe('applyArm', () => {
     expect(out.filter((line, i) => line !== SONG[i]).length).toBe(1);
   });
 });
+
+describe('armable rejects text that is not code', () => {
+  const prose = lines(
+    [
+      '// ==============================================',
+      '//  GET GOT  --  Death Grips (The Money Store, 2012)',
+      '//  1 cycle = 1 bar.  Ctrl+Enter to play.',
+      '// ==============================================',
+    ].join('\n'),
+  );
+
+  it('will not play a block of prose comments', () => {
+    // Uncommenting this gives "=====" and "GET GOT -- Death Grips (...)",
+    // which reaches the parser as source and throws "unexpected token".
+    expect(armable(prose, [blockAt(prose, 0)], 'play')).toEqual([]);
+  });
+
+  it('still plays a commented-out pattern', () => {
+    const muted = lines('// $: s("bd sd")');
+    expect(armable(muted, [blockAt(muted, 0)], 'play')).toHaveLength(1);
+  });
+
+  it('still plays a commented-out definition', () => {
+    const muted = lines('// const kick = s("bd")\n//   .gain(1.2)');
+    expect(armable(muted, [blockAt(muted, 0)], 'play')).toHaveLength(1);
+  });
+
+  it('still plays a commented-out bare call', () => {
+    const muted = lines('// s("bd sd").fast(2)');
+    expect(armable(muted, [blockAt(muted, 0)], 'play')).toHaveLength(1);
+  });
+
+  it('judges the first real line, not a chain continuation', () => {
+    const muted = lines('// $: s("bd")\n//   .fast(2)\n//   .room(0.3)');
+    expect(armable(muted, [blockAt(muted, 0)], 'play')).toHaveLength(1);
+  });
+});
+
+describe('armable rejects blocks the gate cannot attach to', () => {
+  it('attaches the gate above a trailing comment, not after it', () => {
+    // After the comment the chain parses cleanly and does nothing at all,
+    // because it is inside the comment. The block is still perfectly
+    // armable - it is ordinary code with a note attached - so the gate goes
+    // on the code instead of the block being refused.
+    const song = lines('$: s("bd")\n  .fast(2)\n  // why this is here');
+    expect(armable(song, [blockAt(song, 0)], 'stop')).toHaveLength(1);
+    const { lines: out } = applyArm(song, [blockAt(song, 0)], 'stop', 0, 2);
+    expect(out[1]).toContain('.mul(gain(');
+    expect(out[2]).toBe('  // why this is here');
+  });
+
+  it('will not arm a block left mid-expression', () => {
+    const song = lines('$: stack(\n  s("bd"),');
+    expect(armable(song, [blockAt(song, 0)], 'stop')).toEqual([]);
+  });
+
+  it('still arms an ordinary multi-line chain', () => {
+    const song = lines('$: s("bd")\n  .fast(2)\n  .room(0.3)');
+    expect(armable(song, [blockAt(song, 0)], 'stop')).toHaveLength(1);
+  });
+
+  it('still arms a block that closes a multi-line call', () => {
+    const song = lines('$: stack(\n  s("bd"),\n  s("sd")\n)');
+    expect(armable(song, [blockAt(song, 0)], 'stop')).toHaveLength(1);
+  });
+
+  it('still arms a block referring to a name defined elsewhere', () => {
+    // new Function compiles, it does not run - an undefined identifier is
+    // not a syntax error and must not disqualify the block.
+    const song = lines('$: stack(kick, snare).gain(0.8)');
+    expect(armable(song, [blockAt(song, 0)], 'stop')).toHaveLength(1);
+  });
+});
