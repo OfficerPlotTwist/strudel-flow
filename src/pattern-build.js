@@ -204,6 +204,43 @@ export function songKey(code) {
   return { key, mode, octave: Number(first[2] ?? 4) };
 }
 
+/**
+ * The twelve keys in circle-of-fifths order.
+ *
+ * Fifths rather than chromatic because that is the order keys are actually
+ * NEAR each other in: one step changes a single note of the scale, so a turn
+ * of the knob moves somewhere the current material still fits. Stepping
+ * chromatically would put the most distant key one click away.
+ *
+ * Spelled with the accidental each key is normally written with - F# rather
+ * than Gb going up, Eb rather than D# coming down - because the name is what
+ * appears in the source and is read back by songKey.
+ */
+export const CIRCLE_OF_FIFTHS = ['c', 'g', 'd', 'a', 'e', 'b', 'f#', 'c#', 'g#', 'd#', 'a#', 'f'];
+
+/** Step `steps` places round the circle from `key`, wrapping. */
+export function nextKey(key, steps) {
+  const at = CIRCLE_OF_FIFTHS.indexOf((key ?? 'c').toLowerCase());
+  const from = at === -1 ? 0 : at;
+  const size = CIRCLE_OF_FIFTHS.length;
+  return CIRCLE_OF_FIFTHS[(((from + steps) % size) + size) % size];
+}
+
+/**
+ * Re-key an entire song.
+ *
+ * The key is a property of the SONG, not of a block: two blocks in different
+ * keys is not a modulation, it is a mistake nobody typed on purpose. So this
+ * rewrites every scale declaration at once, and keeps each block's own octave
+ * and mode - register and mode are per-part choices, and a re-key that
+ * flattened them would silently rewrite the arrangement.
+ */
+export function setSongKey(code, key) {
+  return (code ?? '').replace(SCALE_CALL_G, (whole, tonic, octave, mode) =>
+    whole.replace(`"${tonic}${octave ?? ''}:${mode}"`, `"${key}${octave ?? ''}:${mode}"`),
+  );
+}
+
 /** How the key reads on the status strip: "D minor, octave 3". */
 export function describeKey(pattern) {
   return pattern.key.toUpperCase() + ' ' + pattern.mode + ', octave ' + pattern.octave;

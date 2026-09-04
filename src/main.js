@@ -24,6 +24,7 @@ import {
   findNumericArgs,
 } from './args.js';
 import { busSizeSpan, ensureBus } from './bus.js';
+import { BPM_RANGE, clampBpm, setSongBpm, songBpm } from './tempo.js';
 import { blockFunctions, replacementFor, stepFunction } from './fn-browse.js';
 import {
   COLUMNS,
@@ -32,6 +33,7 @@ import {
   addSegment,
   blockSuffix,
   createPattern,
+  nextKey,
   describeKey,
   makeActiveEmpty,
   parsePattern,
@@ -39,6 +41,7 @@ import {
   setOctave,
   setRepeats,
   setRest,
+  setSongKey,
   setStep,
   songKey,
   stepIndex,
@@ -729,6 +732,8 @@ setInterval(() => audition.tick(), 20);
 const relative = createRelativeBank({
   knobs: [
     'apc40.trackctl.knob1',
+    'apc40.trackctl.knob3',
+    'apc40.trackctl.knob4',
     'apc40.trackctl.knob6',
     'apc40.trackctl.knob7',
     'apc40.trackctl.knob8',
@@ -736,6 +741,8 @@ const relative = createRelativeBank({
   send: (name, value) => {
     const control = {
       'apc40.trackctl.knob1': 48,
+      'apc40.trackctl.knob3': 50,
+      'apc40.trackctl.knob4': 51,
       'apc40.trackctl.knob6': 53,
       'apc40.trackctl.knob7': 54,
       'apc40.trackctl.knob8': 55,
@@ -765,6 +772,8 @@ const deleteGate = createTapGate({ taps: 3, windowMs: 600 });
 
 const steppers = {
   'apc40.trackctl.knob1': createStepper(KNOB_DIVISOR),
+  'apc40.trackctl.knob3': createStepper(KNOB_DIVISOR),
+  'apc40.trackctl.knob4': createStepper(KNOB_DIVISOR),
   'apc40.trackctl.knob6': createStepper(KNOB_DIVISOR),
   'apc40.trackctl.knob7': createStepper(KNOB_DIVISOR),
   'apc40.trackctl.knob8': createStepper(KNOB_DIVISOR),
@@ -782,6 +791,49 @@ function navigate(control) {
     if (turn.delta === 0) return true;
     const steps = steppers[turn.name].feed(Math.sign(turn.delta));
     if (steps === 0) return true;
+    // knob3 under SHIFT is the tempo, and like the key it is song-global -
+    // there is one setcpm, and a second would be a tempo change nobody asked
+    // the knob for.
+    if (turn.name === 'apc40.trackctl.knob3') {
+      if (!shiftHeld) return true;
+      const id = pane.getViewedId();
+      if (!id) return true;
+      const code = pane.getCode(id);
+      const current = songBpm(code);
+      if (current === null) {
+        status.info('no tempo declared in this song');
+        return true;
+      }
+      const bpm = clampBpm(current + steps);
+      if (bpm === current) {
+        status.info(`bpm: ${bpm} (${BPM_RANGE.min}-${BPM_RANGE.max})`);
+        return true;
+      }
+      pane.setCode(id, setSongBpm(code, bpm));
+      live.refresh();
+      status.info(`bpm: ${bpm}`);
+      return true;
+    }
+    // knob4 under SHIFT walks the song's key round the circle of fifths. It
+    // is song-global on purpose: two blocks in different keys is not a
+    // modulation, it is a mistake nobody typed deliberately.
+    if (turn.name === 'apc40.trackctl.knob4') {
+      if (!shiftHeld) return true;
+      const id = pane.getViewedId();
+      if (!id) return true;
+      const code = pane.getCode(id);
+      const current = songKey(code);
+      if (!current) {
+        status.info('no key declared in this song');
+        return true;
+      }
+      const key = nextKey(current.key, steps);
+      pane.setCode(id, setSongKey(code, key));
+      if (patternMode) patternMode.pattern.key = key;
+      live.refresh();
+      status.info(`key: ${key.toUpperCase()} ${current.mode}`);
+      return true;
+    }
     // knob1 sweeps the octave of the pattern being stepped in - and only
     // while that is happening, because outside the mode there is no pattern
     // for it to be the octave OF.
@@ -867,6 +919,14 @@ function navigate(control) {
     return true;
   }
 
+  // SHIFT is a modifier now rather than an action - it selects what the next
+  // knob turn MEANS - so like DETAIL VIEW it is read on both edges. A modifier
+  // that missed its release would leave every later turn re-keying the song.
+  if (control.name === 'apc40.global.shift') {
+    shiftHeld = control.isDown === true;
+    return true;
+  }
+
   // Read BEFORE the press-only guard below: a modifier is defined by its
   // release as much as its press, and dropping the note-off would leave the
   // whole song armed for good.
@@ -930,11 +990,6 @@ function navigate(control) {
       );
       return true;
     }
-    case 'apc40.global.shift': {
-      const pinned = explainer.togglePin();
-      status.info(pinned ? `explainer pinned: ${pinned}` : 'explainer following changes');
-      return true;
-    }
     case 'apc40.global.stop_all':
       blockCursor.clear();
       showBlockSelection();
@@ -956,6 +1011,10 @@ let crossfader = null;
 // the four above it (58-61) latch and send no note-off, so "held" could not
 // have been read from them at all.
 let wholePageHeld = false;
+
+// SHIFT held: the next knob turn changes what the whole SONG is in, rather
+// than one number in one block.
+let shiftHeld = false;
 
 const actions = createActions({
   pane,
