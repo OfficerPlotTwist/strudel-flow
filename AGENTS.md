@@ -239,6 +239,10 @@ documentation. Any song-global rewrite must go through `replaceInCode`.
 
 ### Known rough edges, not yet addressed
 
+**Reproduce one before you fix it — see "Step 0" below.** Every entry here is
+something nobody finished, so the stated cause is the weakest part of it. Two
+of the first three turned out to be wrong about the mechanism.
+
 - **`SHIFT + TC 4` re-keys the DECLARATION only, by decision.** It rewrites
   every `.scale("d3:minor")` and the degrees follow; a block using absolute
   `note("c4 e4")` stays where it is. That is accepted behaviour, not a bug to
@@ -272,3 +276,38 @@ changes the next decision and you get three incompatible answers.
 all held up — but the check is cheap and one of them ("stop a lone const kills
 the song") was severe enough that acting on a wrong report would have been
 worse than not looking.
+
+### Step 0: re-verify the claim before you implement the fix
+
+**This applies to KNOWN ROUGH EDGES above with more force than to a fresh agent
+report, and it is the step most likely to be skipped.** A finding an agent just
+handed you still smells like a claim. A rough edge written down in this file
+three commits ago reads like settled fact, and it is not: the section exists
+precisely because those items were the ones nobody finished, which means each
+carries the diagnosis at its weakest — traced, not reproduced.
+
+Before writing a line of the fix, reproduce the reported failure. Budget one to
+two minutes. If you cannot make it fail, the entry is wrong, and what you owe
+the next agent is a corrected note, not a fix for a bug that is not there.
+
+Both entries in the first version of that list failed this check:
+
+- *"Deleting the viewed tab while pattern build targets it leaves the mode
+  pointing at a tab that no longer exists."* A sixty-line probe against the real
+  `createEditorPane` showed closing the viewed tab already routes through
+  `viewTab`, fires `onViewTab`, and exits the mode. That route was never broken.
+  The real hole was the one the note did not mention — closing any OTHER tab
+  notifies nothing — so implementing the fix as written would have guarded a
+  path that was already guarded and left the actual one open.
+- *"Five files are CRLF where the rest of the repo is LF."* `git ls-files --eol`
+  read `i/lf w/crlf`: the blobs were already LF, only the checkout was CRLF, and
+  the "normalising pass" the note asked for had nothing to commit. It also
+  undercounted — `vite.config.js` was CRLF too, missed because the audit glob
+  covered only `src`, `tests` and `scripts`.
+
+The shape both share: the note names a MECHANISM, and the mechanism is the part
+that was guessed. Treat the reported symptom as evidence and the stated cause as
+a hypothesis — reproduce the symptom, then find the cause yourself. When the two
+disagree, say so in the commit message; the wrong diagnosis is more useful to
+record than the right fix, because it is what the next reader would otherwise
+inherit.
