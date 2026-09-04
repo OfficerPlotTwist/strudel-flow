@@ -7,6 +7,7 @@ import { findBlock, findBlocksInRange, listBlocks, toggleBlocksComment } from '.
 import { crtTheme } from './crt-theme.js';
 import { functionColorExtension, functionColorTheme } from './ui/function-colors.js';
 import { cycleBadgeExtension, setCycleCount } from './ui/cycle-badge.js';
+import { argMapExtension, setArgMap } from './ui/arg-map.js';
 
 export function createEditorPane(container) {
   const tabs = new Map(); // id -> { id, name, view, wrapper, bar }
@@ -109,6 +110,7 @@ export function createEditorPane(container) {
           functionColorExtension,
           functionColorTheme,
           cycleBadgeExtension,
+          argMapExtension,
           EditorView.lineWrapping,
           highlightExtension,
           // Caret and text changes both matter to the explainer: one changes
@@ -336,6 +338,56 @@ export function createEditorPane(container) {
         }
       }
       return [...found.values()].sort((a, b) => a.start - b.start);
+    },
+    /**
+     * The one block the selection covers, with its text and absolute offsets,
+     * or null.
+     *
+     * Deliberately null for a multi-block selection rather than picking the
+     * first: the knob bank addresses arguments by position, and pointing it at
+     * one block of several would silently number the arguments of blocks the
+     * user can see are also selected.
+     */
+    getSoleSelectedBlock(id) {
+      const tab = tabs.get(id);
+      if (!tab) return null;
+      const blocks = this.getSelectedBlocks(id);
+      if (blocks.length !== 1) return null;
+      const doc = tab.view.state.doc;
+      const block = blocks[0];
+      if (block.end >= doc.lines) return null;
+      const from = doc.line(block.start + 1).from;
+      const to = doc.line(block.end + 1).to;
+      return { ...block, from, to, text: doc.sliceString(from, to) };
+    },
+    /**
+     * Draw (or clear) the knob-address rows under lines `from`..`to`. Pushed
+     * to the one tab that owns them - unlike the cycle count, an arg map names
+     * offsets in a specific document.
+     */
+    setArgMap(id, map) {
+      const tab = tabs.get(id);
+      if (!tab) return;
+      tab.view.dispatch({ effects: setArgMap.of(map) });
+    },
+    /**
+     * Overwrite one span of a tab's document, leaving the selection alone.
+     *
+     * This is how a knob writes: it replaces the digits of one argument and
+     * nothing else, so the multi-range block selection the surface built stays
+     * exactly where it was and the next turn addresses the same block.
+     *
+     * `notify: false` performs the edit WITHOUT telling the parser. A control
+     * that writes hundreds of times a second needs that: every notification
+     * queues a full re-render of the set (see live.js, which serialises them),
+     * so a caller sweeping a knob has to coalesce its own re-evaluation rather
+     * than emit one per message.
+     */
+    replaceRange(id, from, to, text, { notify = true } = {}) {
+      const tab = tabs.get(id);
+      if (!tab) return;
+      tab.view.dispatch({ changes: { from, to, insert: text } });
+      if (notify && id === activeId) editListener(id);
     },
     /**
      * The countdown shown on every highlighted block. Pushed to every tab, not

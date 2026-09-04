@@ -11,6 +11,8 @@ import { createMidiMonitor } from './ui/midi-monitor.js';
 import { createDeviceMap } from './device-map.js';
 import { createRelativeBank } from './relative.js';
 import { createBlockCursor, createStepper } from './browse.js';
+import { argRows, assignArgSlots, findNumericArgs } from './args.js';
+import { createArgKnobs, deviceKnobIndex } from './arg-knobs.js';
 import { createAudition } from './audition.js';
 import { crossfaderCycles } from './arm.js';
 import { createExplainerWindow } from './ui/explainer-window.js';
@@ -69,7 +71,6 @@ const panel = createLibraryPanel(document.getElementById('library-pane'), {
 
 // An edit re-renders what is ALREADY playing; it never starts playback.
 pane.onActiveEdit(() => live.refresh());
-pane.onCursorMove(() => explainer.refresh());
 
 const triggerMap = defaultTriggerMap();
 let holdSlots = defaultHoldSlots();
@@ -121,9 +122,104 @@ function showBlockSelection() {
   pane.selectBlocks(id, ordered);
 }
 
+// ---- the eight device knobs over one block's numbers ----------------------
+//
+// With exactly ONE block selected, its knobbable numeric arguments are dealt
+// across the nine track selects and the eight device knobs: track 1 knobs 1-8
+// are arguments 1-8, track 2 knobs 1-8 are 9-16, and so on to master. The
+// address of each is printed under the number it drives (see ui/arg-map.js),
+// so the binding is readable at the argument rather than memorised.
+//
+// One block only, on purpose. The addressing is positional, and a second
+// selected block would renumber every argument in the first the moment it was
+// pinned - a control surface whose meaning changes underneath a held knob.
+const argKnobs = createArgKnobs({
+  send: (channel, cc, value) => sendCC(device.outPort, channel, cc, value),
+  apply: (slot, value, text) => {
+    const id = pane.getViewedId();
+    if (!id) return;
+    // The document is written on every message - the number under the knob
+    // has to move with the hand. The PARSER is told on the trailing edge, by
+    // scheduleArgRefresh below.
+    pane.replaceRange(id, slot.from, slot.to, text, { notify: false });
+    scheduleArgRefresh();
+    status.info(`${slot.track}/${slot.knob} ${slot.fn}(${text})`);
+  },
+});
+
+/** How long a knob has to stop moving before the set is re-rendered. */
+const ARG_REFRESH_MS = 120;
+let argRefreshTimer = null;
+
+/**
+ * Re-render the set after a knob sweep settles, once.
+ *
+ * These pots emit up to two hundred messages a second, and every one of them
+ * edits the document. Re-rendering per message would queue two hundred
+ * transpiles a second behind each other - live.js serialises evaluations, so
+ * they do not overlap, they PILE UP, and the surface goes deaf under the
+ * backlog while MIDI keeps arriving. Coalescing on the trailing edge is what
+ * makes a sweep cost one re-render instead of one per step; the audible
+ * parameter still lands within a frame or two of the hand stopping.
+ */
+function scheduleArgRefresh() {
+  if (argRefreshTimer) return;
+  argRefreshTimer = setTimeout(() => {
+    argRefreshTimer = null;
+    live.refresh();
+  }, ARG_REFRESH_MS);
+}
+
+/** What the current arg map is OF, so an edit to a value is not a new block. */
+let argSignature = null;
+
+/**
+ * Recompute the knob map for whatever single block is selected, and draw it.
+ *
+ * Called on every caret move and every document change, which is also every
+ * knob write. The signature is what keeps that cheap: when the same arguments
+ * of the same block are still on the knobs, the slots are swapped in silently
+ * and the hardware is left alone. Only a genuinely different block re-parks
+ * the eight pots.
+ */
+function refreshArgMap() {
+  const id = pane.getViewedId();
+  const block = id ? pane.getSoleSelectedBlock(id) : null;
+  if (!block) {
+    argSignature = null;
+    argKnobs.clear();
+    if (id) pane.setArgMap(id, null);
+    return;
+  }
+
+  const slots = assignArgSlots(findNumericArgs(block.text, block.from));
+  const signature = `${block.index}:${slots.map((s) => `${s.fn}@${s.line}`).join(',')}`;
+  if (signature === argSignature) argKnobs.adopt(slots);
+  else {
+    argSignature = signature;
+    argKnobs.prime(slots);
+  }
+  pane.setArgMap(id, {
+    from: block.start,
+    to: block.end,
+    rows: argRows(slots, block.end - block.start + 1),
+  });
+}
+
+// The caret moving changes WHICH block is addressed; an edit changes what its
+// numbers are. Both land here, and both are what keeps the knobs and the
+// annotation pointing at the code actually on screen.
+pane.onCursorMove(() => {
+  explainer.refresh();
+  refreshArgMap();
+});
+
 // Changing song drops the selection: the indexes named blocks in the old song,
 // and the same numbers in a different arrangement are different music.
-pane.onViewTab(() => blockCursor.clear());
+pane.onViewTab(() => {
+  blockCursor.clear();
+  refreshArgMap();
+});
 
 // SEND C: audition the highlighted sound once a beat, so a bank can be
 // browsed by ear. Free-running rather than locked to the transport - hunting
@@ -206,6 +302,11 @@ function navigate(control) {
     showBlockSelection();
     return true;
   }
+
+  // The device knobs, when a single block is selected. Checked before the
+  // generic paths so a stray `cc:16` binding cannot also fire on a knob that
+  // is currently driving a number in the source.
+  if (deviceKnobIndex(control.name) !== null && argKnobs.feed(control)) return true;
 
   // Read BEFORE the press-only guard below: a modifier is defined by its
   // release as much as its press, and dropping the note-off would leave the
@@ -370,7 +471,16 @@ showBootScreen(
     // to the first input, which is the single-controller case; pick "(none)"
     // in settings to give the app no control surface at all.
     const inputs = listInputs();
-    controlPort = inputs[0] ?? null;
+    // The port the device map was built against, if it is here. Falling
+    // straight to inputs[0] is what makes a surface look dead while the MIDI
+    // monitor - which listens to every input - clearly shows it sending: the
+    // app was simply listening to a different port. An exact name first, then
+    // any input that names the device, then the old first-input default.
+    controlPort =
+      inputs.find((name) => name === device.inPort) ??
+      inputs.find((name) => name.toLowerCase().includes('apc40')) ??
+      inputs[0] ??
+      null;
     // The monitor is deliberately wired ahead of the control-port filter and
     // sees EVERY input. Which port the controller is actually on is one of the
     // things it exists to answer, and a monitor that only listens to the port
@@ -387,38 +497,57 @@ showBootScreen(
       onMidiMessage(input, (data) => {
         monitor.feed(data, input);
         if (input !== controlPort) return;
-
-        // Named control first, raw note:/cc: second. A name is the more
-        // specific statement of intent - `apc40.track3.clip1` means one
-        // physical button, where `note:55` means that button on any of eight
-        // tracks - and resolving it first is what lets the two live together:
-        // every existing note:/cc: binding still works, and still catches
-        // surfaces this app has no map for.
-        const control = device.resolve(data);
-        if (control?.name === 'apc40.global.crossfader') {
-          crossfader = control.value;
-          // Show the figure on the selection as the fader moves, so the
-          // countdown is readable before the button is pressed rather than
-          // only reported after it.
-          pane.setCycleCount(crossfaderCycles(crossfader));
+        try {
+          handleControlMessage(data);
+        } catch (err) {
+          // A throw in here used to end the listener for that message and
+          // nothing else - the monitor kept scrolling and the surface did
+          // nothing, with no way to tell the two apart. Say so instead.
+          console.error('[midi] control message failed', err);
+          status.error(`control surface: ${err?.message ?? err}`);
         }
-        if (control && captureControl(control)) return;
-        // Navigation before bindings: these controls carry a delta and are
-        // owned by the browser layer, so a stray note:/cc: binding on the same
-        // number must not also fire.
-        if (control && navigate(control)) return;
-
-        // Holds first within each vocabulary: a pad bound to a hold must not
-        // also fire a one-shot action on the same note-on.
-        if (control?.isDown !== null && control && applyHold(control.name, control.isDown)) return;
-        const hold = midiDataToHold(data);
-        if (hold && applyHold(hold.trigger, hold.isDown)) return;
-
-        if (control?.isDown === true && dispatch(control.name)) return;
-        const trigger = midiDataToTrigger(data);
-        if (trigger) dispatch(trigger);
       });
     }
+
+    /**
+     * Everything the control surface means, for one message off the wire.
+     *
+     * Extracted from the listener so a throw has somewhere to be caught: an
+     * exception here used to end that one message quietly, leaving a surface
+     * that looked plugged in, kept scrolling in the monitor, and did nothing.
+     */
+    function handleControlMessage(data) {
+      // Named control first, raw note:/cc: second. A name is the more
+      // specific statement of intent - `apc40.track3.clip1` means one
+      // physical button, where `note:55` means that button on any of eight
+      // tracks - and resolving it first is what lets the two live together:
+      // every existing note:/cc: binding still works, and still catches
+      // surfaces this app has no map for.
+      const control = device.resolve(data);
+      if (control?.name === 'apc40.global.crossfader') {
+        crossfader = control.value;
+        // Show the figure on the selection as the fader moves, so the
+        // countdown is readable before the button is pressed rather than
+        // only reported after it.
+        pane.setCycleCount(crossfaderCycles(crossfader));
+      }
+      if (control && captureControl(control)) return;
+      // Navigation before bindings: these controls carry a delta and are
+      // owned by the browser layer, so a stray note:/cc: binding on the same
+      // number must not also fire.
+      if (control && navigate(control)) return;
+
+      // Holds first within each vocabulary: a pad bound to a hold must not
+      // also fire a one-shot action on the same note-on.
+      if (control?.isDown !== null && control && applyHold(control.name, control.isDown)) return;
+      const hold = midiDataToHold(data);
+      if (hold && applyHold(hold.trigger, hold.isDown)) return;
+
+      if (control?.isDown === true && dispatch(control.name)) return;
+      const trigger = midiDataToTrigger(data);
+      if (trigger) dispatch(trigger);
+    }
+
     createSettings(document.getElementById('settings-pane'), {
       triggerMap,
       controlNames: device.names(),
@@ -467,10 +596,15 @@ showBootScreen(
     // rendering the empty editor since. Now that the tab is active, tell it.
     explainer.refresh();
 
+    // Name the port the app is LISTENING to, not just the one it writes to.
+    // Which input drives the surface is the first thing to check when the
+    // monitor is scrolling and nothing responds, and it was the one fact the
+    // boot line did not report.
+    const surface = controlPort ? `surface: ${controlPort}` : 'no control surface';
     status.info(
       explainerStatus.startsWith('explainer blocked')
-        ? `ready — Ctrl+Enter to play (${explainerStatus})`
-        : 'ready — Ctrl+Enter to play',
+        ? `ready — Ctrl+Enter to play (${surface}; ${explainerStatus})`
+        : `ready — Ctrl+Enter to play (${surface})`,
     );
   },
   { onError: (err) => status.error(String(err?.message ?? err)) },
