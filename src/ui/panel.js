@@ -579,9 +579,18 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
       refresh();
       return kind;
     },
-    /** Step to another category within the current tab. */
-    moveCategory(delta) {
-      const list = sections();
+    /**
+     * Step to another category within the current tab.
+     *
+     * `only` restricts the step to a named subset, which is how the SOUNDS tab
+     * gets two category knobs - the kit pieces on one, everything else on the
+     * other. A subset that matches nothing on screen steps nothing rather than
+     * falling back to the whole list: a knob that quietly widens its own scope
+     * is worse than one that does nothing.
+     */
+    moveCategory(delta, only = null) {
+      const all = sections();
+      const list = only ? all.filter((s) => only.includes(s.category)) : all;
       if (list.length === 0) return null;
       const next = list[wrapIndex(currentSectionIndex(list), delta, list.length)];
       browseCategory = next.category;

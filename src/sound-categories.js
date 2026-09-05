@@ -76,6 +76,20 @@ export const SOUND_CATEGORIES = [
   'unsorted',
 ];
 
+/**
+ * The kit pieces, split from everything else.
+ *
+ * Two knobs rather than one on the SOUNDS tab: a beat is built out of the
+ * first six and a part is found in the rest, and they are different errands.
+ * Stepping through `melodic` on the way from `hats` to `toms` is the flat list
+ * again, one heading at a time.
+ *
+ * Derived from SOUND_CATEGORIES by position, so the order on screen and the
+ * order under the knobs cannot disagree.
+ */
+export const DRUM_CATEGORIES = Object.keys(PIECES);
+export const OTHER_CATEGORIES = SOUND_CATEGORIES.filter((c) => !DRUM_CATEGORIES.includes(c));
+
 /** `piece abbreviation -> category`, built once from PIECES. */
 const BY_PIECE = new Map();
 for (const [category, pieces] of Object.entries(PIECES)) {

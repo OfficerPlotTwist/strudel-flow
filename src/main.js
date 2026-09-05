@@ -32,6 +32,7 @@ import {
   findNumericArgs,
 } from './args.js';
 import { busSizeSpan, busStrays, ensureBus, hasBus } from './bus.js';
+import { DRUM_CATEGORIES, OTHER_CATEGORIES } from './sound-categories.js';
 import {
   BPM_RANGE,
   RAMP_RANGE,
@@ -1079,13 +1080,26 @@ function navigate(control) {
     }
     // knob6 walks the functions of the block under the block cursor; knob7
     // walks the library's category headings, knob8 the rows inside one.
+    //
+    // Except on the SOUNDS tab, where the twelve categories are two errands
+    // rather than one: a beat is built from the six kit pieces and a part is
+    // found among the rest. So TC 6 is RE-SCOPED there to step the drum
+    // categories and TC 7 steps the others - the same "re-scope rather than
+    // add" the surface does everywhere else (REC, clip row 1). TC 8 is still
+    // the rows inside whichever category is open.
+    const onSounds = panel.getTab() === 'sounds';
     if (turn.name === 'apc40.trackctl.knob6') {
-      moveBrowsedFn(steps);
+      const label = onSounds ? panel.moveCategory(steps, DRUM_CATEGORIES) : null;
+      if (onSounds) {
+        if (label) status.info(label);
+      } else {
+        moveBrowsedFn(steps);
+      }
       return true;
     }
     const label =
       turn.name === 'apc40.trackctl.knob7'
-        ? panel.moveCategory(steps)
+        ? panel.moveCategory(steps, onSounds ? OTHER_CATEGORIES : null)
         : panel.moveItem(steps);
     if (label) status.info(label);
     return true;
