@@ -592,7 +592,20 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
       const all = sections();
       const list = only ? all.filter((s) => only.includes(s.category)) : all;
       if (list.length === 0) return null;
-      const next = list[wrapIndex(currentSectionIndex(list), delta, list.length)];
+      // Where the cursor is INSIDE this subset, or -1 when it is somewhere
+      // else entirely - which is the normal case for the second of two knobs.
+      const byCategory = list.findIndex((s) => s.category === browseCategory);
+      const at =
+        byCategory !== -1
+          ? byCategory
+          : list.findIndex((s) => s.items.some((i) => i.dataset.browseKey === browseKey));
+      // Coming from outside the subset SNAPS to its edge rather than stepping
+      // from a pretend zero: entering `kick, snare, hats...` from `melodic`
+      // should land on kick, not skip it because the turn was +1.
+      const next =
+        at === -1
+          ? list[delta >= 0 ? 0 : list.length - 1]
+          : list[wrapIndex(at, delta, list.length)];
       browseCategory = next.category;
 
       // OPEN it before reading its rows. Under the accordion the section the

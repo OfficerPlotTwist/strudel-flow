@@ -50,8 +50,8 @@ export const SURFACE = [
     ['apc40.global.rec', 'REC', 'Pin or release the block under the cursor', 'not in pattern build'],
     ['apc40.global.stop_all', 'STOP ALL CLIPS', 'Clear the block selection', ''],
     ['apc40.trackctl.knob7', 'TC 7', 'Library category', 'not the SOUNDS tab'],
-    ['apc40.trackctl.knob6', 'TC 6', 'kick · snare · hats · toms · cymbals · claps', 'SOUNDS tab'],
-    ['apc40.trackctl.knob7', 'TC 7', 'world · melodic · noise · soundfonts · synths · unsorted', 'SOUNDS tab'],
+    ['apc40.trackctl.knob6', 'TC 6', 'kick · snare · hats · toms · cymbals · claps', 'SOUNDS tab, no function browsed'],
+    ['apc40.trackctl.knob7', 'TC 7', 'world · melodic · noise · soundfonts · synths · unsorted; releases the browsed function', 'SOUNDS tab'],
     ['apc40.trackctl.knob8', 'TC 8', 'Library row', ''],
     ['apc40.global.nudge_minus', 'NUDGE −', 'Previous library tab', ''],
     ['apc40.global.nudge_plus', 'NUDGE +', 'Next library tab', ''],
@@ -68,7 +68,7 @@ export const SURFACE = [
     ['apc40.trackctl.send_c', 'SEND C', 'Audition the highlighted sound once a beat', ''],
   ] },
   { group: 'Swapping a function', rows: [
-    ['apc40.trackctl.knob6', 'TC 6', "Walk the cursor block's functions; the library follows", 'not the SOUNDS tab'],
+    ['apc40.trackctl.knob6', 'TC 6', "Walk the cursor block's functions; the library follows", 'off SOUNDS, or a function already browsed'],
     ['apc40.global.tap_tempo', 'TAP TEMPO', 'Swap that function, or its argument, for the browsed pick', 'a function browsed'],
   ] },
   { group: 'Turning the numbers', rows: [

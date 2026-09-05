@@ -598,6 +598,13 @@ function cursorBlockFunctions() {
   return blockFunctions(block.text, block.from);
 }
 
+/** Drop the function browse and its outline. */
+function clearBrowsedFn() {
+  if (browsedFn === null) return;
+  browsedFn = null;
+  pane.setBrowsedFn(pane.getViewedId(), null);
+}
+
 /**
  * Move TC 6 through the block's functions.
  *
@@ -1089,18 +1096,34 @@ function navigate(control) {
     // the rows inside whichever category is open.
     const onSounds = panel.getTab() === 'sounds';
     if (turn.name === 'apc40.trackctl.knob6') {
-      const label = onSounds ? panel.moveCategory(steps, DRUM_CATEGORIES) : null;
-      if (onSounds) {
-        if (label) status.info(label);
-      } else {
+      // A LIVE function browse keeps TC 6, wherever the library happens to be.
+      // Browsing a sample call switches the panel to SOUNDS by itself, so
+      // without this the knob changed meaning underneath the gesture that
+      // moved it - one turn walks to `s("bd")`, the next steps drum categories
+      // and the walk is over. Same recency rule as SEND B and TAP TEMPO: the
+      // gesture in progress wins until something ends it.
+      if (browsedFn !== null || !onSounds) {
         moveBrowsedFn(steps);
+        return true;
       }
+      const label = panel.moveCategory(steps, DRUM_CATEGORIES);
+      if (label) status.info(label);
+      return true;
+    }
+    if (turn.name === 'apc40.trackctl.knob7' && onSounds) {
+      // And this is how the browse ENDS. Reaching for the other half of the
+      // sound categories is a statement that you are browsing the library now,
+      // not walking a block - so it releases the function and hands TC 6 back
+      // to the drums. Without an ending, a browse begun once would hold TC 6
+      // until the block cursor moved, which is a long way to reach for a knob
+      // that is right there.
+      clearBrowsedFn();
+      const label = panel.moveCategory(steps, OTHER_CATEGORIES);
+      if (label) status.info(label);
       return true;
     }
     const label =
-      turn.name === 'apc40.trackctl.knob7'
-        ? panel.moveCategory(steps, onSounds ? OTHER_CATEGORIES : null)
-        : panel.moveItem(steps);
+      turn.name === 'apc40.trackctl.knob7' ? panel.moveCategory(steps) : panel.moveItem(steps);
     if (label) status.info(label);
     return true;
   }
