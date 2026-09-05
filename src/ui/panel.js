@@ -1,6 +1,7 @@
 import { addEntry, CATEGORIES, groupByCategory as groupEntries, removeEntry, UNCATEGORIZED } from '../library.js';
 import { exportJson, importJson, migrateToDegrees, saveLibrary, seedLibrary } from '../storage.js';
 import { getSoundEntries } from '../engine.js';
+import { groupSounds } from '../sound-categories.js';
 import { wrapIndex } from '../browse.js';
 import { allFunctionNames, describe, groupByCategory, signatureOf } from '../explain.js';
 
@@ -250,7 +251,7 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
         return;
       }
 
-      for (const entry of filtered) {
+      const renderEntry = (entry) => {
         const item = document.createElement('li');
         item.className = 'lib-item';
         item.dataset.browseKey = entry.name;
@@ -269,6 +270,46 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
 
         item.append(name, type);
         list.append(item);
+      };
+
+      // Headings, for the same reason the functions have them: sixteen hundred
+      // names is not a list anybody reads, it is a list they scroll past. The
+      // classes are the FUNCTION category's on purpose - `sections()` finds a
+      // section by `.lib-func-cat-btn`, so grouping here is also what gives the
+      // SOUNDS tab a working category step on the control surface, which it
+      // never had (it was the "list with no headings" case).
+      const searching = needle.length > 0;
+      for (const [category, group] of groupSounds(filtered)) {
+        const heading = document.createElement('li');
+        heading.className = 'lib-func-cat';
+        // A filtered-away section reads as "no results" when it is collapsed,
+        // so a search forces every section open - the funcs tab does the same.
+        const collapsed = !searching && closedCategories.has(`sounds:${category}`);
+        heading.classList.toggle('collapsed', collapsed);
+
+        const toggle = document.createElement('button');
+        toggle.className = 'lib-func-cat-btn';
+        toggle.textContent = `${collapsed ? '▸' : '▾'} ${category}`;
+        toggle.title = searching
+          ? 'sections stay open while searching'
+          : collapsed
+            ? `show ${group.length} ${category} sounds`
+            : `hide ${category}`;
+
+        const count = document.createElement('span');
+        count.className = 'lib-func-cat-n';
+        count.textContent = String(group.length);
+        toggle.addEventListener('click', () => {
+          const key = `sounds:${category}`;
+          if (closedCategories.has(key)) closedCategories.delete(key);
+          else closedCategories.add(key);
+          renderSoundList();
+        });
+
+        heading.append(toggle, count);
+        list.append(heading);
+        if (collapsed) continue;
+        for (const entry of group) renderEntry(entry);
       }
     }
 
