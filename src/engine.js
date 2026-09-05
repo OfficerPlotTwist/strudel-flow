@@ -149,6 +149,65 @@ export async function unlockAudio() {
 }
 
 /**
+ * Keep the AudioContext running, and say so when it is not.
+ *
+ * `unlockAudio` resumes the context exactly once, at boot. Nothing watched it
+ * afterwards - so anything that suspended it later left the app silent for
+ * good, with a running transport, a scrolling cycle counter, and no error. The
+ * song looks like it is playing.
+ *
+ * A browser suspends a context for reasons outside this app: another tab
+ * taking the audio device, the output device changing under it, the OS pulling
+ * the session. All of them are recoverable by resuming, and none of them
+ * announces itself anywhere the user is looking.
+ *
+ * Both a `statechange` listener and a poll, deliberately. The event is the fast
+ * path; the poll is because a context can come back suspended without one -
+ * and a check that costs a string comparison every two seconds is cheaper than
+ * a set that ends because nobody noticed the sound had stopped.
+ *
+ * Returns a stop function. `report` is called only on a CHANGE, so a healthy
+ * context says nothing at all.
+ */
+export function keepAudioAlive(report, { pollMs = 2000 } = {}) {
+  const ctx = getAudioContext();
+  if (!ctx) return () => {};
+  let last = ctx.state;
+  let resuming = false;
+
+  const check = async () => {
+    if (ctx.state !== last) {
+      last = ctx.state;
+      if (ctx.state !== 'running') report?.(`audio ${ctx.state}`);
+    }
+    if (ctx.state === 'running' || ctx.state === 'closed' || resuming) return;
+    resuming = true;
+    try {
+      await ctx.resume();
+      if (ctx.state === 'running') {
+        last = ctx.state;
+        report?.('audio resumed');
+      }
+    } catch (err) {
+      report?.(`audio could not resume: ${err?.message ?? err}`);
+    } finally {
+      resuming = false;
+    }
+  };
+
+  ctx.addEventListener('statechange', check);
+  // Coming back to the tab is the moment a person notices the silence, so it
+  // is also the moment to have already fixed it.
+  document.addEventListener('visibilitychange', check);
+  const timer = setInterval(check, pollMs);
+  return () => {
+    ctx.removeEventListener('statechange', check);
+    document.removeEventListener('visibilitychange', check);
+    clearInterval(timer);
+  };
+}
+
+/**
  * Replace whatever is playing with `code`. Replace semantics are the default.
  * `@strudel/web`'s evaluate() swallows transpile/eval errors (it calls
  * onEvalError and resolves anyway), so `repl.state.miniLocations` on failure

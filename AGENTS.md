@@ -95,6 +95,22 @@ so the split is a suffix on one pattern.
 
 ## Invariants you can break without noticing
 
+**The AudioContext is resumed once at boot, and something has to watch it after
+that.** `unlockAudio` handles the first click. Nothing watched it afterwards, so
+anything that suspended the context later left the app silent for good - with
+the transport still advancing and the cycle counter still scrolling, which looks
+exactly like playing. A browser suspends a context for reasons this app never
+sees: another tab taking the audio device, the output device changing under it.
+`keepAudioAlive` (engine.js) listens for `statechange`, checks on
+`visibilitychange`, and polls every two seconds, resuming and reporting to the
+status bar. Verified by suspending a running context: silence, then recovery to
+peak 0.79 within one poll.
+
+Note what it does NOT cover. If a context stays `running` while its output
+device disappears, `resume()` has nothing to fix - the state is a lie. The
+symptom that tells the two apart is the status bar: "audio suspended" means this
+handled it, silence with no message means the device, not the state.
+
 **The surface's OUTPUT port is resolved by name, and a wrong name is silent.**
 `apc40-map.json` records `out_port: "Akai APC40 1"` - the name the surface had
 on the machine it was captured on. Port names come from the driver, and on this

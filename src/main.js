@@ -4,6 +4,7 @@ import {
   initEngine,
   previewSound,
   setTransportCps,
+  keepAudioAlive,
   unlockAudio,
 } from './engine.js';
 import { LED, enableMidi, listInputs, listOutputs, onMidiMessage, sendCC, sendNote } from './midi.js';
@@ -1416,6 +1417,13 @@ showBootScreen(
     window.focus();
 
     await unlockAudio();
+    // The context is resumed once, above. From here on something has to WATCH
+    // it: a browser can suspend it for reasons this app never sees - another
+    // tab taking the audio device, the output device changing underneath it -
+    // and the failure is a song that goes silent while the transport keeps
+    // advancing and the cycle counter keeps scrolling. Silent, and it looks
+    // exactly like playing.
+    keepAudioAlive((message) => status.info(message));
     const midiOk = await enableMidi();
     const outputs = listOutputs();
     const preferredOutput = outputs.find((name) => name.includes('loopMIDI')) ?? outputs[0];
