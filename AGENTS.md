@@ -118,6 +118,15 @@ For half of that cycle the LED said the opposite of what the app was doing, and
 nothing errored. The other twenty-eight are unbound today; bind one the same way
 or it will do this again.
 
+**And park them at boot.** The app starts with all of them off; the DEVICE
+starts however it was left. An APC40 still holding SEND B lit disagrees with an
+app that has build mode off, so the first press sends 0, the app reads "turn
+off" on something already off, and the button looks dead until pressed twice.
+That is a disagreement, not a stuck button. `main.js` writes every latching LED
+off next to `relative.park()` - writing the LED is what sets the state - and
+`device.latchingControls()` / `device.addressOf(name)` keep the list and the
+wiring in the map rather than at the call site.
+
 **Never re-evaluate per MIDI message.** `live.js` serialises evaluations
 (`queue = queue.then(runEvaluation, ...)`), and the device pots emit up to 200
 messages a second. One knob sweep queued ~200 transpiles and the surface went

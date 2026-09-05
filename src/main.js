@@ -1410,6 +1410,22 @@ showBootScreen(
     // movement rather than the distance from wherever they were left. Silent
     // if the surface is not plugged in - which is the normal case.
     relative.park();
+    // And park the LATCHING buttons dark, for the same reason and a sharper
+    // one. These keep their own state (see LATCHING below): the app boots with
+    // every one of them off, but the DEVICE boots however it was left, so an
+    // APC40 that still has SEND B lit disagrees with an app that has build
+    // mode off. The first press then sends 0, which the app reads as "turn
+    // off" - it already is - and the button appears dead until it is pressed a
+    // second time. That is the "some buttons have to be toggled once at
+    // startup" behaviour, and it is a disagreement, not a stuck button.
+    //
+    // Writing the LED is what sets a latching button's state, so this puts
+    // both sides at off. All thirty-two are parked, not just the four that are
+    // bound: an unbound button left lit is a light claiming something is on.
+    for (const name of device.latchingControls()) {
+      const at = device.addressOf(name);
+      if (at) sendNote(device.outPort, at.channel, at.number, LED.off);
+    }
 
     const monitor = createMidiMonitor(document.getElementById('settings-pane'), {
       describe: device.describe,

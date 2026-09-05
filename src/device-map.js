@@ -132,6 +132,37 @@ export function createDeviceMap(map = apc40) {
     },
 
     /**
+     * Where a named control lives, as `{ type, number, channel }`, or null.
+     *
+     * The reverse of `describe`, and the thing anything WRITING to the surface
+     * needs: an LED is addressed by number and channel, and hard-coding those
+     * at the call site puts the device's wiring in two places.
+     *
+     * Track-scoped controls answer for their own track, so the caller passes
+     * the name the map holds and gets the address the map holds with it.
+     */
+    addressOf(name) {
+      const control = map.controls.find((c) => c.name === name);
+      if (!control) return null;
+      const channel = Object.values(control.channels)[0];
+      return channel === undefined
+        ? null
+        : { type: control.type, number: control.number, channel };
+    },
+
+    /**
+     * The buttons that LATCH - the device keeps their state and reports it,
+     * rather than reporting a press and a release.
+     *
+     * Read from the map's own `behavior`, so the list cannot drift from what
+     * the surface actually does. Anything writing their LEDs, or adopting
+     * their state instead of flipping a copy, works from this.
+     */
+    latchingControls() {
+      return map.controls.filter((c) => c.type === 'note' && c.behavior === 'toggle').map((c) => c.name);
+    },
+
+    /**
      * Decodes one raw message, updating selection as a side effect. Returns
      * null for anything this device does not have - including a control that
      * is physically present but electrically dead (the master fader), which

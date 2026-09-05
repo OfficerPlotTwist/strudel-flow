@@ -224,6 +224,28 @@ describe('latching buttons', () => {
     }
   });
 
+  it('names them from the map, so the list cannot drift', () => {
+    const d = dev();
+    expect(d.latchingControls()).toHaveLength(32);
+    expect(d.latchingControls()).toContain('apc40.trackctl.send_c');
+    // Every one of them must be addressable, or it cannot be parked at boot.
+    for (const name of d.latchingControls()) {
+      const at = d.addressOf(name);
+      expect(at, name).not.toBe(null);
+      expect(at.type).toBe('note');
+      expect(Number.isInteger(at.number)).toBe(true);
+    }
+  });
+
+  it('addresses a control by name, the reverse of describe', () => {
+    const d = dev();
+    const at = d.addressOf('apc40.trackctl.send_c');
+    expect(at).toEqual({ type: 'note', number: 90, channel: 0 });
+    // Round trip: the address it gives back names the control it was asked for.
+    expect(d.describe(at.type, at.number, at.channel).name).toBe('apc40.trackctl.send_c');
+    expect(d.addressOf('apc40.nothing.here')).toBe(null);
+  });
+
   it('reports the state the device is announcing, not a keypress', () => {
     const d = dev();
     const on = d.resolve(msg(NOTE_ON, 0, 90, 1));
