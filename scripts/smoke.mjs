@@ -88,8 +88,15 @@ await step('SNIPPETS is grouped into beat / pads / synths / melodies', async () 
   for (const want of ['beat', 'pads', 'synths', 'melodies']) {
     if (!cats.includes(want)) throw new Error(`missing ${want}: ${JSON.stringify(cats)}`);
   }
+  // The lists are ACCORDIONS: one category open, the rest headings only. A
+  // total row count would be asserting the old contract.
+  const open = await page.locator('.lib-func-cat:not(.collapsed)').count();
+  if (open !== 1) throw new Error(`expected exactly one open section, got ${open}`);
   const n = await page.locator('.lib-item').count();
-  if (n < 40) throw new Error(`only ${n} snippets listed`);
+  if (n < 1) throw new Error('the open category listed nothing');
+  const total = (await page.locator('.lib-func-cat-n').allTextContents())
+    .reduce((sum, t) => sum + Number(t), 0);
+  if (total < 40) throw new Error(`only ${total} snippets across all categories`);
 });
 await step('a snippet category collapses and re-expands', async () => {
   const before = await page.locator('.lib-item').count();
@@ -105,9 +112,15 @@ await step('a snippet category collapses and re-expands', async () => {
 console.log('funcs tab');
 await step('FUNCS tab exists and lists functions', async () => {
   await page.click('.lib-tab:has-text("FUNCS")');
-  await page.waitForSelector('.lib-func', { timeout: 5000 });
-  const n = await page.locator('.lib-func').count();
-  if (n < 100) throw new Error(`only ${n} functions listed`);
+  await page.waitForSelector('.lib-func-cat', { timeout: 5000 });
+  // Only the open category renders rows, so the count that means "the docs
+  // loaded" is the sum on the headings, not what is on screen.
+  const total = (await page.locator('.lib-func-cat-n').allTextContents())
+    .reduce((sum, t) => sum + Number(t), 0);
+  if (total < 100) throw new Error(`only ${total} functions listed`);
+  if ((await page.locator('.lib-func').count()) < 1) {
+    throw new Error('the open category rendered no functions');
+  }
 });
 await step('FUNCS is grouped into collapsible categories', async () => {
   const cats = await page.locator('.lib-func-cat-btn').allTextContents();
@@ -117,15 +130,38 @@ await step('FUNCS is grouped into collapsible categories', async () => {
   }
   if (names.length < 10) throw new Error(`only ${names.length} categories`);
 });
-await step('clicking a category heading collapses its section', async () => {
+await step('the open category collapses, and opening another closes it', async () => {
+  const openBtn = page.locator('.lib-func-cat:not(.collapsed) .lib-func-cat-btn').first();
+  const openName = (await openBtn.textContent()).replace(/^[^a-z]*/i, '').trim();
   const before = await page.locator('.lib-func').count();
-  await page.click('.lib-func-cat-btn:has-text("pattern")');
+  if (before < 1) throw new Error('nothing was open to collapse');
+
+  await openBtn.click();
   await page.waitForTimeout(200);
-  const after = await page.locator('.lib-func').count();
-  if (after >= before) throw new Error(`collapse did not hide rows: ${before} -> ${after}`);
-  await page.click('.lib-func-cat-btn:has-text("pattern")');
+  if ((await page.locator('.lib-func').count()) !== 0) {
+    throw new Error('collapsing the open section left rows on screen');
+  }
+
+  // A category that is NOT the one just closed - clicking that one back open
+  // would prove nothing about the accordion, and clicking it a third time
+  // would close it again.
+  const names = (await page.locator('.lib-func-cat-btn').allTextContents()).map((t) =>
+    t.replace(/^[^a-z]*/i, '').trim(),
+  );
+  const other = names.find((n) => n !== openName);
+  if (!other) throw new Error('only one category to work with');
+  await page.click(`.lib-func-cat-btn:text-is("▸ ${other}")`);
   await page.waitForTimeout(200);
-  if ((await page.locator('.lib-func').count()) !== before) throw new Error('re-expand did not restore rows');
+  const opened = await page.locator('.lib-func-cat:not(.collapsed)').count();
+  if (opened !== 1) throw new Error(`expected one open section, got ${opened}`);
+  if ((await page.locator('.lib-func').count()) < 1) throw new Error('opening rendered no rows');
+
+  // And back, so the rest of the run sees what it saw before.
+  await page.click(`.lib-func-cat-btn:text-is("▸ ${openName}")`);
+  await page.waitForTimeout(200);
+  if ((await page.locator('.lib-func').count()) !== before) {
+    throw new Error('reopening the original category did not restore its rows');
+  }
 });
 await step('filter narrows to a named function', async () => {
   await page.fill('.lib-sound-filter', 'sometimesBy');

@@ -18,9 +18,42 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
   let soundFilter = '';
   let funcFilter = '';
   let openFunc = null;
-  // Category sections the user has collapsed. Open is the default: a closed-by-
-  // default list of twelve headings hides every function behind a second click.
-  const closedCategories = new Set();
+  // Exactly ONE category is open at a time, on every tab - an accordion.
+  //
+  // With everything open the SOUNDS tab is sixteen hundred rows under twelve
+  // headings, and the category knob would land its highlight hundreds of rows
+  // away from what is on screen. Collapsing the rest means the open category
+  // IS the visible menu, so the cursor cannot be highlighting something the
+  // performer cannot see.
+  //
+  //   null  the default - the first category is open
+  //   ''    the user closed the open one, so none is
+  //   name  that category, and only that one
+  let openCategory = null;
+
+  /**
+   * Which category is open in a list of `categories`, or null for none.
+   *
+   * Resolved against the list being rendered rather than trusted as held,
+   * because the tabs share one variable and their category names do not
+   * overlap: arriving on FUNCS with `beat` still set would otherwise match
+   * nothing and leave every section shut.
+   */
+  const resolveOpen = (categories) => {
+    if (openCategory === '') return null;
+    if (openCategory !== null && categories.includes(openCategory)) return openCategory;
+    return categories[0] ?? null;
+  };
+
+  /** Whether a section renders its rows. A search opens every one. */
+  const sectionOpen = (category, categories, searching) =>
+    searching || category === resolveOpen(categories);
+
+  /** Clicking a heading opens it alone; clicking the open one closes it. */
+  const toggleCategory = (category, categories) => {
+    openCategory = resolveOpen(categories) === category ? '' : category;
+  };
+
   // Where the control surface is looking. Held as MODEL keys rather than DOM
   // positions, because the list is rebuilt from scratch on every refresh and
   // an index into the old DOM would point at whatever moved into that slot.
@@ -140,10 +173,12 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
     if (kind === 'songs') {
       for (const entry of lib[kind]) renderEntry(entry);
     } else {
-      for (const [category, group] of groupEntries(lib[kind])) {
+      const groups = groupEntries(lib[kind]);
+      const names = groups.map(([category]) => category);
+      for (const [category, group] of groups) {
         const heading = document.createElement('li');
         heading.className = 'lib-func-cat';
-        const collapsed = closedCategories.has(`snippets:${category}`);
+        const collapsed = !sectionOpen(category, names, false);
         heading.classList.toggle('collapsed', collapsed);
 
         const toggle = document.createElement('button');
@@ -151,9 +186,7 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
         toggle.textContent = `${collapsed ? '▸' : '▾'} ${category}`;
         toggle.title = collapsed ? `show ${group.length} ${category} snippets` : `hide ${category}`;
         toggle.addEventListener('click', () => {
-          const key = `snippets:${category}`;
-          if (closedCategories.has(key)) closedCategories.delete(key);
-          else closedCategories.add(key);
+          toggleCategory(category, names);
           refresh();
         });
 
@@ -279,12 +312,14 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
       // SOUNDS tab a working category step on the control surface, which it
       // never had (it was the "list with no headings" case).
       const searching = needle.length > 0;
-      for (const [category, group] of groupSounds(filtered)) {
+      const groups = groupSounds(filtered);
+      const names = groups.map(([category]) => category);
+      for (const [category, group] of groups) {
         const heading = document.createElement('li');
         heading.className = 'lib-func-cat';
         // A filtered-away section reads as "no results" when it is collapsed,
         // so a search forces every section open - the funcs tab does the same.
-        const collapsed = !searching && closedCategories.has(`sounds:${category}`);
+        const collapsed = !sectionOpen(category, names, searching);
         heading.classList.toggle('collapsed', collapsed);
 
         const toggle = document.createElement('button');
@@ -300,9 +335,7 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
         count.className = 'lib-func-cat-n';
         count.textContent = String(group.length);
         toggle.addEventListener('click', () => {
-          const key = `sounds:${category}`;
-          if (closedCategories.has(key)) closedCategories.delete(key);
-          else closedCategories.add(key);
+          toggleCategory(category, names);
           renderSoundList();
         });
 
@@ -418,13 +451,16 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
         list.append(detail);
       };
 
-      for (const [category, group] of groupByCategory(entries)) {
+      const groups = groupByCategory(entries);
+      const names = groups.map(([category]) => category);
+      for (const [category, group] of groups) {
         const heading = document.createElement('li');
         heading.className = 'lib-func-cat';
         // While searching, every section is forced open: a hit hidden inside a
         // collapsed section reads as "no results", which is worse than a long
-        // list. The user's own collapse state is remembered, not discarded.
-        const collapsed = !searching && closedCategories.has(category);
+        // list. The user's own choice of open category is remembered, not
+        // discarded.
+        const collapsed = !sectionOpen(category, names, searching);
         heading.classList.toggle('collapsed', collapsed);
 
         const toggle = document.createElement('button');
@@ -439,8 +475,7 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
         count.className = 'lib-func-cat-n';
         count.textContent = String(group.length);
         toggle.addEventListener('click', () => {
-          if (closedCategories.has(category)) closedCategories.delete(category);
-          else closedCategories.add(category);
+          toggleCategory(category, names);
           renderFuncList();
         });
 
@@ -482,12 +517,15 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
           items: [],
         });
       } else if (row.dataset.browseKey !== undefined) {
-        // A list with no headings at all (SOUNDS) is one nameless section.
+        // A list with no headings at all is one nameless section.
         if (out.length === 0) out.push({ category: null, row: null, items: [] });
         out[out.length - 1].items.push(row);
       }
     }
-    return out.filter((section) => section.items.length > 0);
+    // COLLAPSED sections are kept. With the accordion, every category but one
+    // renders as a heading and no rows, and dropping those would leave the
+    // category knob able to reach exactly the category it is already in.
+    return out.filter((section) => section.items.length > 0 || section.category !== null);
   }
 
   function currentSectionIndex(list) {
@@ -526,6 +564,7 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
       kind = next;
       browseKey = null;
       browseCategory = null;
+      openCategory = null;
       refresh();
       return kind;
     },
@@ -536,6 +575,7 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
       kind = TABS[wrapIndex(TABS.indexOf(kind), delta, TABS.length)];
       browseKey = null;
       browseCategory = null;
+      openCategory = null;
       refresh();
       return kind;
     },
@@ -545,12 +585,24 @@ export function createLibraryPanel(container, { onInsert, getSongCode, getSongNa
       if (list.length === 0) return null;
       const next = list[wrapIndex(currentSectionIndex(list), delta, list.length)];
       browseCategory = next.category;
+
+      // OPEN it before reading its rows. Under the accordion the section the
+      // knob just stepped to is collapsed and has none, and the previous code
+      // took `items[0]` of an empty list - which is how the cursor ended up
+      // highlighting a row nobody could see.
+      if (next.category !== null) {
+        openCategory = next.category;
+        refresh();
+      }
+      const opened = sections().find((s) => s.category === next.category) ?? next;
+      if (opened.items.length === 0) return next.category ?? kind;
+
       // The cursor lands on the first entry, but the HEADING is what goes to
       // the top edge: stepping to a category should show the whole category,
       // and 'nearest' on its first row leaves the heading off-screen above
       // whenever you arrive from below.
-      show(next.items[0], { scroll: false });
-      (next.row ?? next.items[0]).scrollIntoView({ block: 'start' });
+      show(opened.items[0], { scroll: false });
+      (opened.row ?? opened.items[0]).scrollIntoView({ block: 'start' });
       return next.category ?? kind;
     },
     /** Step to another entry inside the category the cursor is in. */
