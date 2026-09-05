@@ -673,13 +673,32 @@ function clipPad(name) {
   return match ? { column: Number(match[1]) - 1, row: Number(match[2]) } : null;
 }
 
-/** Light row 2 where a semitone above the degree is outside the scale. */
+/**
+ * Row 2, the black-key row, in two colours.
+ *
+ * YELLOW is the hint - a semitone above that degree is outside the scale, so
+ * the pad has something to offer. RED is the pad you are HOLDING, and it has
+ * to stay lit for as long as it is down: a sharp is written by a combination,
+ * held while a degree is pressed, so the one thing the row has to answer
+ * mid-gesture is "am I still holding it". Painting only the hint left the row
+ * looking identical whether a pad was down or not.
+ *
+ * Repainted on every press and release rather than tracked per pad: eight
+ * messages is nothing next to the ~200/s the knobs already emit, and one
+ * function that draws the whole row from current state cannot leave a pad lit
+ * for a hold that has ended.
+ */
 function paintPatternLeds(on) {
-  const lit = on ? new Set(accidentalDegrees(patternMode?.pattern.mode)) : new Set();
+  const accidentals = on ? new Set(accidentalDegrees(patternMode?.pattern.mode)) : new Set();
   for (let column = 0; column < COLUMNS; column += 1) {
+    let colour = LED.off;
+    if (on) {
+      if (heldSharp.has(column)) colour = LED.red;
+      else if (accidentals.has(column)) colour = LED.yellow;
+    }
     // Note 54 is clip2 - the black-key row. Channel is the track, which on
     // this surface is the column. See apc40-map.json.
-    sendNote(surfaceOut, column, 54, lit.has(column) ? LED.yellow : LED.off);
+    sendNote(surfaceOut, column, 54, colour);
   }
 }
 
@@ -805,6 +824,10 @@ function patternControl(control) {
     }
     if (row === 2) {
       if (down) heldSharp.add(column); else heldSharp.delete(column);
+      // The row is the only feedback this gesture has - nothing is written
+      // until a degree is pressed on top of the hold - so it has to change
+      // when the hold does.
+      paintPatternLeds(true);
       return true;
     }
     if (!down) return true; // rows 1 and 3 act on press only
