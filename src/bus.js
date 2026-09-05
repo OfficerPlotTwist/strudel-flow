@@ -61,6 +61,37 @@ export function busSizeSpan(code) {
 }
 
 /**
+ * The calls the bus is allowed to carry. Anything else got there by accident.
+ *
+ * `all` applies its function to EVERY pattern in the song, so a call chained
+ * onto it is a master control nobody asked for - and the ones the knobs write
+ * are exactly the ones that silence a song outright. Measured against the
+ * engine: `.postgain(0)` puts `postgain: 0` on every event, `.lpf(20)` puts a
+ * 20 Hz cutoff on every event. Both leave a song that looks completely normal
+ * and makes no sound.
+ */
+const BUS_ALLOWED = new Set(['all', 'roomsize', 'orbit']);
+
+/**
+ * Calls on the bus statement that do not belong there, by name.
+ *
+ * For songs written before the knobs learned to refuse the bus: the cursor
+ * starts on it in an empty sheet, every master control was virtual there, and
+ * one knob turn appended `.adsr(...)` or `.postgain(...)` to `all(...)`. This
+ * only REPORTS them - a saved song is the user's, and a silent song is a
+ * better outcome than an app that edits one on load without being asked.
+ */
+export function busStrays(code) {
+  const NEWLINE = String.fromCharCode(10);
+  const text = code ?? '';
+  const line = text.split(NEWLINE).find((l) => BUS_MARK.test(l));
+  if (!line) return [];
+  const CALL = /([A-Za-z_$][\w$]*)\s*\(/g;
+  const names = [...line.matchAll(CALL)].map((m) => m[1]);
+  return [...new Set(names.filter((name) => !BUS_ALLOWED.has(name)))];
+}
+
+/**
  * The song with a reverb bus appended if it had none.
  *
  * At the end, like a desk's master strip: it applies to everything above it,

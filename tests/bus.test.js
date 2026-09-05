@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SONG_ORBIT, busBlock, busSize, busSizeSpan, ensureBus, hasBus } from '../src/bus.js';
+import { SONG_ORBIT, busBlock, busSize, busSizeSpan, busStrays, ensureBus, hasBus } from '../src/bus.js';
 import { blockFunctions, replacementFor } from '../src/fn-browse.js';
 import {
   MASTER_CONTROLS,
@@ -184,5 +184,29 @@ describe('the bus is not browsable', () => {
   it('refuses a sound pick, which is the half that gets reported', () => {
     const size = blockFunctions(busBlock(2), 0).find((f) => f.name === 'roomsize');
     expect(replacementFor(size, { kind: 'sounds', name: 'casiovl1_sd' })).toBe(null);
+  });
+});
+
+describe('a bus carrying calls it should not', () => {
+  const NEWLINE = String.fromCharCode(10);
+  it('names the strays, and nothing on a clean bus', () => {
+    expect(busStrays(busBlock(2))).toEqual([]);
+    expect(busStrays(`$: s("bd*4")${NEWLINE}${NEWLINE}${busBlock(2)}`)).toEqual([]);
+    // No bus at all is not a complaint.
+    expect(busStrays('$: s("bd*4")')).toEqual([]);
+  });
+
+  it('catches what a master knob used to write there', () => {
+    // The exact shape a knob turn produced before refreshArgMap refused the
+    // bus. `.postgain(0)` on all() is a silent song.
+    const poisoned = busBlock(2).replace(/\)$/, ').adsr(0.05, 0.1, 0.6, 0.2).postgain(0)');
+    expect(busStrays(poisoned)).toEqual(['adsr', 'postgain']);
+  });
+
+  it('does not mistake another block for the bus', () => {
+    // Only the line holding roomsize is the bus; a part with its own .lpf()
+    // is a part.
+    const song = `$: s("bd*4").lpf(400)${NEWLINE}${NEWLINE}${busBlock(2)}`;
+    expect(busStrays(song)).toEqual([]);
   });
 });

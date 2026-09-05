@@ -30,7 +30,7 @@ import {
   callText,
   findNumericArgs,
 } from './args.js';
-import { busSizeSpan, ensureBus, hasBus } from './bus.js';
+import { busSizeSpan, busStrays, ensureBus, hasBus } from './bus.js';
 import {
   BPM_RANGE,
   RAMP_RANGE,
@@ -1442,6 +1442,21 @@ showBootScreen(
     // movement rather than the distance from wherever they were left. Silent
     // if the surface is not plugged in - which is the normal case.
     relative.park();
+    // A song saved before the knobs learned to refuse the bus can be carrying
+    // a master call on `all(...)`, which applies to EVERY pattern in it -
+    // `.postgain(0)` or `.lpf(20)` there is a song that looks completely
+    // normal and makes no sound at all. Report it; do not edit it. A saved
+    // song is the user's, and silently rewriting one on load is worse than
+    // being silent about why it is silent.
+    for (const tab of pane.getTabs()) {
+      const strays = busStrays(pane.getCode(tab.id));
+      if (strays.length) {
+        status.error(
+          `"${tab.name}": the reverb bus carries ${strays.map((n) => `.${n}()`).join(' ')} - ` +
+            'that applies to every block and can silence the song. Delete it from the all(...) line.',
+        );
+      }
+    }
     // And park the LATCHING buttons dark, for the same reason and a sharper
     // one. These keep their own state (see LATCHING below): the app boots with
     // every one of them off, but the DEVICE boots however it was left, so an
