@@ -131,3 +131,34 @@ describe('callText', () => {
     expect(callText({ fn: 'adsr', position: 1 }, '0.5')).toBe('.adsr(0.01, 0.5, 0.6, 0.2)');
   });
 });
+
+describe('the bus is not a part', () => {
+  // The knobs deal addresses from whatever block the cursor is on, and the bus
+  // is a top-level block like any other - on an empty song sheet it is the
+  // only one, so it is where the cursor starts. Everything below is why
+  // `refreshArgMap` refuses to deal from it.
+  it('carries numbers a knob would otherwise claim', () => {
+    const found = findNumericArgs(busBlock(2), 0);
+    // `orbit(1)` is real, live, and would be handed to a part knob - turning
+    // it re-orbits the whole song.
+    expect(found.map((a) => a.fn)).toContain('orbit');
+  });
+
+  it('is recognisable as the bus, which is what the guard tests', () => {
+    // Both the knobs and pattern build refuse the bus by asking hasBus(). A
+    // change to busBlock that stopped matching would silently re-open both.
+    expect(hasBus(busBlock(2))).toBe(true);
+    expect(hasBus('$: s("bd*2").adsr(0.9, 0.1, 0.5, 0.9)')).toBe(false);
+  });
+
+  it('would take a master call onto all(), where it beats every block', () => {
+    // Measured against the engine: a block calling .adsr(0.9, ...) reports an
+    // attack of 0.9 alone and 0.05 once all() carries .adsr(0.05, ...). The
+    // master controls are all VIRTUAL on the bus, so the first knob turn
+    // appends exactly this.
+    const slots = bindFixedControls(findNumericArgs(busBlock(2), 0), MASTER_CONTROLS, MASTER_TRACK);
+    const adsr = slots.slots.find((s) => s.fn === 'adsr');
+    expect(adsr.virtual).toBe(true);
+    expect(busBlock(2) + callText(adsr, '0.05')).toContain('.orbit(1)).adsr(0.05,');
+  });
+});

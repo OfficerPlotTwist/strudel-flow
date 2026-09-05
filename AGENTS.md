@@ -126,6 +126,27 @@ message; tell the parser on the trailing edge (`scheduleArgRefresh` in
 `main.js`). Tempo ramps retime `scheduler.cps` directly and write `setcpm`
 once, at the end, for the same reason.
 
+**The bus is a block the cursor lands on, and nothing may be dealt from it.**
+`all(x => x.roomsize(2).orbit(1))` is a top-level block like any other, and on
+an empty song sheet it is the ONLY one - so it is where the cursor starts. Every
+master control is virtual on it, so the first turn of any master knob appends
+the call to the end of that line:
+
+```
+all(x => x.roomsize(2).orbit(1)).adsr(0.05, 0.1, 0.6, 0.2)
+```
+
+That evaluates with no error and applies to every pattern in the song, and a
+later `.adsr()` beats an earlier one - measured: a block calling `.adsr(0.9,
+...)` reports an attack of 0.9 alone and 0.05 once the bus carries one. One knob
+turn silently overwrites the envelope of every part, with nothing on screen
+saying where it came from. `orbit(1)` is a live numeric argument on that line
+too, so the positional dealer hands the song's orbit to a part knob.
+
+`refreshArgMap` now refuses the bus, exactly as `canStepInto` already did for
+pattern build. The `roomsize` knob still reaches it and is the only thing that
+should: it is `shared` and goes through `busSizeSpan`, not through the block.
+
 **Everything addresses TOP-LEVEL BLOCKS.** Holds unmute one, rips remove one,
 arming gates one, the block cursor walks them, and the knobs edit one. Wrapping
 a song in `stack(...)` would leave it with a single block and break all five.

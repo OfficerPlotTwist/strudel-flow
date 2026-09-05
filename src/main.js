@@ -308,11 +308,38 @@ function refreshArgMap() {
     return;
   }
 
-  const args = findNumericArgs(block.text, block.from);
+  // The bus is not a part, and NOTHING may be dealt from it.
+  //
+  // It is a block like any other to the cursor, and on an empty song sheet it
+  // is the only one - so it is exactly where the cursor starts. Every master
+  // control is virtual on it, which means the first turn of any master knob
+  // appends the call to the end of the block, and the end of that block is the
+  // end of `all(x => ...)`:
+  //
+  //     all(x => x.roomsize(2).orbit(1)).adsr(0.05, 0.1, 0.6, 0.2)
+  //
+  // That evaluates without complaint and applies to EVERY pattern in the song,
+  // and a later `.adsr()` wins over an earlier one - measured: a block calling
+  // `.adsr(0.9, ...)` reports an attack of 0.9 alone and 0.05 once the bus
+  // carries one. So a master knob touched on the bus silently overwrites the
+  // envelope of every part in the song, with no error and nothing on screen
+  // saying which block it came from.
+  //
+  // `orbit(1)` is a live numeric argument on that line too, so the positional
+  // dealer hands the song's orbit to a part knob for the same reason.
+  //
+  // The roomsize knob still works here, and is the only thing that should: it
+  // is `shared`, and reads and writes the bus statement through `busSizeSpan`
+  // rather than through this block. Pattern build already refuses the bus for
+  // the same reason (`canStepInto`); this is the knobs catching up.
+  const onBus = hasBus(block.text);
+  const args = onBus ? [] : findNumericArgs(block.text, block.from);
 
   // Reserved tracks first, so they can CLAIM the arguments they bind to and
   // the positional dealer never gives one number a second address.
-  const master = bindFixedControls(args, MASTER_CONTROLS, MASTER_TRACK);
+  const master = onBus
+    ? { slots: [], claimed: new Set() }
+    : bindFixedControls(args, MASTER_CONTROLS, MASTER_TRACK);
   const reverb = bindFixedControls(
     args.filter((arg) => !master.claimed.has(arg)),
     REVERB_CONTROLS,
@@ -321,9 +348,11 @@ function refreshArgMap() {
   // The bus owns the one roomsize there is, so its slot reads from there
   // rather than from the block - the block has no size and must not grow one.
   const size = busSizeSpan(pane.getCode(id));
-  const reverbSlots = reverb.slots.map((slot) =>
-    slot.shared && size ? { ...slot, value: Number(size.text), virtual: false } : slot,
-  );
+  const reverbSlots = reverb.slots
+    // On the bus, `room` would be written into `all(...)` as well - a send on
+    // the master, which is the one thing a send must never be.
+    .filter((slot) => !onBus || slot.shared)
+    .map((slot) => (slot.shared && size ? { ...slot, value: Number(size.text), virtual: false } : slot));
 
   const rest = args.filter((arg) => !master.claimed.has(arg) && !reverb.claimed.has(arg));
   const partSlots = assignArgSlots(rest, PART_TRACKS);
