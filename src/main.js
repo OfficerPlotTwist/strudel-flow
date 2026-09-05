@@ -508,6 +508,15 @@ function setBuilding(on) {
     const id = pane.getViewedId();
     if (!id) return;
     building = { tabId: id, blockIndex: null };
+    // Latching build mode is a NEWER statement of intent than whatever TC 6
+    // was left pointing at, so drop the browse. Without this, TAP TEMPO keeps
+    // going to the function-replace path and SEND B does nothing at all - on a
+    // fresh song sheet the only block is the bus, so the reply is "<sound>
+    // cannot replace roomsize" every time. Turning TC 6 AFTER this re-arms the
+    // replace, which is what makes the precedence below actually about
+    // recency rather than about one branch being written first.
+    browsedFn = null;
+    pane.setBrowsedFn(id, null);
     status.info('build: SEND B on - TAP TEMPO adds the browsed item');
     return;
   }
@@ -1183,9 +1192,10 @@ function navigate(control) {
       return true;
     }
     case 'apc40.global.tap_tempo':
-      // A browsed function wins over build mode: TC 6 was turned more
-      // recently than SEND B was latched, so it is the more specific
-      // statement of what this press is for.
+      // The more RECENT gesture wins. TC 6 turned after SEND B was latched is
+      // the more specific statement of what this press is for; SEND B latched
+      // after TC 6 was turned clears the browse (see setBuilding), so this
+      // branch is only reached when the browse really is the newer of the two.
       if (browsedFn !== null) {
         replaceBrowsedFn();
         return true;
