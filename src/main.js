@@ -136,6 +136,17 @@ let tabHoldOverrides = {};
 // The MIDI input that drives the APP (tabs, holds, actions), as opposed to the
 // ports carrying pattern signal in and out. Never both.
 let controlPort = null;
+// The OUTPUT the surface is written back on - knob parks and LEDs. Resolved at
+// startup the same way `controlPort` is, and for the same reason: the map's
+// `out_port` is the name the surface had on the machine it was captured on,
+// and port names are given by the driver. On this machine the APC40 presents
+// as `Akai APC40`, while the map says `Akai APC40 1` - so every LED write and
+// every knob park returned false and did nothing, silently, because `sendNote`
+// treats a missing port as an unplugged controller rather than an error.
+//
+// The input already fell back to a fuzzy match and so kept working, which is
+// what hid this: the surface read fine and simply never lit.
+let surfaceOut = null;
 
 // Names the controls of a mapped surface, so a binding can say
 // `apc40.track3.clip1` instead of `note:55` - which on this surface is the
@@ -210,7 +221,7 @@ function showBlockSelection() {
 // selected block would renumber every argument in the first the moment it was
 // pinned - a control surface whose meaning changes underneath a held knob.
 const argKnobs = createArgKnobs({
-  send: (channel, cc, value) => sendCC(device.outPort, channel, cc, value),
+  send: (channel, cc, value) => sendCC(surfaceOut, channel, cc, value),
   apply: (slot, value, text) => {
     const id = pane.getViewedId();
     if (!id) return;
@@ -668,7 +679,7 @@ function paintPatternLeds(on) {
   for (let column = 0; column < COLUMNS; column += 1) {
     // Note 54 is clip2 - the black-key row. Channel is the track, which on
     // this surface is the column. See apc40-map.json.
-    sendNote(device.outPort, column, 54, lit.has(column) ? LED.yellow : LED.off);
+    sendNote(surfaceOut, column, 54, lit.has(column) ? LED.yellow : LED.off);
   }
 }
 
@@ -932,7 +943,7 @@ const relative = createRelativeBank({
       'apc40.trackctl.knob7': 54,
       'apc40.trackctl.knob8': 55,
     }[name];
-    if (control) sendCC(device.outPort, 0, control, value);
+    if (control) sendCC(surfaceOut, 0, control, value);
   },
 });
 
@@ -1386,6 +1397,27 @@ showBootScreen(
     const outputs = listOutputs();
     const preferredOutput = outputs.find((name) => name.includes('loopMIDI')) ?? outputs[0];
     status.setMidi(midiOk ? (preferredOutput ?? 'no outputs') : 'not connected');
+    // The surface's own output, resolved like its input: the exact name the
+    // map was captured with, then any output that names the device. There is
+    // deliberately NO fall back to outputs[0] - `preferredOutput` prefers
+    // loopMIDI, and spraying LED note-ons at whatever is listening there would
+    // put notes into another application rather than lights on a controller.
+    // Nothing is the right answer when the surface is not here.
+    surfaceOut =
+      outputs.find((name) => name === device.outPort) ??
+      outputs.find((name) => name.toLowerCase().includes('apc40')) ??
+      null;
+    // SAY SO. `sendCC` and `sendNote` return false for a missing port and are
+    // silent by design, which is right for one call on an unplugged
+    // controller and wrong as a permanent condition: it is what let every LED
+    // write and every knob park in this app do nothing for as long as the
+    // map's port name did not match the driver's. A write path that can be
+    // dead has to be able to say it is.
+    if (!surfaceOut) {
+      status.info(`control surface: no output port - LEDs and knob parks are off (map wants "${device.outPort}")`);
+    } else if (surfaceOut !== device.outPort) {
+      status.info(`control surface out: "${surfaceOut}" (map says "${device.outPort}")`);
+    }
     // One MIDI input drives the app itself - tabs, blocks, holds, actions.
     // Every OTHER input is left completely alone, so a keyboard or controller
     // feeding a pattern through midin() is never also flipping tabs. Defaults
@@ -1424,7 +1456,7 @@ showBootScreen(
     // bound: an unbound button left lit is a light claiming something is on.
     for (const name of device.latchingControls()) {
       const at = device.addressOf(name);
-      if (at) sendNote(device.outPort, at.channel, at.number, LED.off);
+      if (at) sendNote(surfaceOut, at.channel, at.number, LED.off);
     }
 
     const monitor = createMidiMonitor(document.getElementById('settings-pane'), {

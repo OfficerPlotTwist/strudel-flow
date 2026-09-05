@@ -95,6 +95,28 @@ so the split is a suffix on one pattern.
 
 ## Invariants you can break without noticing
 
+**The surface's OUTPUT port is resolved by name, and a wrong name is silent.**
+`apc40-map.json` records `out_port: "Akai APC40 1"` - the name the surface had
+on the machine it was captured on. Port names come from the driver, and on this
+machine the device presents as `Akai APC40`. `sendCC`/`sendNote` return false
+for a missing port and say nothing, by design, because an unplugged controller
+is the normal case - so EVERY write to the surface silently did nothing:
+`paintPatternLeds`, `relative.park()`, and the latching-LED park.
+
+The input never showed it, because `controlPort` already fell back to a fuzzy
+`includes('apc40')` match. The surface read perfectly and simply never lit.
+
+`surfaceOut` is now resolved the same way at startup and used for every write,
+with NO fall back to `outputs[0]`: that would be loopMIDI, and LED note-ons sent
+there arrive as notes in whatever else is listening. Nothing is the right answer
+when the surface is absent - and the status bar says so, because a write path
+that can be dead has to be able to report it.
+
+Consequence worth knowing: `relative.park()` is what re-centres the knob
+counters, and the APC40 resets them to 0 on a power cycle. While the port name
+was wrong, a power-cycled controller stayed at 0 with its LED rings dark and the
+first turn of every knob measured a jump from a centre it was never put at.
+
 **Thirty-two APC40 buttons LATCH. `isDown` on them is a STATE, not a press.**
 The four track-control buttons (PAN, SEND A/B/C), the clip/track and device
 arrows, and the whole activator, solo/cue and record-arm rows keep their own
