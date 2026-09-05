@@ -147,6 +147,15 @@ too, so the positional dealer hands the song's orbit to a part knob.
 pattern build. The `roomsize` knob still reaches it and is the only thing that
 should: it is `shared` and goes through `busSizeSpan`, not through the block.
 
+TC 6 refuses it too, and that one is destructive rather than merely wrong:
+`roomsize` is not a documented effect, so `replaceKind` calls it a FUNCTION
+replacement and a pick from the function list rewrites the NAME -
+`all(x => x.lpf(2).orbit(1))`, evaluating cleanly with the song's reverb gone.
+
+**Three things address the cursor block, and all three had to learn this
+separately** - pattern build, the knobs, and the function browse. A fourth will
+have to as well.
+
 **Everything addresses TOP-LEVEL BLOCKS.** Holds unmute one, rips remove one,
 arming gates one, the block cursor walks them, and the knobs edit one. Wrapping
 a song in `stack(...)` would leave it with a single block and break all five.

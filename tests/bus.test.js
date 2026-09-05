@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SONG_ORBIT, busBlock, busSize, busSizeSpan, ensureBus, hasBus } from '../src/bus.js';
+import { blockFunctions, replacementFor } from '../src/fn-browse.js';
 import {
   MASTER_CONTROLS,
   MASTER_TRACK,
@@ -160,5 +161,28 @@ describe('the bus is not a part', () => {
     const adsr = slots.slots.find((s) => s.fn === 'adsr');
     expect(adsr.virtual).toBe(true);
     expect(busBlock(2) + callText(adsr, '0.05')).toContain('.orbit(1)).adsr(0.05,');
+  });
+});
+
+describe('the bus is not browsable', () => {
+  // TC 6 walks a block's functions and TAP TEMPO swaps one. On the bus that is
+  // destructive in one direction and merely confusing in the other, and the
+  // confusing half is what gets reported.
+  it('offers roomsize as a NAME replacement, which rewrites the bus', () => {
+    const fns = blockFunctions(busBlock(2), 0);
+    const size = fns.find((f) => f.name === 'roomsize');
+    expect(size).toBeDefined();
+    // Not a documented effect, so it is replaced by NAME, not by argument.
+    expect(size.replaces).toBe('function');
+    // A funcs pick therefore goes straight through and the bus stops being one.
+    const edit = replacementFor(size, { kind: 'funcs', name: 'lpf' });
+    const rewritten =
+      busBlock(2).slice(0, edit.from) + edit.text + busBlock(2).slice(edit.to);
+    expect(hasBus(rewritten)).toBe(false);
+  });
+
+  it('refuses a sound pick, which is the half that gets reported', () => {
+    const size = blockFunctions(busBlock(2), 0).find((f) => f.name === 'roomsize');
+    expect(replacementFor(size, { kind: 'sounds', name: 'casiovl1_sd' })).toBe(null);
   });
 });

@@ -571,7 +571,18 @@ function cursorBlockFunctions() {
   const id = pane.getViewedId();
   const index = id ? cursorBlockIndex() : null;
   const block = index === null ? null : pane.getBlockAt(id, index);
-  return block ? blockFunctions(block.text, block.from) : [];
+  if (!block) return [];
+  // The bus is not browsable, and the reason is sharper than it was for the
+  // knobs. `roomsize` is not a documented effect, so `replaceKind` calls it a
+  // FUNCTION replacement - a pick from the function list rewrites the NAME:
+  //
+  //     all(x => x.roomsize(2).orbit(1))  ->  all(x => x.lpf(2).orbit(1))
+  //
+  // which evaluates cleanly and leaves the song with no reverb bus. The
+  // refusal a SOUND pick gets ("<name> cannot replace roomsize") is the safe
+  // half of the same situation; this closes the half that goes through.
+  if (hasBus(block.text)) return [];
+  return blockFunctions(block.text, block.from);
 }
 
 /**
