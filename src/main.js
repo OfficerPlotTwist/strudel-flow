@@ -459,6 +459,20 @@ function addPickToBlock() {
   status.info(separate ? `build: ${pick.name} (new block)` : `build: + ${pick.name}`);
 }
 
+/**
+ * Drop build mode without finishing it.
+ *
+ * Not `setBuilding(false)`: that is the DELIBERATE end of a build and may
+ * evaluate the result, which is wrong for a song that is no longer on screen
+ * or no longer exists. This is the same distinction pattern build draws
+ * between REC and a tab going away.
+ */
+function abandonBuilding(reason) {
+  if (!building) return;
+  building = null;
+  status.info(`build: off - ${reason}`);
+}
+
 /** Enter or leave build mode. */
 function setBuilding(on) {
   if (on) {
@@ -806,6 +820,11 @@ pane.onViewTab(() => {
   // longer on screen - invisible, with the pads still lit as though they were
   // editing what you are looking at.
   if (patternMode) exitPatternMode();
+  // Build mode holds a tab id for exactly the same reason and with exactly the
+  // same consequence: TAP TEMPO would keep appending picks to the song you
+  // just left, invisibly, while the monitor cue pointed at a block on screen
+  // nowhere. `live.setMonitor` reads `building.tabId` too.
+  abandonBuilding('a different song is on screen');
   refreshArgMap();
 });
 
@@ -817,6 +836,12 @@ pane.onCloseTab((id) => {
     exitPatternMode();
     status.info('pattern build: off - that song was deleted');
   }
+  // Build mode fails LOUDER than pattern build did, and that is what makes it
+  // worse rather than better: `pane.getCode` is the one accessor that reads
+  // `tabs.get(id).view` without a guard, so a setup pick after the song was
+  // deleted throws a TypeError out of the MIDI handler instead of quietly
+  // doing nothing.
+  if (building?.tabId === id) abandonBuilding('that song was deleted');
 });
 
 // SEND C: audition the highlighted sound once a beat, so a bank can be
