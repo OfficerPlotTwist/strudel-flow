@@ -196,3 +196,44 @@ describe('device identity', () => {
     expect(dev.outPort).toBe('Akai APC40 1');
   });
 });
+
+describe('latching buttons', () => {
+  // Confirmed on the hardware with the MIDI monitor: these buttons keep their
+  // own state. One press sends velocity 1, the NEXT press sends 0, and there
+  // is no release message between them - so `isDown` is not "a finger is on
+  // it", it is "the device is now in this state". Every handler must SET from
+  // it rather than flip a copy of its own.
+  const dev = () => createDeviceMap(map);
+
+  it('marks all thirty-two of them in the map', () => {
+    const latching = map.controls.filter((c) => c.type === 'note' && c.behavior === 'toggle');
+    expect(latching).toHaveLength(32);
+    // The four bound today, and the rows the hardware was checked against.
+    const names = latching.map((c) => c.name);
+    for (const name of [
+      'apc40.trackctl.pan',
+      'apc40.trackctl.send_a',
+      'apc40.trackctl.send_b',
+      'apc40.trackctl.send_c',
+      'apc40.device.clip_track',
+      'apc40.track1.activator',
+      'apc40.track1.solo_cue',
+      'apc40.track1.record_arm',
+    ]) {
+      expect(names).toContain(name);
+    }
+  });
+
+  it('reports the state the device is announcing, not a keypress', () => {
+    const d = dev();
+    const on = d.resolve(msg(NOTE_ON, 0, 90, 1));
+    const off = d.resolve(msg(NOTE_ON, 0, 90, 0));
+    expect(on.name).toBe('apc40.trackctl.send_c');
+    expect(on.behavior).toBe('toggle');
+    expect(on.isDown).toBe(true);
+    // Velocity 0 is the second PRESS, not a release of the first.
+    expect(off.isDown).toBe(false);
+    // A real note-off decodes the same way, so a handler need not tell them apart.
+    expect(d.resolve(msg(NOTE_OFF, 0, 90, 0)).isDown).toBe(false);
+  });
+});

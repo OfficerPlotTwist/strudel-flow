@@ -95,6 +95,29 @@ so the split is a suffix on one pattern.
 
 ## Invariants you can break without noticing
 
+**Thirty-two APC40 buttons LATCH. `isDown` on them is a STATE, not a press.**
+The four track-control buttons (PAN, SEND A/B/C), the clip/track and device
+arrows, and the whole activator, solo/cue and record-arm rows keep their own
+state in the device. One press sends velocity 1, the NEXT press sends 0, and
+there is no release message in between. `apc40-map.json` marks every one of them
+`"behavior": "toggle"`, and `resolve()` passes that through as
+`control.behavior`.
+
+Handle them ABOVE the press-only guard (`if (control.isDown !== true) return
+false`) and SET from `isDown` - never flip a copy of your own. Flipping is what
+made SEND C take four presses to go on and off again:
+
+```
+press 1  velocity 1  isDown true   flip  ON,  device lit
+press 2  velocity 0  isDown false  DROPPED by the press-only guard
+press 3  velocity 1  isDown true   flip  OFF, device lit
+press 4  velocity 0  DROPPED
+```
+
+For half of that cycle the LED said the opposite of what the app was doing, and
+nothing errored. The other twenty-eight are unbound today; bind one the same way
+or it will do this again.
+
 **Never re-evaluate per MIDI message.** `live.js` serialises evaluations
 (`queue = queue.then(runEvaluation, ...)`), and the device pots emit up to 200
 messages a second. One knob sweep queued ~200 transpiles and the surface went

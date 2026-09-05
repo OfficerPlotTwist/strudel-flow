@@ -1083,6 +1083,51 @@ function navigate(control) {
     return true;
   }
 
+  // ---- buttons that LATCH on the device ------------------------------------
+  //
+  // Confirmed on the hardware with the MIDI monitor: the APC40 keeps the state
+  // of these itself. One press sends velocity 1, the NEXT press sends 0, and
+  // there is no release message in between. `apc40-map.json` has said
+  // `"behavior": "toggle"` about all thirty-two of them since the map was
+  // written; nothing read it until now.
+  //
+  // Treating them as momentary is what produced "SEND C will not turn off":
+  //
+  //   press 1  velocity 1  ->  isDown true   flip   ON,  device lit
+  //   press 2  velocity 0  ->  isDown false  DROPPED by the press-only guard
+  //   press 3  velocity 1  ->  isDown true   flip   OFF, device lit
+  //   press 4  velocity 0  ->  DROPPED
+  //
+  // Four presses for one on-and-off, and for half of that cycle the LED said
+  // the opposite of what the app was doing. The fix is not a better flip: it is
+  // to stop keeping a second copy of the state at all. The device knows, and
+  // `isDown` is what it is telling us, so ADOPT it.
+  //
+  // Only these four are bound today. The other twenty-eight - the clip/track
+  // and device arrows, and the activator, solo/cue and record-arm rows - latch
+  // identically, so anything binding one must set from `isDown` rather than
+  // flip, and must be handled here, ABOVE the press-only guard.
+  const LATCHING = {
+    'apc40.trackctl.pan': (on) => {
+      panLatched = on;
+      status.info(on ? 'finished blocks play next cycle' : 'finished blocks stay silent');
+    },
+    'apc40.trackctl.send_a': (on) => setMonitor(on),
+    'apc40.trackctl.send_b': (on) => setBuilding(on),
+    'apc40.trackctl.send_c': (on) => {
+      audition.setOn(on);
+      status.info(
+        on
+          ? `audition on: ${panel.getHighlightedSound() ?? 'no sound highlighted'}`
+          : 'audition off',
+      );
+    },
+  };
+  if (control.behavior === 'toggle' && LATCHING[control.name]) {
+    LATCHING[control.name](control.isDown === true);
+    return true;
+  }
+
   if (control.isDown !== true) return false; // buttons act on press only
 
   switch (control.name) {
@@ -1108,9 +1153,6 @@ function navigate(control) {
       status.info(pinned ? `block ${blockCursor.cursor + 1} kept` : `block ${blockCursor.cursor + 1} let go`);
       return true;
     }
-    case 'apc40.trackctl.send_b':
-      setBuilding(!building);
-      return true;
     case 'apc40.global.tap_tempo':
       // A browsed function wins over build mode: TC 6 was turned more
       // recently than SEND B was latched, so it is the more specific
@@ -1122,22 +1164,6 @@ function navigate(control) {
       if (!building) return false; // outside build mode it is not ours
       addPickToBlock();
       return true;
-    case 'apc40.trackctl.pan':
-      panLatched = !panLatched;
-      status.info(panLatched ? 'finished blocks play next cycle' : 'finished blocks stay silent');
-      return true;
-    case 'apc40.trackctl.send_a':
-      setMonitor(!monitorOn);
-      return true;
-    case 'apc40.trackctl.send_c': {
-      const on = audition.toggle();
-      status.info(
-        on
-          ? `audition on: ${panel.getHighlightedSound() ?? 'no sound highlighted'}`
-          : 'audition off',
-      );
-      return true;
-    }
     case 'apc40.global.stop_all':
       blockCursor.clear();
       showBlockSelection();

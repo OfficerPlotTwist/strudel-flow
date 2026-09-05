@@ -33,14 +33,30 @@ export function createAudition({ play, getSound, getCps, now }) {
   return {
     isOn: () => on,
 
-    /** SEND C. Returns the new state. */
-    toggle() {
-      on = !on;
+    /**
+     * Set the state directly. Returns it.
+     *
+     * This, not `toggle`, is what SEND C calls. The button LATCHES on the
+     * device - press once and it sends 1, press again and it sends 0 - so the
+     * hardware already knows which state it is in and the app's job is to
+     * agree with it, not to keep a second count that can drift out of phase.
+     */
+    setOn(next) {
+      const want = next === true;
+      // Idempotent: the same state arriving twice is not a second press, and
+      // re-anchoring on it would push the next preview a whole beat away.
+      if (want === on) return on;
+      on = want;
       // Anchor to the current beat rather than to zero, or switching on after
       // a minute of silence would count every beat that elapsed while it was
       // off and fire a burst.
       lastBeat = on ? beatIndex(now(), getCps()) : null;
       return on;
+    },
+
+    /** Flip it. For a momentary caller - a key, a test - with no state to read. */
+    toggle() {
+      return this.setOn(!on);
     },
 
     tick() {
